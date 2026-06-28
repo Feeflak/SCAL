@@ -1,33 +1,41 @@
+use std::{
+    cell::UnsafeCell,
+    sync::{LazyLock, OnceLock},
+};
+
 use anyhow::{Context, Result, bail};
+use tokio::sync::Mutex;
 use wgpu::*;
 
 pub(crate) struct Slot {
     pub buffer: Buffer,
     pub id: usize,
 }
-pub(crate) static mut SLOTS: Vec<Slot> = Vec::new();
+pub(crate) static SLOTS: OnceLock<Vec<Slot>> = OnceLock::new();
 
 pub(crate) fn init_buffers(slot_count: u32, size: usize, device: &wgpu::Device) -> Result<()> {
-    unsafe {
-        if SLOTS.len() != 0 {
-            bail!(
-                "BUFFERS were already initialized! they should be initialized only once to avoid any issues "
-            )
-        }
-        SLOTS = (0..slot_count)
-            .map(|id| Slot {
-                id: id as usize,
-                buffer: device.create_buffer(&BufferDescriptor {
-                    label: Some("readback"),
+    if SLOTS
+        .set(
+            (0..slot_count)
+                .map(|id| Slot {
+                    id: id as usize,
+                    buffer: device.create_buffer(&BufferDescriptor {
+                        label: Some("readback"),
 
-                    size: size as u64,
+                        size: size as u64,
 
-                    usage: BufferUsages::COPY_DST | BufferUsages::MAP_READ,
+                        usage: BufferUsages::COPY_DST | BufferUsages::MAP_READ,
 
-                    mapped_at_creation: false,
-                }),
-            })
-            .collect();
+                        mapped_at_creation: false,
+                    }),
+                })
+                .collect(),
+        )
+        .is_err()
+    {
+        bail!(
+            "SLOTS were already initialized! they should be initialized only once to avoid any issues "
+        )
     }
     Ok(())
 }
@@ -48,6 +56,10 @@ impl ReadbackRing {
             .recv()
             .await
             .context("free_buffers channel was closed")?;
-        unsafe { SLOTS.get(id).context("buffer index was out of bounds") }
+        SLOTS
+            .get()
+            .context("SLOTS weren't yet initialized")?
+            .get(id)
+            .context("buffer index was out of bounds")
     }
 }

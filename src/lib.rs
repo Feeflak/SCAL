@@ -1,47 +1,67 @@
 use crate::{
-    encoder::{Encoder, EncodingSettings},
-    readback::{ReadbackRing, Slot},
+    encoder::{Encoder, EncoderComunication, EncodingSettings},
+    readback::{ReadbackRing, SLOTS, Slot},
     renderer::RenderingSettings,
 };
-use anyhow::{Context, Result};
+use anyhow::{Context, Result, bail};
+use log::{info, trace};
 use tokio::sync::mpsc::Sender;
 use wgpu::*;
 
-mod encoder;
+pub mod encoder;
 mod readback;
-mod renderer;
+pub mod renderer;
 
 const BYTES_PER_PIXEL: u32 = 4; //RGBA
 pub async fn run_loop(
+    tokio_handle: &tokio::runtime::Handle,
     encoding_settings: EncodingSettings,
     rendering_settings: RenderingSettings,
-    texture: Texture,
-    device: wgpu::Device,
-    frames: u32,
+    frames_to_render: u32,
 ) -> Result<()> {
+    info!("Starting rendering loop...");
+    if (rendering_settings.width * 4) % 256 != 0 {
+        bail!("Wgpu needs the bytes_per_row(width * 4) value to be multiple of 256");
+    }
+    let instance = wgpu::Instance::default();
+
+    let adapter = instance
+        .request_adapter(&wgpu::RequestAdapterOptions::default())
+        .await
+        .unwrap();
+
+    let (device, queue) = adapter
+        .request_device(&wgpu::DeviceDescriptor::default())
+        .await
+        .unwrap();
     readback::init_buffers(
         rendering_settings.buffer_count,
         (rendering_settings.width * rendering_settings.height * BYTES_PER_PIXEL) as usize,
         &device,
-    );
+    )
+    .context("while initializing buffers")?;
     let (renderer_send, renderer_rec) =
         tokio::sync::mpsc::channel(rendering_settings.buffer_count as usize);
+    for i in 0..rendering_settings.buffer_count as usize {
+        renderer_send.send(i).await.unwrap();
+    }
     let (encoder_send, encoder_rec) =
         tokio::sync::mpsc::channel(rendering_settings.buffer_count as usize);
     let mut ring = readback::ReadbackRing::new(renderer_rec);
-
-    let mut encoder = Encoder::new(
+    encoder::start_encoding_task(
         encoding_settings,
-        rendering_settings.width,
-        rendering_settings.height,
-        rendering_settings.fps,
-    )?;
+        tokio_handle,
+        rendering_settings,
+        encoder_rec,
+        renderer_send,
+    )
+    .context("while initializing the encoder")?;
 
-    texture = device.create_texture(&wgpu::TextureDescriptor {
+    let texture = device.create_texture(&wgpu::TextureDescriptor {
         label: Some("render target"),
         size: wgpu::Extent3d {
             width: rendering_settings.width,
-            height: rendering_settings.width,
+            height: rendering_settings.height,
             depth_or_array_layers: 1,
         },
         mip_level_count: 1,
@@ -52,21 +72,29 @@ pub async fn run_loop(
         view_formats: &[],
     });
 
-    for frame in 0..frames {
+    for frame in 0..frames_to_render {
+        info!("Frame: {frame}/{frames_to_render}");
+        trace!("draw_frame");
         renderer::draw_frame(&device, &queue, &texture, frame);
 
         let slot = ring.next().await.context("renderer channel was closed")?;
+        trace!("copy_texture_to_buffer");
         copy_texture_to_buffer(
             slot,
             &texture,
-            queue,
+            &queue,
             &rendering_settings,
             &device,
-            encoder_send,
-            renderer_send,
+            encoder_send.clone(),
         )
+        .context("while copying texture to the buffer")?
     }
+    info!("Finished Rendering");
+    encoder_send.send(EncoderComunication::Finish).await?;
 
+    info!("Waiting for the encoder to finish");
+    // Wait until encoder finishes to avoid any issues
+    encoder_send.closed().await;
     Ok(())
 }
 fn copy_texture_to_buffer(
@@ -75,9 +103,11 @@ fn copy_texture_to_buffer(
     queue: &Queue,
     rendering_settings: &RenderingSettings,
     device: &wgpu::Device,
-    encoder_send: Sender<usize>,
-    renderer_send: Sender<usize>,
-) {
+    encoder_send: Sender<EncoderComunication>,
+) -> Result<()> {
+    let id = slot.id;
+    trace!("MAP: {id}");
+
     let mut cmd = device.create_command_encoder(&Default::default());
 
     cmd.copy_texture_to_buffer(
@@ -98,17 +128,27 @@ fn copy_texture_to_buffer(
     );
 
     queue.submit(Some(cmd.finish()));
-    let slice = slot.buffer.slice(..);
-    slice.map_async(MapMode::Read, {
-        let id = slot.id;
-        move |result| {
-            result.expect("async map the buffer ");
-            renderer_send
-                .blocking_send(id)
-                .expect("renderer channel was closed");
+
+    let buffer = slot.buffer.clone();
+
+    slot.buffer
+        .slice(..)
+        .map_async(MapMode::Read, move |result| {
+            if result.is_err() {
+                return;
+            }
+
+            let data = buffer.slice(..).get_mapped_range();
+            let owned = data.to_vec();
+
+            drop(data);
+            trace!("UNMAP: {id}");
+            buffer.unmap();
+
             encoder_send
-                .blocking_send(id)
-                .expect("encoder channel was closed");
-        }
-    });
+                .try_send(EncoderComunication::FrameData { id, bytes: owned })
+                .ok();
+        });
+    device.poll(wgpu::PollType::wait_indefinitely())?;
+    Ok(())
 }
