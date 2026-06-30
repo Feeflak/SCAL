@@ -1,13 +1,17 @@
 use std::collections::HashMap;
 
 use crate::{
-    anim_object::{AnimObject, render::ObjectRenderData},
+    anim_object::{
+        self, AnimObject,
+        render::ObjectRenderData,
+        text::{TextManager, atlas::GlyphUpdateData},
+    },
     anim_op::{AnimOP, Animation},
     anim_render::AnimationState,
     renderer::{Index, Vertex},
 };
 use anyhow::{Context, Result};
-use log::debug;
+use log::{debug, info};
 use uuid::Uuid;
 
 pub struct Animator {
@@ -19,6 +23,7 @@ pub struct Animator {
     pub objects: Vec<(AnimObject, ObjectRenderData)>,
     pub vertices: Vec<Vertex>,
     pub indices: Vec<Index>,
+    pub text_manager: TextManager,
 }
 
 pub struct Scene<'a> {
@@ -26,6 +31,10 @@ pub struct Scene<'a> {
     pub objects: &'a Vec<(AnimObject, ObjectRenderData)>,
     pub vertices: &'a Vec<Vertex>,
     pub indices: &'a Vec<Index>,
+}
+pub struct FrameAnimationOutput<'a> {
+    pub scene: Scene<'a>,
+    pub glyph_update_data: Option<GlyphUpdateData<'a>>,
 }
 impl Animator {
     pub fn new(mut animations: Vec<AnimOP>, fps: u32) -> Result<Self> {
@@ -35,6 +44,7 @@ impl Animator {
             .context("you need at least one anim op to init anim renderer")?;
         debug!("first_anim: {first_anim:?}");
         Ok(Self {
+            text_manager: TextManager::new(),
             fps,
             anim_state: AnimationState::new(first_anim)?,
             animations_left: animations,
@@ -45,11 +55,14 @@ impl Animator {
         })
     }
 
-    pub fn animate_next_frame(&mut self) -> Result<Option<Scene<'_>>> {
+    pub fn animate_next_frame(&mut self) -> Result<Option<FrameAnimationOutput>> {
         debug!(
             "animate_next_frame- current_anim_state:{:?}",
             self.anim_state
         );
+
+        info!("animate_next_frame- objects:{:?}", self.objects);
+
         loop {
             let animation: Animation = self.anim_state.anim_op.clone().try_into()?;
 
@@ -84,15 +97,22 @@ impl Animator {
                 }
             }
         }
-
-        Ok(Some(Scene {
+        let scene = Scene {
             object_lookup: &self.objects_lookup,
             indices: &self.indices,
             objects: &self.objects,
             vertices: &self.vertices,
+        };
+
+        Ok(Some(FrameAnimationOutput {
+            scene,
+            glyph_update_data: self.text_manager.atlas.get_gliph_update_data(),
         }))
     }
-    pub fn get_object(&mut self, uuid: &Uuid) -> Result<&mut (AnimObject, ObjectRenderData)> {
+    pub(crate) fn get_object(
+        &mut self,
+        uuid: &Uuid,
+    ) -> Result<&mut (AnimObject, ObjectRenderData)> {
         let index = self
             .objects_lookup
             .get(uuid)

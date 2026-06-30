@@ -34,8 +34,8 @@ impl AnimObject {
     }
 }
 impl AnimObject {
-    pub fn instantiate(self) -> anim_op::AnimOP {
-        AnimOP::Instantiate(self)
+    pub fn instantiate(&self) -> anim_op::AnimOP {
+        AnimOP::Instantiate(self.clone())
     }
 }
 
@@ -57,10 +57,10 @@ pub struct Transform {
     pub z: f32,
 }
 impl Transform {
-    pub fn move_local(self, to: Vec2, time: Seconds, curve: AnimationCurve) -> AnimOP {
+    pub fn move_local(&self, to: Vec2, time: Seconds, curve: AnimationCurve) -> AnimOP {
         AnimOP::TransformMovePos(self.uuid, to, time, curve)
     }
-    pub fn add_children(self, children: Vec<AnimObject>) -> AnimOP {
+    pub fn add_children(&self, children: Vec<AnimObject>) -> AnimOP {
         todo!()
     }
 }

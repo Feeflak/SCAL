@@ -4,7 +4,7 @@ use uuid::Uuid;
 use wgpu::util::DeviceExt;
 
 use crate::anim_object::AnimObject;
-use crate::anim_object::render::{ObjectRenderData, PipelineKind};
+use crate::anim_object::render::{ObjectRenderData, PipelineData, PipelineKind};
 use crate::animator::Scene;
 
 #[derive(Copy, Clone, PartialEq, Eq, Hash)]
@@ -27,6 +27,7 @@ pub type Index = u32;
 pub struct Vertex {
     pub position: [f32; 2],
     pub color: [f32; 3],
+    pub uv: [f32; 2],
 }
 
 pub struct Renderer {
@@ -57,6 +58,7 @@ impl Renderer {
             index_buffer_size: 0,
         }
     }
+    pub fn update_text_glyphs() {}
 
     pub fn update_mesh(
         &mut self,
@@ -92,7 +94,7 @@ impl Renderer {
     pub fn draw_buckets(
         &self,
         render_pass: &mut wgpu::RenderPass,
-        pipelines: &HashMap<PipelineKind, wgpu::RenderPipeline>,
+        pipelines: &HashMap<PipelineKind, PipelineData>,
         buckets: RenderBuckets,
     ) {
         render_pass.set_vertex_buffer(0, self.vertex_buffer.slice(..));
@@ -101,9 +103,12 @@ impl Renderer {
         for (pipeline_kind, mut items) in buckets.buckets {
             items.sort_by(|a, b| a.depth.total_cmp(&b.depth));
 
-            let pipeline = &pipelines[&pipeline_kind];
-            render_pass.set_pipeline(pipeline);
+            let pipeline_data = &pipelines[&pipeline_kind];
+            render_pass.set_pipeline(&pipeline_data.pipeline);
 
+            for (i, bind_group) in pipeline_data.bind_groups.iter().enumerate() {
+                render_pass.set_bind_group(i as u32, bind_group, &[]);
+            }
             for item in items {
                 info!(
                     "item.data.indices_base_index- {}",
@@ -167,7 +172,7 @@ fn build_buckets<'a>(
 }
 pub fn draw_objects(
     render_pass: &mut wgpu::RenderPass,
-    pipelines: &HashMap<PipelineKind, wgpu::RenderPipeline>,
+    pipelines: &HashMap<PipelineKind, PipelineData>,
     device: &wgpu::Device,
     queue: &wgpu::Queue,
     scene: Scene,

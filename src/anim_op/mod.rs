@@ -90,8 +90,9 @@ pub enum AnimationCurve {
     EaseOutCubic,
     EaseInOutCubic,
     EaseInOutBack,
+    EaseOutBack,
+    EaseInBack,
 }
-
 impl AnimationCurve {
     pub fn apply(&self, t: f32) -> f32 {
         let t = t.clamp(0.0, 1.0);
@@ -120,6 +121,21 @@ impl AnimationCurve {
                     let x = 2.0 * t - 2.0;
                     (x * x * ((C2 + 1.0) * x + C2) + 2.0) / 2.0
                 }
+            }
+
+            AnimationCurve::EaseOutBack => {
+                const C1: f32 = 1.70158;
+                const C3: f32 = C1 + 1.0;
+
+                let x = t - 1.0;
+                1.0 + C3 * x * x * x + C1 * x * x
+            }
+
+            AnimationCurve::EaseInBack => {
+                const C1: f32 = 1.70158;
+                const C3: f32 = C1 + 1.0;
+
+                C3 * t * t * t - C1 * t * t
             }
         }
     }

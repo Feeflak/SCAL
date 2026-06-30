@@ -1,4 +1,11 @@
-use crate::{BYTES_PER_PIXEL, animator::Animator, types::Seconds};
+use std::collections::HashMap;
+
+use crate::{
+    BYTES_PER_PIXEL,
+    anim_object::{self, AnimObject, render::PipelineKind, text::render::TextRenderer},
+    animator::Animator,
+    types::Seconds,
+};
 use anyhow::{Context, Ok, Result};
 use tokio::sync::mpsc::Sender;
 
@@ -38,7 +45,6 @@ pub async fn render_animations(
     device: Device,
     rendering_settings: RenderingSettings,
 ) -> Result<()> {
-    let pipelines = crate::anim_object::render::get_pipelines(&device);
     let mut renderer = Renderer::new(&device);
     let texture = device.create_texture(&wgpu::TextureDescriptor {
         label: Some("render target"),
@@ -54,12 +60,26 @@ pub async fn render_animations(
         usage: wgpu::TextureUsages::RENDER_ATTACHMENT | wgpu::TextureUsages::COPY_SRC,
         view_formats: &[],
     });
+
+    let (pipelines, mut text_renderer) = {
+        let mut pipelines = crate::anim_object::render::get_pipelines(&device);
+
+        let text_renderer = TextRenderer::new(&device);
+        pipelines
+            .get_mut(&PipelineKind::Text)
+            .expect("there was no text pipeline")
+            .bind_groups
+            .push(text_renderer.bind_group.clone());
+        (pipelines, text_renderer)
+    };
     let mut animator = Animator::new(animations, rendering_settings.fps)
         .context("while initiating the animator")?;
-    while let Some(scene) = animator
+    while let Some(frame_animation_data) = animator
         .animate_next_frame()
         .context("while rendering next frame")?
     {
+        let scene = frame_animation_data.scene;
+
         let texture_view = texture.create_view(&Default::default());
 
         let mut encoder = device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
@@ -83,6 +103,10 @@ pub async fn render_animations(
                 occlusion_query_set: None,
                 multiview_mask: None,
             });
+
+            if let Some(glyph_data) = frame_animation_data.glyph_update_data {
+                text_renderer.update_glyphs_if_needed(glyph_data, &queue);
+            }
 
             crate::renderer::draw_objects(
                 &mut render_pass,

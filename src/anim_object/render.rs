@@ -2,13 +2,13 @@ use std::collections::HashMap;
 
 use log::debug;
 use uuid::Uuid;
-use wgpu::TextureFormat;
+use wgpu::{BindGroup, TextureFormat};
 
 use crate::{
     anim_object::{
         AnimObject, Transform,
-        primitive_shapes::{Square, create_shape_pipeline},
-        text::Text,
+        primitive_shapes::{Square, create_shape_pipeline, mesh::generate_square_mesh_data},
+        text::{Text, TextManager, mesh::generate_text_mesh, pipeline::create_text_pipeline},
     },
     animator::Animator,
     renderer::{Index, Vertex},
@@ -19,41 +19,13 @@ pub enum PipelineKind {
     Text,
     // later: Sprite, Mesh3D, Particle, etc.
 }
-fn generate_square_mesh_data(square: &Square) -> (Vec<Vertex>, Vec<Index>, PipelineKind) {
-    let (w, h) = square.size;
-
-    let hw = w * 0.5;
-    let hh = h * 0.5;
-
-    let color = [square.color.0, square.color.1, square.color.2];
-
-    let vertices = vec![
-        Vertex {
-            position: [-hw, -hh],
-            color,
-        },
-        Vertex {
-            position: [hw, -hh],
-            color,
-        },
-        Vertex {
-            position: [hw, hh],
-            color,
-        },
-        Vertex {
-            position: [-hw, hh],
-            color,
-        },
-    ];
-
-    let indices = vec![0, 1, 2, 2, 3, 0];
-
-    (vertices, indices, PipelineKind::Shape)
-}
 impl AnimObject {
-    pub fn generate_mesh_data(&self) -> (Vec<Vertex>, Vec<Index>, PipelineKind) {
+    pub fn generate_mesh_data(
+        &self,
+        text_manager: &mut TextManager,
+    ) -> (Vec<Vertex>, Vec<Index>, PipelineKind) {
         match self {
-            AnimObject::Text(text, _) => todo!(), // Skip implementation for now
+            AnimObject::Text(text, _) => generate_text_mesh(text_manager, &text),
             AnimObject::Square(square, _) => generate_square_mesh_data(square),
         }
     }
@@ -61,7 +33,8 @@ impl AnimObject {
 impl Animator {
     pub fn add_anim_object(&mut self, obj: AnimObject) {
         let (render_data, mut indices) = {
-            let (default_vertices, mut indices, pipeline) = obj.generate_mesh_data();
+            let (default_vertices, mut indices, pipeline) =
+                obj.generate_mesh_data(&mut self.text_manager);
 
             let vertex_base = self.vertices.len();
             let index_base = self.indices.len();
@@ -118,7 +91,7 @@ impl Animator {
     }
 }
 #[derive(Debug)]
-pub struct ObjectRenderData {
+pub(crate) struct ObjectRenderData {
     pub vertices_base_index: usize,
     pub base_vertices: Vec<Vertex>,
     pub indices_base_index: usize,
@@ -142,8 +115,15 @@ impl ObjectRenderData {
         vertices
     }
 }
+pub(crate) struct PipelineData {
+    pub pipeline: wgpu::RenderPipeline,
+    pub bind_groups: Vec<wgpu::BindGroup>,
+}
 
-pub fn get_pipelines(device: &wgpu::Device) -> HashMap<PipelineKind, wgpu::RenderPipeline> {
+pub(crate) fn get_pipelines(device: &wgpu::Device) -> HashMap<PipelineKind, PipelineData> {
     const FORMAT: TextureFormat = TextureFormat::Rgba8Unorm;
-    HashMap::from([(PipelineKind::Shape, create_shape_pipeline(device, FORMAT))])
+    HashMap::from([
+        (PipelineKind::Text, create_text_pipeline(device, FORMAT)),
+        (PipelineKind::Shape, create_shape_pipeline(device, FORMAT)),
+    ])
 }

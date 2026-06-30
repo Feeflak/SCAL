@@ -1,7 +1,15 @@
-use anyhow::{Context, Result};
+use anyhow::Result;
 
 use log::{LevelFilter, info};
-use scal::anim_object::{AnimObject, Transform, primitive_shapes::Square, wait};
+use scal::{
+    anim_object::{
+        AnimObject, Transform,
+        primitive_shapes::Square,
+        text::{Align, Text},
+        wait,
+    },
+    anim_op::AnimationCurve,
+};
 use tokio::runtime::Handle;
 
 const LEVEL_FILTER: LevelFilter = LevelFilter::Debug;
@@ -21,6 +29,15 @@ async fn main() -> Result<()> {
         height: 1080,
         fps: 60,
     };
+    let text = AnimObject::Text(
+        Text {
+            alignment: Align::Center,
+            value: "Texting to you LOL".to_string(),
+            color: (0., 0., 0., 1.),
+            font_size: 25.,
+        },
+        Transform::new(vec![], (0.0, 0.0), 0., 1., 1.),
+    );
     let square = AnimObject::Square(
         Square {
             size: (0.8, 0.8),
@@ -33,7 +50,14 @@ async fn main() -> Result<()> {
         &handle,
         encoding_settings,
         rendering_settings,
-        vec![wait(0.1), square.instantiate(), wait(1.0)],
+        vec![
+            text.instantiate(),
+            square.instantiate(),
+            wait(1.0),
+            (square
+                .transform()
+                .move_local((0.5, 0.5), 1., AnimationCurve::EaseOutBack)),
+        ],
     )
     .await?;
     info!("Hello, world!");
