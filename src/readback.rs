@@ -1,10 +1,6 @@
-use std::{
-    cell::UnsafeCell,
-    sync::{LazyLock, OnceLock},
-};
+use std::sync::OnceLock;
 
 use anyhow::{Context, Result, bail};
-use tokio::sync::Mutex;
 use wgpu::*;
 
 pub(crate) struct Slot {
