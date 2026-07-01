@@ -24,6 +24,7 @@ pub fn generate_text_mesh(
                 .get_or_insert(&mut manager.font_system, physical.cache_key);
 
             let x = glyph.x + glyph_info.bearing.x;
+            let y = run.line_y - glyph_info.bearing.y;
             let w = glyph_info.width;
             let h = glyph_info.height;
 

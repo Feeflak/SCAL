@@ -26,9 +26,14 @@ impl Into<cosmic_text::Align> for Align {
         }
     }
 }
-
+#[derive(Clone, Debug)]
+pub enum FontSpec {
+    Family(String),
+    Named(String),
+}
 #[derive(Clone, Debug)]
 pub struct Text {
+    pub font_family: String,
     pub alignment: Align,
     pub value: String,
     pub color: Color,
@@ -52,10 +57,11 @@ impl TextManager {
         let metrics = Metrics::new(text.font_size, text.font_size * 1.2);
 
         let mut buffer = Buffer::new(&mut self.font_system, metrics);
+        let attrs = Attrs::new().family(cosmic_text::Family::Name(&text.font_family));
 
         buffer.set_text(
             &text.value,
-            &Attrs::new(),
+            &attrs,
             Shaping::Advanced,
             Some(text.alignment.into()),
         );
