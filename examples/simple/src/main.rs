@@ -9,6 +9,7 @@ use scal::{
         wait,
     },
     anim_op::AnimationCurve,
+    types::{Color, Vec2},
 };
 use tokio::runtime::Handle;
 
@@ -24,6 +25,7 @@ async fn main() -> Result<()> {
         codec_type: scal::encoder::CodecType::PRORES,
     };
     let rendering_settings = scal::renderer::RenderingSettings {
+        background_color: Color::new(0.8, 0.8, 0.8, 0.),
         buffer_count: 3,
         width: 1920,
         height: 1080,
@@ -31,20 +33,21 @@ async fn main() -> Result<()> {
     };
     let text = AnimObject::Text(
         Text {
+            font_family: "SF Pro Display Bold".to_string(),
             alignment: Align::Center,
             value: "Texting to you LOL".to_string(),
-            color: (0., 0., 0., 1.),
-            font_size: 25.,
+            color: Color::WHITE,
+            font_size: 55.,
         },
-        Transform::new(vec![], (0.0, 0.0), 0., 1., 1.),
+        Transform::new(vec![], Vec2::new(0.5, 0.5), 0., 1., 1.),
     );
     let square = AnimObject::Square(
         Square {
-            size: (0.8, 0.8),
+            size: Vec2::new(0.8, 0.8),
             corner_radius: 1.,
-            color: (1., 1., 1., 1.),
+            color: Color::new(0., 0.2, 0.4, 1.),
         },
-        Transform::new(vec![], (0.0, 0.0), 0., 1., 0.),
+        Transform::new(vec![], Vec2::new(0.0, 0.0), 0., 1., 0.),
     );
     scal::run_loop(
         &handle,
@@ -56,7 +59,7 @@ async fn main() -> Result<()> {
             wait(1.0),
             (square
                 .transform()
-                .move_local((0.5, 0.5), 1., AnimationCurve::EaseOutBack)),
+                .move_local(Vec2::new(0.5, 0.5), 1., AnimationCurve::EaseOutBack)),
         ],
     )
     .await?;
