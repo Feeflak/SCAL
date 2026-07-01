@@ -1,36 +1,33 @@
 use crate::{
     anim_object::{primitive_shapes::Square, render::PipelineKind},
     renderer::{Index, Vertex},
+    types::Vec2,
 };
 
 pub fn generate_square_mesh_data(square: &Square) -> (Vec<Vertex>, Vec<Index>, PipelineKind) {
-    let (w, h) = square.size;
-
-    let hw = w * 0.5;
-    let hh = h * 0.5;
-
-    let color = [square.color.0, square.color.1, square.color.2];
+    let size = square.size * 0.5;
+    let color = square.color;
 
     let vertices = vec![
         Vertex {
-            position: [-hw, -hh],
+            position: -size,
             color,
-            uv: [0., 0.],
+            uv: Vec2::new(0., 0.),
         },
         Vertex {
-            position: [hw, -hh],
+            position: Vec2::new(size.x, -size.y),
             color,
-            uv: [1., 0.],
+            uv: Vec2::new(1., 0.),
         },
         Vertex {
-            position: [hw, hh],
+            position: size,
             color,
-            uv: [1., 1.],
+            uv: Vec2::new(1., 1.),
         },
         Vertex {
-            position: [-hw, hh],
+            position: Vec2::new(-size.x, size.y),
             color,
-            uv: [0., 1.],
+            uv: Vec2::new(0., 1.),
         },
     ];
 

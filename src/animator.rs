@@ -106,7 +106,7 @@ impl Animator {
 
         Ok(Some(FrameAnimationOutput {
             scene,
-            glyph_update_data: self.text_manager.atlas.get_gliph_update_data(),
+            glyph_update_data: self.text_manager.atlas.get_glyph_update_data(),
         }))
     }
     pub(crate) fn get_object(

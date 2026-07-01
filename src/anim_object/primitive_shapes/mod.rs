@@ -32,10 +32,10 @@ pub fn create_shape_pipeline(
             wgpu::VertexAttribute {
                 offset: std::mem::size_of::<[f32; 2]>() as wgpu::BufferAddress,
                 shader_location: 1,
-                format: wgpu::VertexFormat::Float32x3,
+                format: wgpu::VertexFormat::Float32x4,
             },
             wgpu::VertexAttribute {
-                offset: std::mem::size_of::<[f32; 5]>() as wgpu::BufferAddress,
+                offset: std::mem::size_of::<[f32; 6]>() as wgpu::BufferAddress,
                 shader_location: 2,
                 format: wgpu::VertexFormat::Float32x2,
             },

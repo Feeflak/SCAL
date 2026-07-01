@@ -6,6 +6,7 @@ use wgpu::util::DeviceExt;
 use crate::anim_object::AnimObject;
 use crate::anim_object::render::{ObjectRenderData, PipelineData, PipelineKind};
 use crate::animator::Scene;
+use crate::types::{Color, Vec2};
 
 #[derive(Copy, Clone, PartialEq, Eq, Hash)]
 pub struct RenderNodeId(pub Uuid);
@@ -25,9 +26,9 @@ pub type Index = u32;
 #[repr(C)]
 #[derive(Copy, Clone, Debug, bytemuck::Pod, bytemuck::Zeroable)]
 pub struct Vertex {
-    pub position: [f32; 2],
-    pub color: [f32; 3],
-    pub uv: [f32; 2],
+    pub position: Vec2,
+    pub color: Color,
+    pub uv: Vec2,
 }
 
 pub struct Renderer {
@@ -189,6 +190,7 @@ pub fn draw_objects(
 
 #[derive(Clone, Copy)]
 pub struct RenderingSettings {
+    pub background_color: Color,
     pub width: u32,
     pub height: u32,
     pub fps: u32,

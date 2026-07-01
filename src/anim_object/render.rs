@@ -12,6 +12,7 @@ use crate::{
     },
     animator::Animator,
     renderer::{Index, Vertex},
+    types::Vec2,
 };
 #[derive(Copy, Clone, Debug, Eq, PartialEq, Hash)]
 pub enum PipelineKind {
@@ -105,12 +106,11 @@ impl ObjectRenderData {
 
         let mut vertices = self.base_vertices.clone();
         for vert in vertices.iter_mut() {
-            let x = vert.position[0] * transform.scale;
-            let y = vert.position[1] * transform.scale;
+            let x = vert.position.x * transform.scale;
+            let y = vert.position.y * transform.scale;
 
-            let rx = x * cos - y * sin;
-            let ry = x * sin + y * cos;
-            vert.position = [rx + transform.pos.0, ry + transform.pos.1];
+            let r = Vec2::new(x * cos - y * sin, x * sin + y * cos);
+            vert.position = transform.pos + r;
         }
         vertices
     }

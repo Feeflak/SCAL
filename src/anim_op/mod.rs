@@ -1,7 +1,7 @@
 mod transform;
 
 use anyhow::Result;
-use log::{debug, info};
+use log::debug;
 use uuid::Uuid;
 
 use crate::anim_object::AnimObject;
@@ -30,8 +30,8 @@ impl TryInto<Animation> for AnimOP {
                 curve,
                 Box::new(move |animator, initial_pos_store| {
                     let pos = animator.get_object(&uuid)?.0.transform().pos;
-                    initial_pos_store.push(pos.0);
-                    initial_pos_store.push(pos.1);
+                    initial_pos_store.push(pos.x);
+                    initial_pos_store.push(pos.y);
                     Ok(())
                 }),
                 Some(Box::new(move |animator, t, initial_pos| {
@@ -41,9 +41,9 @@ impl TryInto<Animation> for AnimOP {
                         let (anim, render) = animator.get_object(&uuid)?;
 
                         let transform = anim.transform_mut();
-                        let new_pos = (
-                            initial_pos[0] + t * (pos.0 - initial_pos[0]),
-                            initial_pos[1] + t * (pos.1 - initial_pos[1]),
+                        let new_pos = Vec2::new(
+                            initial_pos[0] + t * (pos.x - initial_pos[0]),
+                            initial_pos[1] + t * (pos.y - initial_pos[1]),
                         );
                         transform.pos = new_pos;
 

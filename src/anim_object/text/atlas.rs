@@ -2,15 +2,17 @@ use std::collections::HashMap;
 
 use cosmic_text::{CacheKey, FontSystem, SwashCache};
 
+use crate::types::Vec2;
+
 #[derive(Clone, Copy, Debug)]
 pub struct GlyphInfo {
-    pub uv_min: [f32; 2],
-    pub uv_max: [f32; 2],
+    pub uv_min: Vec2,
+    pub uv_max: Vec2,
 
     pub width: f32,
     pub height: f32,
 
-    pub bearing: [f32; 2],
+    pub bearing: Vec2,
     pub advance: f32,
 }
 
@@ -36,7 +38,7 @@ pub struct GlyphUpdateData<'a> {
     pub pixels: &'a [u8],
 }
 impl GlyphAtlas {
-    pub fn get_gliph_update_data(&mut self) -> Option<GlyphUpdateData> {
+    pub fn get_glyph_update_data(&mut self) -> Option<GlyphUpdateData> {
         if self.dirty {
             self.dirty = false;
             Some(GlyphUpdateData {
@@ -84,11 +86,11 @@ impl GlyphAtlas {
 
         let Some(image) = image else {
             return GlyphInfo {
-                uv_min: [0.0, 0.0],
-                uv_max: [0.0, 0.0],
+                uv_min: Vec2::ZERO,
+                uv_max: Vec2::ZERO,
                 width: 0.0,
                 height: 0.0,
-                bearing: [0.0, 0.0],
+                bearing: Vec2::ZERO,
                 advance: 0.0,
             };
         };
@@ -108,19 +110,23 @@ impl GlyphAtlas {
                 self.pixels[dst] = image.data[src];
             }
         }
+        self.cursor_x += width + 1;
 
-        self.cursor_x += width;
-        self.row_height = self.row_height.max(height);
+        if self.cursor_x + width >= self.width {
+            self.cursor_x = 0;
+            self.cursor_y += self.row_height + 1;
+            self.row_height = 0;
+        }
 
         GlyphInfo {
-            uv_min: [x as f32 / self.width as f32, y as f32 / self.height as f32],
-            uv_max: [
+            uv_min: Vec2::new(x as f32 / self.width as f32, y as f32 / self.height as f32),
+            uv_max: Vec2::new(
                 (x + width) as f32 / self.width as f32,
                 (y + height) as f32 / self.height as f32,
-            ],
+            ),
             width: width as f32,
             height: height as f32,
-            bearing: [image.placement.left as f32, image.placement.top as f32],
+            bearing: Vec2::new(image.placement.left as f32, image.placement.top as f32),
             advance: image.placement.width as f32,
         }
     }

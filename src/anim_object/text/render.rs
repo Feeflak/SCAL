@@ -1,6 +1,6 @@
-use wgpu::{Queue, RenderPass};
+use wgpu::Queue;
 
-use crate::anim_object::text::{TextManager, atlas::GlyphUpdateData};
+use crate::anim_object::text::atlas::GlyphUpdateData;
 
 pub struct TextRenderer {
     pub texture: wgpu::Texture,

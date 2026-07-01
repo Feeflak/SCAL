@@ -24,7 +24,7 @@ pub fn create_text_pipeline(
                 format: wgpu::VertexFormat::Float32x3,
             },
             wgpu::VertexAttribute {
-                offset: std::mem::size_of::<[f32; 5]>() as wgpu::BufferAddress,
+                offset: std::mem::size_of::<[f32; 6]>() as wgpu::BufferAddress,
                 shader_location: 2,
                 format: wgpu::VertexFormat::Float32x2,
             },

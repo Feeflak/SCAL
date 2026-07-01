@@ -4,6 +4,7 @@ use crate::{
         text::{Text, TextManager},
     },
     renderer::Vertex,
+    types::Vec2,
 };
 pub fn generate_text_mesh(
     manager: &mut TextManager,
@@ -14,8 +15,6 @@ pub fn generate_text_mesh(
     let mut vertices = vec![];
     let mut indices = vec![];
 
-    let color = [text.color.0, text.color.1, text.color.2];
-
     for run in buffer.layout_runs() {
         for glyph in run.glyphs {
             let physical = glyph.physical((0., 0.), 1.0);
@@ -24,36 +23,32 @@ pub fn generate_text_mesh(
                 .atlas
                 .get_or_insert(&mut manager.font_system, physical.cache_key);
 
-            let x = glyph.x + glyph_info.bearing[0];
-
-            let y = run.line_y + glyph_info.bearing[1];
-
+            let x = glyph.x + glyph_info.bearing.x;
             let w = glyph_info.width;
-
             let h = glyph_info.height;
 
             let base = vertices.len() as u32;
 
             vertices.extend([
                 Vertex {
-                    position: [x, y],
-                    color,
+                    position: Vec2::new(x, y),
+                    color: text.color,
                     uv: glyph_info.uv_min,
                 },
                 Vertex {
-                    position: [x + w, y],
-                    color,
-                    uv: [glyph_info.uv_max[0], glyph_info.uv_min[1]],
+                    position: Vec2::new(x + w, y),
+                    color: text.color,
+                    uv: Vec2::new(glyph_info.uv_max.x, glyph_info.uv_min.y),
                 },
                 Vertex {
-                    position: [x + w, y + h],
-                    color,
+                    position: Vec2::new(x + w, y + h),
+                    color: text.color,
                     uv: glyph_info.uv_max,
                 },
                 Vertex {
-                    position: [x, y + h],
-                    color,
-                    uv: [glyph_info.uv_min[0], glyph_info.uv_max[1]],
+                    position: Vec2::new(x, y + h),
+                    color: text.color,
+                    uv: Vec2::new(glyph_info.uv_min.x, glyph_info.uv_max.y),
                 },
             ]);
 

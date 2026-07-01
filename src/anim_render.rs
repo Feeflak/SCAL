@@ -1,5 +1,3 @@
-use std::collections::HashMap;
-
 use crate::{
     BYTES_PER_PIXEL,
     anim_object::{self, AnimObject, render::PipelineKind, text::render::TextRenderer},
@@ -93,7 +91,7 @@ pub async fn render_animations(
                     view: &texture_view,
                     resolve_target: None,
                     ops: wgpu::Operations {
-                        load: wgpu::LoadOp::Clear(wgpu::Color::BLUE),
+                        load: wgpu::LoadOp::Clear(rendering_settings.background_color.into()),
                         store: wgpu::StoreOp::Store,
                     },
                     depth_slice: None,
