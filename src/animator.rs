@@ -2,12 +2,13 @@ use std::collections::HashMap;
 
 use crate::{
     anim_object::{
-        self, AnimObject,
+        AnimObject,
         render::ObjectRenderData,
         text::{TextManager, atlas::GlyphUpdateData},
     },
     anim_op::{AnimOP, Animation},
     anim_render::AnimationState,
+    projection::Camera,
     renderer::{Index, Vertex},
 };
 use anyhow::{Context, Result};
@@ -15,6 +16,7 @@ use log::{debug, info};
 use uuid::Uuid;
 
 pub struct Animator {
+    pub camera: Camera,
     pub fps: u32,
     pub anim_state: AnimationState,
     pub animations_left: Vec<AnimOP>,
@@ -27,6 +29,8 @@ pub struct Animator {
 }
 
 pub struct Scene<'a> {
+    pub camera: &'a Camera,
+    pub mesh_changed_this_frame: bool,
     pub object_lookup: &'a HashMap<Uuid, usize>,
     pub objects: &'a Vec<(AnimObject, ObjectRenderData)>,
     pub vertices: &'a Vec<Vertex>,
@@ -37,13 +41,14 @@ pub struct FrameAnimationOutput<'a> {
     pub glyph_update_data: Option<GlyphUpdateData<'a>>,
 }
 impl Animator {
-    pub fn new(mut animations: Vec<AnimOP>, fps: u32) -> Result<Self> {
+    pub fn new(mut animations: Vec<AnimOP>, fps: u32, camera: Camera) -> Result<Self> {
         let first_anim = animations
             .pop()
             .take()
             .context("you need at least one anim op to init anim renderer")?;
         debug!("first_anim: {first_anim:?}");
         Ok(Self {
+            camera,
             text_manager: TextManager::new(),
             fps,
             anim_state: AnimationState::new(first_anim)?,
@@ -61,7 +66,7 @@ impl Animator {
             self.anim_state
         );
 
-        info!("animate_next_frame- objects:{:?}", self.objects);
+        debug!("animate_next_frame- objects:{:?}", self.objects);
 
         loop {
             let animation: Animation = self.anim_state.anim_op.clone().try_into()?;
@@ -98,6 +103,8 @@ impl Animator {
             }
         }
         let scene = Scene {
+            mesh_changed_this_frame: true,
+            camera: &self.camera,
             object_lookup: &self.objects_lookup,
             indices: &self.indices,
             objects: &self.objects,

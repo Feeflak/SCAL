@@ -1,18 +1,20 @@
 use std::collections::HashMap;
 
+use glam::Vec2;
 use log::debug;
-use uuid::Uuid;
-use wgpu::{BindGroup, TextureFormat};
+use wgpu::TextureFormat;
 
 use crate::{
     anim_object::{
         AnimObject, Transform,
-        primitive_shapes::{Square, create_shape_pipeline, mesh::generate_square_mesh_data},
-        text::{Text, TextManager, mesh::generate_text_mesh, pipeline::create_text_pipeline},
+        primitive_shapes::{create_shape_pipeline, mesh::generate_square_mesh_data},
+        text::{
+            TextManager, code::mesh::generate_code_mesh, mesh::generate_text_mesh,
+            pipeline::create_text_pipeline,
+        },
     },
     animator::Animator,
     renderer::{Index, Vertex},
-    types::Vec2,
 };
 #[derive(Copy, Clone, Debug, Eq, PartialEq, Hash)]
 pub enum PipelineKind {
@@ -22,20 +24,22 @@ pub enum PipelineKind {
 }
 impl AnimObject {
     pub fn generate_mesh_data(
-        &self,
+        &mut self,
         text_manager: &mut TextManager,
     ) -> (Vec<Vertex>, Vec<Index>, PipelineKind) {
         match self {
+            AnimObject::Code(code, transform) => {
+                generate_code_mesh(text_manager, transform.uuid, code)
+            }
             AnimObject::Text(text, _) => generate_text_mesh(text_manager, &text),
             AnimObject::Square(square, _) => generate_square_mesh_data(square),
         }
     }
 }
 impl Animator {
-    pub fn add_anim_object(&mut self, obj: AnimObject) {
+    pub fn add_anim_object(&mut self, mut obj: AnimObject) {
         let (render_data, mut indices) = {
-            let (default_vertices, mut indices, pipeline) =
-                obj.generate_mesh_data(&mut self.text_manager);
+            let (vertives, mut indices, pipeline) = obj.generate_mesh_data(&mut self.text_manager);
 
             let vertex_base = self.vertices.len();
             let index_base = self.indices.len();
@@ -48,16 +52,15 @@ impl Animator {
                 ObjectRenderData {
                     pipeline,
                     vertices_base_index: vertex_base,
-                    base_vertices: default_vertices.clone(),
+                    vertices: vertives.clone(),
                     indices_base_index: index_base,
                     indices_count: indices.len(),
                 },
                 indices,
             )
         };
-        let mut vertices = render_data.transform_updated_vertices(obj.transform());
 
-        self.vertices.append(&mut vertices);
+        self.vertices.append(&mut render_data.vertices.clone());
         self.indices.append(&mut indices);
 
         let id = obj.transform().uuid;
@@ -78,7 +81,7 @@ impl Animator {
         let (_, data) = self.objects.remove(object_index);
 
         self.vertices
-            .drain(data.vertices_base_index..data.vertices_base_index + data.base_vertices.len());
+            .drain(data.vertices_base_index..data.vertices_base_index + data.vertices.len());
 
         self.indices
             .drain(data.indices_base_index..data.indices_base_index + data.indices_count);
@@ -94,26 +97,10 @@ impl Animator {
 #[derive(Debug)]
 pub(crate) struct ObjectRenderData {
     pub vertices_base_index: usize,
-    pub base_vertices: Vec<Vertex>,
+    pub vertices: Vec<Vertex>,
     pub indices_base_index: usize,
     pub indices_count: usize,
     pub pipeline: PipelineKind,
-}
-impl ObjectRenderData {
-    pub fn transform_updated_vertices(&self, transform: &Transform) -> Vec<Vertex> {
-        let cos = transform.rotation.cos();
-        let sin = transform.rotation.sin();
-
-        let mut vertices = self.base_vertices.clone();
-        for vert in vertices.iter_mut() {
-            let x = vert.position.x * transform.scale;
-            let y = vert.position.y * transform.scale;
-
-            let r = Vec2::new(x * cos - y * sin, x * sin + y * cos);
-            vert.position = transform.pos + r;
-        }
-        vertices
-    }
 }
 pub(crate) struct PipelineData {
     pub pipeline: wgpu::RenderPipeline,

@@ -1,6 +1,7 @@
 mod transform;
 
 use anyhow::Result;
+use glam::Vec2;
 use log::debug;
 use uuid::Uuid;
 
@@ -37,22 +38,16 @@ impl TryInto<Animation> for AnimOP {
                 Some(Box::new(move |animator, t, initial_pos| {
                     // lerp
 
-                    let (base_index, vertices) = {
-                        let (anim, render) = animator.get_object(&uuid)?;
+                    let (anim, _) = animator.get_object(&uuid)?;
 
-                        let transform = anim.transform_mut();
-                        let new_pos = Vec2::new(
-                            initial_pos[0] + t * (pos.x - initial_pos[0]),
-                            initial_pos[1] + t * (pos.y - initial_pos[1]),
-                        );
-                        transform.pos = new_pos;
+                    let transform = anim.transform_mut();
+                    let new_pos = Vec2::new(
+                        initial_pos[0] + t * (pos.x - initial_pos[0]),
+                        initial_pos[1] + t * (pos.y - initial_pos[1]),
+                    );
+                    transform.pos = new_pos;
+                    transform.changed_this_frame = true;
 
-                        let vertices = render.transform_updated_vertices(transform);
-                        (render.vertices_base_index, vertices)
-                    };
-
-                    animator.vertices[base_index..base_index + vertices.len()]
-                        .copy_from_slice(&vertices);
                     Ok(())
                 })),
             ),

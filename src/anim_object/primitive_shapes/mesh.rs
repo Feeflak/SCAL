@@ -1,8 +1,8 @@
 use crate::{
     anim_object::{primitive_shapes::Square, render::PipelineKind},
     renderer::{Index, Vertex},
-    types::Vec2,
 };
+use glam::vec2;
 
 pub fn generate_square_mesh_data(square: &Square) -> (Vec<Vertex>, Vec<Index>, PipelineKind) {
     let size = square.size * 0.5;
@@ -12,22 +12,22 @@ pub fn generate_square_mesh_data(square: &Square) -> (Vec<Vertex>, Vec<Index>, P
         Vertex {
             position: -size,
             color,
-            uv: Vec2::new(0., 0.),
+            uv: vec2(0., 0.),
         },
         Vertex {
-            position: Vec2::new(size.x, -size.y),
+            position: vec2(size.x, -size.y),
             color,
-            uv: Vec2::new(1., 0.),
+            uv: vec2(1., 0.),
         },
         Vertex {
             position: size,
             color,
-            uv: Vec2::new(1., 1.),
+            uv: vec2(1., 1.),
         },
         Vertex {
-            position: Vec2::new(-size.x, size.y),
+            position: vec2(-size.x, size.y),
             color,
-            uv: Vec2::new(0., 1.),
+            uv: vec2(0., 1.),
         },
     ];
 

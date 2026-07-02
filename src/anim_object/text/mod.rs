@@ -1,10 +1,18 @@
 pub(crate) mod atlas;
+pub mod code;
 pub(crate) mod mesh;
 pub(crate) mod pipeline;
 pub(crate) mod render;
 
-use crate::types::*;
-use cosmic_text::{Attrs, Buffer, FontSystem, Metrics, Shaping};
+use std::collections::HashMap;
+
+use crate::{
+    anim_object::text::code::{Code, highliter::CodeHighlighter},
+    types::*,
+};
+use cosmic_text::{Attrs, Buffer, Family, FontSystem, Metrics, Shaping};
+use tree_sitter_highlight::Highlighter;
+use uuid::Uuid;
 /// RGBA
 
 #[derive(Debug, Eq, PartialEq, Clone, Copy)]
@@ -41,16 +49,69 @@ pub struct Text {
 }
 
 pub struct TextManager {
+    pub code_highlighter: CodeHighlighter,
     pub font_system: FontSystem,
     pub atlas: atlas::GlyphAtlas,
+    pub layouts: HashMap<Uuid, Buffer>,
 }
 
 impl TextManager {
     pub fn new() -> Self {
         Self {
+            layouts: HashMap::new(),
+            code_highlighter: CodeHighlighter {
+                highlighter: Highlighter::new(),
+            },
             font_system: FontSystem::new(),
             atlas: atlas::GlyphAtlas::new(),
         }
+    }
+    pub fn layout_code(&mut self, code: &Code, id: Uuid) -> Buffer {
+        if !code.dirty {
+            if let Some(buffer) = self.layouts.get(&id) {
+                return buffer.to_owned();
+            }
+        }
+        let metrics = Metrics::new(code.font_size, code.font_size * 1.2);
+
+        let mut buffer = Buffer::new(&mut self.font_system, metrics);
+
+        let default_attrs = Attrs::new().family(Family::Name(&code.font_family));
+
+        // Keep the backing strings alive while set_rich_text consumes them.
+        let mut owned_spans: Vec<(String, Attrs)> = Vec::new();
+
+        for (line_index, line) in code.lines.iter().enumerate() {
+            for span in &line.spans {
+                owned_spans.push((
+                    span.value.clone(),
+                    Attrs::new()
+                        .family(Family::Name(&code.font_family))
+                        .color(span.color.into()),
+                ));
+            }
+
+            // Preserve source line structure
+            if line_index + 1 != code.lines.len() {
+                owned_spans.push(("\n".to_string(), default_attrs.clone()));
+            }
+        }
+
+        let rich_spans = owned_spans
+            .iter()
+            .map(|(text, attrs)| (text.as_str(), attrs.clone()));
+
+        buffer.set_rich_text(
+            rich_spans,
+            &default_attrs,
+            Shaping::Advanced,
+            Some(code.alignment.into()),
+        );
+
+        buffer.shape_until_scroll(&mut self.font_system, false);
+
+        self.layouts.insert(id, buffer);
+        self.layouts.get(&id).unwrap().to_owned()
     }
 
     pub fn layout(&mut self, text: &Text) -> Buffer {

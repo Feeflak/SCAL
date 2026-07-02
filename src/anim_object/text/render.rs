@@ -4,8 +4,6 @@ use crate::anim_object::text::atlas::GlyphUpdateData;
 
 pub struct TextRenderer {
     pub texture: wgpu::Texture,
-    pub view: wgpu::TextureView,
-    pub sampler: wgpu::Sampler,
     pub bind_group: wgpu::BindGroup,
 }
 impl TextRenderer {
@@ -78,8 +76,6 @@ impl TextRenderer {
         });
         TextRenderer {
             texture,
-            view,
-            sampler,
             bind_group,
         }
     }

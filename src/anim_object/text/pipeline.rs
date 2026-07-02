@@ -1,4 +1,7 @@
-use crate::{anim_object::render::PipelineData, renderer::Vertex};
+use crate::{
+    anim_object::render::PipelineData,
+    renderer::{Vertex, camera_bind_group_layout, transform_bind_group_layout},
+};
 
 pub fn create_text_pipeline(
     device: &wgpu::Device,
@@ -21,7 +24,7 @@ pub fn create_text_pipeline(
             wgpu::VertexAttribute {
                 offset: std::mem::size_of::<[f32; 2]>() as wgpu::BufferAddress,
                 shader_location: 1,
-                format: wgpu::VertexFormat::Float32x3,
+                format: wgpu::VertexFormat::Float32x4,
             },
             wgpu::VertexAttribute {
                 offset: std::mem::size_of::<[f32; 6]>() as wgpu::BufferAddress,
@@ -30,6 +33,7 @@ pub fn create_text_pipeline(
             },
         ],
     };
+
     let texture_bind_group_layout =
         device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
             label: Some("text_texture_bind_group_layout"),
@@ -56,7 +60,11 @@ pub fn create_text_pipeline(
     let pipeline_layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
         immediate_size: 0,
         label: Some("text_pipeline_layout"),
-        bind_group_layouts: &[Some(&texture_bind_group_layout)],
+        bind_group_layouts: &[
+            Some(&camera_bind_group_layout(device)),
+            Some(&transform_bind_group_layout(device)),
+            Some(&texture_bind_group_layout),
+        ],
     });
 
     let pipeline = device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {

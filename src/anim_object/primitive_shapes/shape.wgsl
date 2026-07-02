@@ -8,13 +8,18 @@ struct VertexOutput {
     @location(0) color: vec4<f32>,
 };
 
+
+@group(0) @binding(0)
+var<uniform> camera: mat4x4<f32>;
+
+@group(1) @binding(0)
+var<uniform> transform:mat4x4<f32>;
+
 @vertex
 fn vs_main(input: VertexInput) -> VertexOutput {
     var out: VertexOutput;
 
-    // Your mesh coordinates are already in clip-space:
-    // x/y range should be [-1,1]
-    out.position = vec4<f32>(input.position, 0.0, 1.0);
+    out.position = camera *  transform * vec4<f32>(input.position, 0.0, 1.0)  ; 
     out.color = input.color;
 
     return out;

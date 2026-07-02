@@ -4,8 +4,9 @@ use crate::{
         text::{Text, TextManager},
     },
     renderer::Vertex,
-    types::Vec2,
 };
+use glam::vec2;
+use log::info;
 pub fn generate_text_mesh(
     manager: &mut TextManager,
     text: &Text,
@@ -32,30 +33,46 @@ pub fn generate_text_mesh(
 
             vertices.extend([
                 Vertex {
-                    position: Vec2::new(x, y),
+                    position: vec2(x, y),
                     color: text.color,
                     uv: glyph_info.uv_min,
                 },
                 Vertex {
-                    position: Vec2::new(x + w, y),
+                    position: vec2(x + w, y),
                     color: text.color,
-                    uv: Vec2::new(glyph_info.uv_max.x, glyph_info.uv_min.y),
+                    uv: vec2(glyph_info.uv_max.x, glyph_info.uv_min.y),
                 },
                 Vertex {
-                    position: Vec2::new(x + w, y + h),
+                    position: vec2(x + w, y + h),
                     color: text.color,
                     uv: glyph_info.uv_max,
                 },
                 Vertex {
-                    position: Vec2::new(x, y + h),
+                    position: vec2(x, y + h),
                     color: text.color,
-                    uv: Vec2::new(glyph_info.uv_min.x, glyph_info.uv_max.y),
+                    uv: vec2(glyph_info.uv_min.x, glyph_info.uv_max.y),
                 },
             ]);
 
             indices.extend([base, base + 1, base + 2, base + 2, base + 3, base]);
         }
     }
+    let (min_x, max_x) = vertices
+        .iter()
+        .fold((f32::INFINITY, f32::NEG_INFINITY), |(mn, mx), v| {
+            (mn.min(v.position.x), mx.max(v.position.x))
+        });
+
+    let (min_y, max_y) = vertices
+        .iter()
+        .fold((f32::INFINITY, f32::NEG_INFINITY), |(mn, mx), v| {
+            (mn.min(v.position.y), mx.max(v.position.y))
+        });
+
+    info!(
+        "text bounds: x=[{}, {}], y=[{}, {}]",
+        min_x, max_x, min_y, max_y
+    );
 
     (vertices, indices, PipelineKind::Text)
 }

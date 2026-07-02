@@ -1,7 +1,9 @@
 pub mod mesh;
 
+use glam::Vec2;
+
 use crate::anim_object::render::PipelineData;
-use crate::renderer::Vertex;
+use crate::renderer::{Vertex, camera_bind_group_layout, transform_bind_group_layout};
 use crate::types::*;
 
 #[derive(Clone, Debug)]
@@ -45,7 +47,10 @@ pub fn create_shape_pipeline(
     let pipeline_layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
         immediate_size: 0,
         label: Some("shape_pipeline_layout"),
-        bind_group_layouts: &[],
+        bind_group_layouts: &[
+            Some(&camera_bind_group_layout(device)),
+            Some(&transform_bind_group_layout(device)),
+        ],
     });
 
     let pipeline = device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {

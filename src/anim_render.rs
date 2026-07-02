@@ -70,7 +70,7 @@ pub async fn render_animations(
             .push(text_renderer.bind_group.clone());
         (pipelines, text_renderer)
     };
-    let mut animator = Animator::new(animations, rendering_settings.fps)
+    let mut animator = Animator::new(animations, rendering_settings.fps,rendering_settings.camera)
         .context("while initiating the animator")?;
     while let Some(frame_animation_data) = animator
         .animate_next_frame()

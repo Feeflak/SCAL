@@ -2,8 +2,7 @@ use std::collections::HashMap;
 
 use cosmic_text::{CacheKey, FontSystem, SwashCache};
 
-use crate::types::Vec2;
-
+use glam::{Vec2, vec2};
 #[derive(Clone, Copy, Debug)]
 pub struct GlyphInfo {
     pub uv_min: Vec2,
@@ -119,14 +118,14 @@ impl GlyphAtlas {
         }
 
         GlyphInfo {
-            uv_min: Vec2::new(x as f32 / self.width as f32, y as f32 / self.height as f32),
-            uv_max: Vec2::new(
+            uv_min: vec2(x as f32 / self.width as f32, y as f32 / self.height as f32),
+            uv_max: vec2(
                 (x + width) as f32 / self.width as f32,
                 (y + height) as f32 / self.height as f32,
             ),
             width: width as f32,
             height: height as f32,
-            bearing: Vec2::new(image.placement.left as f32, image.placement.top as f32),
+            bearing: vec2(image.placement.left as f32, image.placement.top as f32),
             advance: image.placement.width as f32,
         }
     }

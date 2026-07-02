@@ -4,6 +4,7 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
+glam = "0.33.2"
 colog = "1.4.0"
 log = "0.4.33"
 anyhow = "1.0.103"
