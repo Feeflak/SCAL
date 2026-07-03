@@ -87,7 +87,7 @@ async fn main() -> Result<()> {
             dirty: true,
             font_family: "SF Pro Display Bold".to_string(),
             alignment: Align::Center,
-            font_size: 255.,
+            font_size: 55.,
         },
         Transform::new(vec![], CANVAS_SIZE / 2., 0., Vec2::ONE, 1.),
     );
@@ -122,12 +122,33 @@ async fn main() -> Result<()> {
         rendering_settings,
         vec![
             code.instantiate(),
-            text.instantiate(),
+            // text.instantiate(),
             square.instantiate(),
             wait(1.0),
             (square
                 .transform()
                 .move_local(vec2(0.5, 0.5), 1., AnimationCurve::EaseOutBack)),
+            (square
+                .transform()
+                .move_local(CANVAS_SIZE / 2., 1., AnimationCurve::EaseInOutBack)),
+            (square
+                .transform()
+                .move_local(vec2(0.5, 0.5), 1., AnimationCurve::EaseOutBack)),
+            (square
+                .transform()
+                .move_local(CANVAS_SIZE / 2., 1., AnimationCurve::EaseInOutBack)),
+            (code
+                .transform()
+                .move_local(vec2(0.5, 0.5), 1., AnimationCurve::EaseOutBack)),
+            (code
+                .transform()
+                .move_local(CANVAS_SIZE / 2., 1., AnimationCurve::EaseInOutBack)),
+            (code
+                .transform()
+                .move_local(vec2(0.5, 0.5), 1., AnimationCurve::EaseOutBack)),
+            (code
+                .transform()
+                .move_local(CANVAS_SIZE / 2., 1., AnimationCurve::EaseInOutBack)),
         ],
     )
     .await?;
