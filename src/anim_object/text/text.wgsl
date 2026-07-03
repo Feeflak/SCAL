@@ -22,7 +22,7 @@ var<uniform> transform:mat4x4<f32>;
 fn vs_main(input: VertexInput) -> VertexOutput {
     var out: VertexOutput;
 
-    out.position = camera * transform * vec4<f32>(input.position, 0.0, 1.0);
+    out.position = camera * transform  * vec4<f32>(input.position, 0.0, 1.0);
 
     out.color = input.color;
     out.uv = input.uv;
@@ -53,8 +53,10 @@ fn fs_main(input: VertexOutput)
             input.uv
         ).r;
 
+    let out_alpha = alpha * input.color.w;
+
     return vec4<f32>(
         input.color.xyz,
-        alpha * input.color.w
+        out_alpha
     );
 }

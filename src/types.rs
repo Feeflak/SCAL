@@ -8,10 +8,14 @@ pub struct Color {
 }
 impl From<u32> for Color {
     fn from(value: u32) -> Self {
-        let r: u8 = (value & 255) as u8;
-        let g: u8 = (value & (255 << 8)) as u8;
-        let b: u8 = (value & (255 << 16)) as u8;
-        let a: u8 = (value & (255 << 24)) as u8;
+        let r = ((value >> 16) & 0xFF) as u8;
+        let g = ((value >> 8) & 0xFF) as u8;
+        let b = (value & 0xFF) as u8;
+        let a = if (value >> 24) == 0 {
+            255
+        } else {
+            ((value >> 24) & 0xFF) as u8
+        };
         Self {
             r: r as f32 / 255.0,
             g: g as f32 / 255.0,
