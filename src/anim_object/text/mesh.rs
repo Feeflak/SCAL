@@ -57,22 +57,6 @@ pub fn generate_text_mesh(
             indices.extend([base, base + 1, base + 2, base + 2, base + 3, base]);
         }
     }
-    let (min_x, max_x) = vertices
-        .iter()
-        .fold((f32::INFINITY, f32::NEG_INFINITY), |(mn, mx), v| {
-            (mn.min(v.position.x), mx.max(v.position.x))
-        });
-
-    let (min_y, max_y) = vertices
-        .iter()
-        .fold((f32::INFINITY, f32::NEG_INFINITY), |(mn, mx), v| {
-            (mn.min(v.position.y), mx.max(v.position.y))
-        });
-
-    info!(
-        "text bounds: x=[{}, {}], y=[{}, {}]",
-        min_x, max_x, min_y, max_y
-    );
 
     (vertices, indices, PipelineKind::Text)
 }
