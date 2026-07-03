@@ -25,7 +25,7 @@ fn ortho(left: f32, right: f32, bottom: f32, top: f32) -> Mat4 {
         0.0,
         0.0,
         0.0,
-        -1.0,
+        1.0,
         0.0,
         -(right + left) / (right - left),
         -(top + bottom) / (top - bottom),
