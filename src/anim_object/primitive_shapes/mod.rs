@@ -7,7 +7,7 @@ use crate::renderer::{Vertex, camera_bind_group_layout, transform_bind_group_lay
 use crate::types::*;
 
 #[derive(Clone, Debug)]
-pub struct Square {
+pub struct Rectangle {
     pub size: Vec2,
     /// TODO: Implement better square mesh generation for this to work
     pub corner_radius: f32,

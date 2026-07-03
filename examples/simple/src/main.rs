@@ -7,7 +7,7 @@ use log::{LevelFilter, info};
 use scal::{
     anim_object::{
         AnimObject, Transform,
-        primitive_shapes::Square,
+        primitive_shapes::Rectangle,
         text::{
             Align, Text,
             code::{
@@ -94,7 +94,7 @@ async fn main() -> Result<()> {
     );
 
     let square = AnimObject::Square(
-        Square {
+        Rectangle {
             size: Vec2::ONE * 500.,
             corner_radius: 1.,
             color: Color::new(0., 0.2, 0.4, 1.),

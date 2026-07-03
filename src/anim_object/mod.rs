@@ -19,7 +19,7 @@ impl PartialEq for AnimObject {
 pub enum AnimObject {
     Code(text::code::Code, Transform),
     Text(text::Text, Transform),
-    Square(primitive_shapes::Square, Transform),
+    Square(primitive_shapes::Rectangle, Transform),
 }
 impl AnimObject {
     pub fn transform_mut(&mut self) -> &mut Transform {

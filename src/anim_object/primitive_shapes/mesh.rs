@@ -1,12 +1,14 @@
 use crate::{
-    anim_object::{primitive_shapes::Square, render::PipelineKind},
+    anim_object::{primitive_shapes::Rectangle, render::PipelineKind},
     renderer::{Index, Vertex},
 };
 use glam::vec2;
 
-pub fn generate_square_mesh_data(square: &Square) -> (Vec<Vertex>, Vec<Index>, PipelineKind) {
-    let size = square.size * 0.5;
-    let color = square.color;
+pub fn generate_rectangle_mesh_data(
+    rectangle: &Rectangle,
+) -> (Vec<Vertex>, Vec<Index>, PipelineKind) {
+    let size = rectangle.size * 0.5;
+    let color = rectangle.color;
 
     let vertices = vec![
         Vertex {
