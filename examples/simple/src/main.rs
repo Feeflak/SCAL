@@ -7,7 +7,7 @@ use log::{LevelFilter, info};
 use scal::{
     anim_object::{
         AnimObject, Transform,
-        primitive_shapes::Rectangle,
+        primitive_shapes::{Circle, Polygon, Rectangle},
         text::{
             Align, Text,
             code::{
@@ -93,13 +93,39 @@ async fn main() -> Result<()> {
         Transform::new(None, CANVAS_SIZE.extend(0.) / 2., 0., Vec2::ONE),
     );
 
-    let square = AnimObject::Square(
+    let rect = AnimObject::Square(
         Rectangle {
-            size: Vec2::ONE * 500.,
-            corner_radius: 1.,
+            size: vec2(600., 400.),
+            corner_radius: 40.,
             color: Color::new(0., 0.2, 0.4, 1.),
         },
-        Transform::new(None, CANVAS_SIZE.extend(0.) / 2., 0., Vec2::ONE),
+        Transform::new(None, vec3(400., 540., 0.), 0., Vec2::ONE),
+    );
+
+    let circle = AnimObject::Circle(
+        Circle {
+            radius: 200.,
+            color: Color::new(0.8, 0.2, 0.2, 1.),
+        },
+        Transform::new(None, vec3(1200., 500., 0.), 0., Vec2::ONE),
+    );
+
+    let hex = AnimObject::Polygon(
+        Polygon {
+            radius: 180.,
+            sides: 6,
+            color: Color::new(0.2, 0.7, 0.3, 1.),
+        },
+        Transform::new(None, vec3(800., 300., 0.), 0., Vec2::ONE),
+    );
+
+    let triangle = AnimObject::Polygon(
+        Polygon {
+            radius: 150.,
+            sides: 3,
+            color: Color::new(0.9, 0.6, 0.1, 1.),
+        },
+        Transform::new(None, vec3(1600., 700., 0.), 0., Vec2::ONE),
     );
 
     let text = AnimObject::Text(
@@ -110,7 +136,7 @@ async fn main() -> Result<()> {
             color: Color::BLACK,
             font_size: 55.,
         },
-        Transform::new(Some(&square), Vec3::ZERO, 0., Vec2::ONE),
+        Transform::new(Some(&rect), Vec3::ZERO, 0., Vec2::ONE),
     );
     scal::run_loop(
         &handle,
@@ -119,20 +145,40 @@ async fn main() -> Result<()> {
         vec![
             code.instantiate(),
             text.instantiate(),
-            square.instantiate(),
+            rect.instantiate(),
+            circle.instantiate(),
+            hex.instantiate(),
+            triangle.instantiate(),
             wait(1.0),
-            square
-                .transform()
+            rect.transform()
                 .move_local(vec2(0.5, 0.5), 1., AnimationCurve::EaseOutBack),
-            (square
+            (rect
                 .transform()
                 .move_local(CANVAS_SIZE / 2., 1., AnimationCurve::EaseInOutBack)),
-            (square
+            (rect
                 .transform()
                 .move_local(vec2(0.5, 0.5), 1., AnimationCurve::EaseOutBack)),
-            (square
+            (rect
                 .transform()
                 .move_local(CANVAS_SIZE / 2., 1., AnimationCurve::EaseInOutBack)),
+            (circle
+                .transform()
+                .move_local(vec2(0.5, 600.), 1., AnimationCurve::EaseOutBack)),
+            (circle
+                .transform()
+                .move_local(vec2(1200., 500.), 1., AnimationCurve::EaseInOutBack)),
+            (hex.transform()
+                .move_local(vec2(1600., 100.), 1., AnimationCurve::EaseOutBack)),
+            (hex.transform()
+                .move_local(vec2(800., 300.), 1., AnimationCurve::EaseInOutBack)),
+            (triangle.transform()
+                .move_local(vec2(100., 700.), 1., AnimationCurve::EaseOutBack)),
+            (triangle.transform()
+                .move_local(vec2(1600., 700.), 1., AnimationCurve::EaseInOutBack)),
+            (triangle.transform()
+                .move_local(vec2(100., 700.), 1., AnimationCurve::EaseOutBack)),
+            (triangle.transform()
+                .move_local(vec2(1600., 700.), 1., AnimationCurve::EaseInOutBack)),
             (code
                 .transform()
                 .move_local(vec2(0.5, 0.5), 1., AnimationCurve::EaseOutBack)),

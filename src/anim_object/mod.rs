@@ -20,6 +20,8 @@ pub enum AnimObject {
     Code(text::code::Code, Transform),
     Text(text::Text, Transform),
     Square(primitive_shapes::Rectangle, Transform),
+    Circle(primitive_shapes::Circle, Transform),
+    Polygon(primitive_shapes::Polygon, Transform),
 }
 impl AnimObject {
     pub fn transform_mut(&mut self) -> &mut Transform {
@@ -27,6 +29,8 @@ impl AnimObject {
             AnimObject::Code(_, t) => t,
             AnimObject::Text(_, t) => t,
             AnimObject::Square(_, t) => t,
+            AnimObject::Circle(_, t) => t,
+            AnimObject::Polygon(_, t) => t,
         }
     }
     pub fn transform(&self) -> &Transform {
@@ -34,6 +38,8 @@ impl AnimObject {
             AnimObject::Code(_, t) => t,
             AnimObject::Text(_, t) => t,
             AnimObject::Square(_, t) => t,
+            AnimObject::Circle(_, t) => t,
+            AnimObject::Polygon(_, t) => t,
         }
     }
 }

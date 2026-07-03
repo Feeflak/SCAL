@@ -9,8 +9,20 @@ use crate::types::*;
 #[derive(Clone, Debug)]
 pub struct Rectangle {
     pub size: Vec2,
-    /// TODO: Implement better square mesh generation for this to work
     pub corner_radius: f32,
+    pub color: Color,
+}
+
+#[derive(Clone, Debug)]
+pub struct Circle {
+    pub radius: f32,
+    pub color: Color,
+}
+
+#[derive(Clone, Debug)]
+pub struct Polygon {
+    pub radius: f32,
+    pub sides: u32,
     pub color: Color,
 }
 pub fn create_shape_pipeline(
