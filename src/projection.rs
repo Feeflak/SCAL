@@ -1,6 +1,10 @@
+use anyhow::Result;
 use glam::{Mat4, Quat, Vec2, Vec3, vec3};
 
-use crate::anim_object::Transform;
+use crate::{
+    anim_object::Transform,
+    animator::{Animator, Scene},
+};
 
 #[derive(Clone, Copy)]
 pub struct Camera {
@@ -54,11 +58,11 @@ impl Camera {
 }
 
 impl Transform {
-    pub fn get_matrix(&self) -> Mat4 {
+    pub fn get_local_matrix(&self) -> Mat4 {
         Mat4::from_scale_rotation_translation(
             Vec3::new(self.scale.x, self.scale.y, 1.0),
             Quat::from_rotation_z(self.rotation),
-            Vec3::new(self.pos.x, self.pos.y, self.z),
+            Vec3::new(self.pos.x, self.pos.y, self.pos.z),
         )
     }
 }

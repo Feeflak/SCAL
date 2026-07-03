@@ -1,6 +1,6 @@
 use super::types::*;
 use anim_op::AnimOP;
-use glam::Vec2;
+use glam::{Vec2, Vec3};
 use uuid::Uuid;
 
 use crate::anim_op::{self, AnimationCurve};
@@ -53,13 +53,11 @@ impl From<Vec<AnimOP>> for AnimOP {
 }
 #[derive(Clone, Debug)]
 pub struct Transform {
-    pub changed_this_frame: bool,
     pub scale: Vec2,
     pub uuid: Uuid,
-    pub children: Vec<Uuid>,
-    pub pos: Vec2,
+    pub parent: Option<Uuid>,
+    pub pos: Vec3,
     pub rotation: f32,
-    pub z: f32,
 }
 impl Transform {
     pub fn move_local(&self, to: Vec2, time: Seconds, curve: AnimationCurve) -> AnimOP {
@@ -71,15 +69,13 @@ impl Transform {
 }
 
 impl Transform {
-    pub fn new(children: Vec<Uuid>, pos: Vec2, rotation: f32, scale: Vec2, z: f32) -> Self {
+    pub fn new(parent: Option<&AnimObject>, pos: Vec3, rotation: f32, scale: Vec2) -> Self {
         Self {
             rotation,
             uuid: Uuid::new_v4(),
-            children,
+            parent: parent.map(|obj| obj.transform().uuid),
             pos,
             scale,
-            changed_this_frame: true,
-            z,
         }
     }
 }

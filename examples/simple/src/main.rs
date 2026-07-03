@@ -2,7 +2,7 @@ use std::sync::LazyLock;
 
 use anyhow::Result;
 
-use glam::{Vec2, vec2};
+use glam::{Vec2, Vec3, Vec3Swizzles, vec2, vec3};
 use log::{LevelFilter, info};
 use scal::{
     anim_object::{
@@ -47,6 +47,7 @@ const THEME: LazyLock<Theme> = LazyLock::new(|| {
     })
 });
 pub const CANVAS_SIZE: Vec2 = vec2(1920., 1080.);
+pub const XY0: Vec3 = vec3(1., 1., 0.);
 #[tokio::main]
 async fn main() -> Result<()> {
     let mut builder = colog::default_builder();
@@ -89,7 +90,16 @@ async fn main() -> Result<()> {
             alignment: Align::Center,
             font_size: 55.,
         },
-        Transform::new(vec![], CANVAS_SIZE / 2., 0., Vec2::ONE, 1.),
+        Transform::new(None, CANVAS_SIZE.extend(0.) / 2., 0., Vec2::ONE),
+    );
+
+    let square = AnimObject::Square(
+        Square {
+            size: Vec2::ONE * 500.,
+            corner_radius: 1.,
+            color: Color::new(0., 0.2, 0.4, 1.),
+        },
+        Transform::new(None, CANVAS_SIZE.extend(0.) / 2., 0., Vec2::ONE),
     );
 
     let text = AnimObject::Text(
@@ -100,21 +110,7 @@ async fn main() -> Result<()> {
             color: Color::BLACK,
             font_size: 55.,
         },
-        Transform::new(
-            vec![],
-            CANVAS_SIZE / 2. + vec2(100., 100.),
-            0.,
-            Vec2::ONE,
-            1.,
-        ),
-    );
-    let square = AnimObject::Square(
-        Square {
-            size: Vec2::ONE * 500.,
-            corner_radius: 1.,
-            color: Color::new(0., 0.2, 0.4, 1.),
-        },
-        Transform::new(vec![], CANVAS_SIZE / 2., 0., Vec2::ONE, 0.),
+        Transform::new(Some(&square), Vec3::ZERO, 0., Vec2::ONE),
     );
     scal::run_loop(
         &handle,
@@ -122,12 +118,12 @@ async fn main() -> Result<()> {
         rendering_settings,
         vec![
             code.instantiate(),
-            // text.instantiate(),
+            text.instantiate(),
             square.instantiate(),
             wait(1.0),
-            (square
+            square
                 .transform()
-                .move_local(vec2(0.5, 0.5), 1., AnimationCurve::EaseOutBack)),
+                .move_local(vec2(0.5, 0.5), 1., AnimationCurve::EaseOutBack),
             (square
                 .transform()
                 .move_local(CANVAS_SIZE / 2., 1., AnimationCurve::EaseInOutBack)),

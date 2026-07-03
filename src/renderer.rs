@@ -1,23 +1,14 @@
-use log::{debug, info};
+use log::debug;
 use std::collections::HashMap;
 use uuid::Uuid;
 use wgpu::util::DeviceExt;
 use wgpu::{BindGroup, BindGroupLayout, Buffer};
 
-use crate::anim_object::AnimObject;
-use crate::anim_object::render::{ObjectRenderData, PipelineData, PipelineKind};
-use crate::animator::Scene;
+use crate::anim_object::render::{PipelineData, PipelineKind};
+use crate::animator::{Object, Scene};
 use crate::projection::Camera;
 use crate::types::Color;
 use glam::{Mat4, Vec2};
-
-#[derive(Clone)]
-pub(crate) struct RenderItem<'a> {
-    pub object: &'a AnimObject,
-    pub data: &'a ObjectRenderData,
-    pub pipeline: PipelineKind,
-    pub depth: f32,
-}
 
 pub type Index = u32;
 #[repr(C)]
@@ -28,8 +19,12 @@ pub(crate) struct Vertex {
     pub uv: Vec2,
 }
 
+pub struct ObjectTransformData {
+    pub bind_group: BindGroup,
+    pub buffer: Buffer,
+}
 pub struct Renderer {
-    pub per_object_transform_bind_groups: HashMap<Uuid, (BindGroup, Buffer)>,
+    pub object_transform_data_lookup: HashMap<Uuid, ObjectTransformData>,
     pub camera_bind_group: BindGroup,
     pub camera_buffer: wgpu::Buffer,
 
@@ -73,7 +68,7 @@ impl Renderer {
             index_buffer_size: 0,
             camera_bind_group: camera_bind_group,
             camera_buffer: camera_buffer,
-            per_object_transform_bind_groups: HashMap::new(),
+            object_transform_data_lookup: HashMap::new(),
         }
     }
 
@@ -115,30 +110,23 @@ impl Renderer {
         }
 
         {
-            for obj in scene.objects {
-                let transf = obj.0.transform();
-                if transf.changed_this_frame {
-                    let buffer = match self.per_object_transform_bind_groups.get(&transf.uuid) {
-                        Some((_, buffer)) => buffer,
-                        None => {
-                            let (bind_group, buffer) =
-                                create_transform_bind_group_and_buffer(device);
-                            self.per_object_transform_bind_groups
-                                .insert(transf.uuid, (bind_group, buffer));
-                            &self
-                                .per_object_transform_bind_groups
-                                .get(&transf.uuid)
-                                .unwrap()
-                                .1
-                        }
-                    };
-                    debug!(
-                        "write transform buffer for: {obj:?}, matrix: {}",
-                        &transf.get_matrix()
-                    );
+            for obj in scene.objects_sorted_by_z {
+                let transf = obj.anim_data.transform();
+                let transform_data = match self.object_transform_data_lookup.get_mut(&transf.uuid) {
+                    Some(transform_data) => transform_data,
+                    None => {
+                        let (bind_group, buffer) = create_transform_bind_group_and_buffer(device);
+                        self.object_transform_data_lookup
+                            .insert(transf.uuid, ObjectTransformData { bind_group, buffer });
+                        self.object_transform_data_lookup.get(&transf.uuid).unwrap()
+                    }
+                };
 
-                    queue.write_buffer(buffer, 0, bytemuck::bytes_of(&transf.get_matrix()));
-                }
+                queue.write_buffer(
+                    &transform_data.buffer,
+                    0,
+                    bytemuck::bytes_of(&obj.render_data.world_matrix_cache),
+                );
             }
         }
 
@@ -157,7 +145,7 @@ impl Renderer {
         &self,
         render_pass: &mut wgpu::RenderPass,
         pipelines: &HashMap<PipelineKind, PipelineData>,
-        mut render_items: Vec<RenderItem>,
+        objects_sorted_by_z: &[Object],
     ) {
         const CAMERA_BIND_INDEX: u32 = 0;
         const TRANSFORM_BIND_INDEX: u32 = 1;
@@ -165,30 +153,28 @@ impl Renderer {
         render_pass.set_vertex_buffer(0, self.vertex_buffer.slice(..));
         render_pass.set_index_buffer(self.index_buffer.slice(..), wgpu::IndexFormat::Uint32);
         render_pass.set_bind_group(CAMERA_BIND_INDEX, &self.camera_bind_group, &[]);
-
-        render_items.sort_by(|a, b| a.depth.total_cmp(&b.depth));
-
         let mut current_pipeline: Option<PipelineKind> = None;
-        for item in &render_items {
-            if current_pipeline != Some(item.pipeline) {
-                current_pipeline = Some(item.pipeline);
-                let pipeline_data = &pipelines[&item.pipeline];
+        for object in objects_sorted_by_z {
+            if current_pipeline != Some(object.render_data.pipeline) {
+                current_pipeline = Some(object.render_data.pipeline);
+                let pipeline_data = &pipelines[&object.render_data.pipeline];
                 render_pass.set_pipeline(&pipeline_data.pipeline);
                 for (i, bind_group) in pipeline_data.bind_groups.iter().enumerate() {
                     render_pass.set_bind_group(OTHER_BINDING_OFFSET + i as u32, bind_group, &[]);
                 }
             }
             let bind_group = &self
-                .per_object_transform_bind_groups
-                .get(&item.object.transform().uuid)
+                .object_transform_data_lookup
+                .get(object.uuid())
                 .expect("there was no transform matrix in the lookup for a transform, probably someone forgot to mark it as dirty initially.")
-                .0;
+                .bind_group;
 
             render_pass.set_bind_group(TRANSFORM_BIND_INDEX, bind_group, &[]);
 
             render_pass.draw_indexed(
-                item.data.indices_base_index as u32
-                    ..(item.data.indices_base_index + item.data.indices_count) as u32,
+                object.render_data.indices_base_index as u32
+                    ..(object.render_data.indices_base_index + object.render_data.indices_count)
+                        as u32,
                 0,
                 0..1,
             );
@@ -246,33 +232,6 @@ fn create_transform_bind_group_and_buffer(device: &wgpu::Device) -> (BindGroup, 
     (bind_group, buffer)
 }
 
-fn collect_render_items<'a>(
-    obj: &'a AnimObject,
-    data: &'a ObjectRenderData,
-    depth: usize,
-    out: &mut Vec<RenderItem<'a>>,
-    object_lookup: &HashMap<Uuid, usize>,
-    objects: &'a [(AnimObject, ObjectRenderData)],
-) {
-    let transform = obj.transform();
-
-    let pipeline = data.pipeline;
-
-    let base_depth = transform.z + depth as f32;
-
-    out.push(RenderItem {
-        object: obj,
-        data,
-        pipeline,
-        depth: base_depth,
-    });
-
-    for child_uuid in &transform.children {
-        let child = &objects[object_lookup[child_uuid]];
-        // children always above parent
-        collect_render_items(&child.0, &child.1, depth + 1, out, object_lookup, objects);
-    }
-}
 pub(crate) fn draw_scene(
     render_pass: &mut wgpu::RenderPass,
     pipelines: &HashMap<PipelineKind, PipelineData>,
@@ -281,18 +240,13 @@ pub(crate) fn draw_scene(
     scene: Scene,
     renderer: &mut Renderer,
 ) {
-    if scene.objects.len() == 0 {
+    if scene.objects_sorted_by_z.len() == 0 {
         debug!("No objects, skipping drawing buckets");
         return;
     }
 
-    let mut flat = Vec::new();
-    for (obj, data) in scene.objects {
-        collect_render_items(obj, data, 0, &mut flat, &scene.object_lookup, scene.objects);
-    }
-
     renderer.update_render_buffers(device, queue, &scene);
-    renderer.draw_objects(render_pass, pipelines, flat);
+    renderer.draw_objects(render_pass, pipelines, scene.objects_sorted_by_z);
 }
 
 #[derive(Clone, Copy)]

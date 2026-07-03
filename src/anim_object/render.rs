@@ -1,6 +1,7 @@
 use std::collections::HashMap;
 
-use glam::Vec2;
+use anyhow::Result;
+use glam::{Mat4, Vec2};
 use log::debug;
 use wgpu::TextureFormat;
 
@@ -13,7 +14,7 @@ use crate::{
             pipeline::create_text_pipeline,
         },
     },
-    animator::Animator,
+    animator::{Animator, Object},
     renderer::{Index, Vertex},
 };
 #[derive(Copy, Clone, Debug, Eq, PartialEq, Hash)]
@@ -37,9 +38,14 @@ impl AnimObject {
     }
 }
 impl Animator {
-    pub fn add_anim_object(&mut self, mut obj: AnimObject) {
+    pub fn add_anim_object(&mut self, mut anim_data: AnimObject) -> Result<()> {
+        if let Some(parent_uuid) = anim_data.transform().parent {
+            self.check_cycle(&anim_data.transform().uuid, &parent_uuid)?;
+        }
+
         let (render_data, mut indices) = {
-            let (vertives, mut indices, pipeline) = obj.generate_mesh_data(&mut self.text_manager);
+            let (vertives, mut indices, pipeline) =
+                anim_data.generate_mesh_data(&mut self.text_manager);
 
             let vertex_base = self.vertices.len();
             let index_base = self.indices.len();
@@ -50,6 +56,7 @@ impl Animator {
 
             (
                 ObjectRenderData {
+                    world_matrix_cache: Mat4::ZERO,
                     pipeline,
                     vertices_base_index: vertex_base,
                     vertices: vertives.clone(),
@@ -63,12 +70,16 @@ impl Animator {
         self.vertices.append(&mut render_data.vertices.clone());
         self.indices.append(&mut indices);
 
-        let id = obj.transform().uuid;
+        let id = anim_data.transform().uuid;
 
         self.objects_lookup.insert(id, self.objects.len());
-        self.objects.push((obj, render_data));
+        self.objects.push(Object {
+            anim_data,
+            render_data,
+        });
 
         debug!("add_anim_object- objects:{:?}", self.objects);
+        Ok(())
     }
 
     pub fn remove_anim_object(&mut self, obj: AnimObject) {
@@ -78,24 +89,27 @@ impl Animator {
             return;
         };
 
-        let (_, data) = self.objects.remove(object_index);
+        let obj = self.objects.remove(object_index);
+        {
+            let data = obj.render_data;
+            self.vertices
+                .drain(data.vertices_base_index..data.vertices_base_index + data.vertices.len());
 
-        self.vertices
-            .drain(data.vertices_base_index..data.vertices_base_index + data.vertices.len());
-
-        self.indices
-            .drain(data.indices_base_index..data.indices_base_index + data.indices_count);
+            self.indices
+                .drain(data.indices_base_index..data.indices_base_index + data.indices_count);
+        }
 
         // rebuild lookup because offsets shifted
         self.objects_lookup.clear();
 
-        for (i, (obj, _)) in self.objects.iter().enumerate() {
-            self.objects_lookup.insert(obj.transform().uuid, i);
+        for (i, obj) in self.objects.iter().enumerate() {
+            self.objects_lookup.insert(*obj.uuid(), i);
         }
     }
 }
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub(crate) struct ObjectRenderData {
+    pub world_matrix_cache: Mat4,
     pub vertices_base_index: usize,
     pub vertices: Vec<Vertex>,
     pub indices_base_index: usize,

@@ -1,6 +1,6 @@
 use crate::{
     BYTES_PER_PIXEL,
-    anim_object::{self, AnimObject, render::PipelineKind, text::render::TextRenderer},
+    anim_object::{render::PipelineKind, text::render::TextRenderer},
     animator::Animator,
     types::Seconds,
 };

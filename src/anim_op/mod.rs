@@ -1,7 +1,7 @@
 mod transform;
 
 use anyhow::Result;
-use glam::Vec2;
+use glam::{Vec2, vec3};
 use log::debug;
 use uuid::Uuid;
 
@@ -13,7 +13,6 @@ use crate::types::*;
 pub enum AnimOP {
     Instantiate(AnimObject),
     TransformMovePos(Uuid, Vec2, Seconds, AnimationCurve),
-    TransformAddChildren(Uuid, Vec<AnimObject>),
     All(Vec<AnimOP>),
     Wait(Seconds),
 }
@@ -23,14 +22,14 @@ impl TryInto<Animation> for AnimOP {
         Ok(match self {
             AnimOP::Instantiate(anim_object) => Animation::instant(Box::new(move |animator, _| {
                 debug!("Instantiate");
-                animator.add_anim_object(anim_object.clone());
+                animator.add_anim_object(anim_object.clone())?;
                 Ok(())
             })),
             AnimOP::TransformMovePos(uuid, pos, duration, curve) => Animation::new(
                 duration,
                 curve,
                 Box::new(move |animator, initial_pos_store| {
-                    let pos = animator.get_object(&uuid)?.0.transform().pos;
+                    let pos = animator.get_object(&uuid)?.transform().pos;
                     initial_pos_store.push(pos.x);
                     initial_pos_store.push(pos.y);
                     Ok(())
@@ -38,34 +37,19 @@ impl TryInto<Animation> for AnimOP {
                 Some(Box::new(move |animator, t, initial_pos| {
                     // lerp
 
-                    let (anim, _) = animator.get_object(&uuid)?;
+                    let obj = animator.get_object_mut(&uuid)?;
 
-                    let transform = anim.transform_mut();
-                    let new_pos = Vec2::new(
+                    let transform = obj.anim_data.transform_mut();
+                    let new_pos = vec3(
                         initial_pos[0] + t * (pos.x - initial_pos[0]),
                         initial_pos[1] + t * (pos.y - initial_pos[1]),
+                        transform.pos.z,
                     );
                     transform.pos = new_pos;
-                    transform.changed_this_frame = true;
 
                     Ok(())
                 })),
             ),
-            AnimOP::TransformAddChildren(uuid, anim_objects) => {
-                Animation::instant(Box::new(move |animator, _| {
-                    for obj in &anim_objects {
-                        animator
-                            .get_object(&uuid)?
-                            .0
-                            .transform_mut()
-                            .children
-                            .push(obj.transform().uuid);
-                        animator.add_anim_object(obj.clone());
-                    }
-
-                    Ok(())
-                }))
-            }
             AnimOP::All(anim_ops) => todo!(),
             AnimOP::Wait(duration) => Animation::new(
                 duration,
