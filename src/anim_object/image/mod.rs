@@ -1,9 +1,11 @@
 pub mod mesh;
 
-
 use glam::Vec2;
 
+use crate::anim_object::image::mesh::generate_image_mesh_data;
+use crate::anim_object::object_trait::{AnimObjectTrait, BindGroupLoader, MeshResult};
 use crate::anim_object::render::PipelineData;
+use crate::anim_object::Transform;
 use crate::renderer::{Vertex, camera_bind_group_layout, transform_bind_group_layout};
 use crate::types::*;
 
@@ -19,6 +21,40 @@ pub struct Image {
     pub size: Vec2,
     pub color: Color,
     pub stretch: StretchMode,
+    pub transform: Transform,
+}
+
+impl AnimObjectTrait for Image {
+    fn transform(&self) -> &Transform {
+        &self.transform
+    }
+    fn transform_mut(&mut self) -> &mut Transform {
+        &mut self.transform
+    }
+    fn generate_mesh(&mut self, _mgr: &mut crate::anim_object::text::TextManager) -> MeshResult {
+        generate_image_mesh_data(self)
+    }
+    fn bind_group_loader(&self) -> Option<BindGroupLoader> {
+        let path = self.path.clone();
+        Some(Box::new(move |device, queue| {
+            match crate::anim_object::image::load_image_bind_group(device, queue, &path) {
+                Ok(bg) => vec![bg],
+                Err(e) => {
+                    log::error!("Failed to load image bind group: {:?}", e);
+                    vec![]
+                }
+            }
+        }))
+    }
+    fn clone_box(&self) -> Box<dyn AnimObjectTrait> {
+        Box::new(self.clone())
+    }
+    fn as_any(&self) -> &dyn std::any::Any {
+        self
+    }
+    fn as_any_mut(&mut self) -> &mut dyn std::any::Any {
+        self
+    }
 }
 
 pub fn create_image_pipeline(

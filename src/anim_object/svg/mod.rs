@@ -4,6 +4,9 @@ use anyhow::Context;
 use glam::Vec2;
 
 use crate::anim_object::image::StretchMode;
+use crate::anim_object::object_trait::{AnimObjectTrait, BindGroupLoader, MeshResult};
+use crate::anim_object::svg::mesh::generate_svg_mesh_data;
+use crate::anim_object::Transform;
 use crate::types::*;
 
 #[derive(Clone, Debug)]
@@ -15,6 +18,40 @@ pub struct Svg {
     pub stroke: Option<Color>,
     pub stroke_width: Option<f32>,
     pub stretch: StretchMode,
+    pub transform: Transform,
+}
+
+impl AnimObjectTrait for Svg {
+    fn transform(&self) -> &Transform {
+        &self.transform
+    }
+    fn transform_mut(&mut self) -> &mut Transform {
+        &mut self.transform
+    }
+    fn generate_mesh(&mut self, _mgr: &mut crate::anim_object::text::TextManager) -> MeshResult {
+        generate_svg_mesh_data(self)
+    }
+    fn bind_group_loader(&self) -> Option<BindGroupLoader> {
+        let svg = self.clone();
+        Some(Box::new(move |device, queue| {
+            match crate::anim_object::svg::load_svg_bind_group(device, queue, &svg) {
+                Ok(bg) => vec![bg],
+                Err(e) => {
+                    log::error!("Failed to load SVG bind group: {:?}", e);
+                    vec![]
+                }
+            }
+        }))
+    }
+    fn clone_box(&self) -> Box<dyn AnimObjectTrait> {
+        Box::new(self.clone())
+    }
+    fn as_any(&self) -> &dyn std::any::Any {
+        self
+    }
+    fn as_any_mut(&mut self) -> &mut dyn std::any::Any {
+        self
+    }
 }
 
 fn color_to_hex(c: Color) -> String {

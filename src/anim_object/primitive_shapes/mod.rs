@@ -2,7 +2,14 @@ pub mod mesh;
 
 use glam::Vec2;
 
+use crate::anim_object::object_trait::{AnimObjectTrait, BindGroupLoader, MeshResult};
 use crate::anim_object::render::PipelineData;
+use crate::anim_object::Transform;
+use crate::anim_object::primitive_shapes::mesh::{
+    generate_rectangle_mesh_data,
+    generate_circle_mesh_data,
+    generate_polygon_mesh_data,
+};
 use crate::renderer::{Vertex, camera_bind_group_layout, transform_bind_group_layout};
 use crate::types::*;
 
@@ -11,12 +18,62 @@ pub struct Rectangle {
     pub size: Vec2,
     pub corner_radius: f32,
     pub color: Color,
+    pub transform: Transform,
+}
+
+impl AnimObjectTrait for Rectangle {
+    fn transform(&self) -> &Transform {
+        &self.transform
+    }
+    fn transform_mut(&mut self) -> &mut Transform {
+        &mut self.transform
+    }
+    fn generate_mesh(&mut self, _mgr: &mut crate::anim_object::text::TextManager) -> MeshResult {
+        generate_rectangle_mesh_data(self)
+    }
+    fn bind_group_loader(&self) -> Option<BindGroupLoader> {
+        None
+    }
+    fn clone_box(&self) -> Box<dyn AnimObjectTrait> {
+        Box::new(self.clone())
+    }
+    fn as_any(&self) -> &dyn std::any::Any {
+        self
+    }
+    fn as_any_mut(&mut self) -> &mut dyn std::any::Any {
+        self
+    }
 }
 
 #[derive(Clone, Debug)]
 pub struct Circle {
     pub radius: f32,
     pub color: Color,
+    pub transform: Transform,
+}
+
+impl AnimObjectTrait for Circle {
+    fn transform(&self) -> &Transform {
+        &self.transform
+    }
+    fn transform_mut(&mut self) -> &mut Transform {
+        &mut self.transform
+    }
+    fn generate_mesh(&mut self, _mgr: &mut crate::anim_object::text::TextManager) -> MeshResult {
+        generate_circle_mesh_data(self)
+    }
+    fn bind_group_loader(&self) -> Option<BindGroupLoader> {
+        None
+    }
+    fn clone_box(&self) -> Box<dyn AnimObjectTrait> {
+        Box::new(self.clone())
+    }
+    fn as_any(&self) -> &dyn std::any::Any {
+        self
+    }
+    fn as_any_mut(&mut self) -> &mut dyn std::any::Any {
+        self
+    }
 }
 
 #[derive(Clone, Debug)]
@@ -24,6 +81,31 @@ pub struct Polygon {
     pub radius: f32,
     pub sides: u32,
     pub color: Color,
+    pub transform: Transform,
+}
+
+impl AnimObjectTrait for Polygon {
+    fn transform(&self) -> &Transform {
+        &self.transform
+    }
+    fn transform_mut(&mut self) -> &mut Transform {
+        &mut self.transform
+    }
+    fn generate_mesh(&mut self, _mgr: &mut crate::anim_object::text::TextManager) -> MeshResult {
+        generate_polygon_mesh_data(self)
+    }
+    fn bind_group_loader(&self) -> Option<BindGroupLoader> {
+        None
+    }
+    fn clone_box(&self) -> Box<dyn AnimObjectTrait> {
+        Box::new(self.clone())
+    }
+    fn as_any(&self) -> &dyn std::any::Any {
+        self
+    }
+    fn as_any_mut(&mut self) -> &mut dyn std::any::Any {
+        self
+    }
 }
 pub fn create_shape_pipeline(
     device: &wgpu::Device,

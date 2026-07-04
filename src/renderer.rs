@@ -4,8 +4,7 @@ use uuid::Uuid;
 use wgpu::util::DeviceExt;
 use wgpu::{BindGroup, BindGroupLayout, Buffer};
 
-use crate::anim_object::image::load_image_bind_group;
-use crate::anim_object::svg::load_svg_bind_group;
+use crate::anim_object::object_trait::AnimObjectTrait;
 use crate::anim_object::render::{PipelineData, PipelineKind};
 use crate::animator::{Object, Scene};
 use crate::projection::Camera;
@@ -27,7 +26,7 @@ pub struct ObjectTransformData {
 }
 pub struct Renderer {
     pub object_transform_data_lookup: HashMap<Uuid, ObjectTransformData>,
-    pub image_bind_groups: HashMap<Uuid, Vec<BindGroup>>,
+    pub per_object_bind_groups: HashMap<Uuid, Vec<BindGroup>>,
     pub camera_bind_group: BindGroup,
     pub camera_buffer: wgpu::Buffer,
 
@@ -72,7 +71,7 @@ impl Renderer {
             camera_bind_group: camera_bind_group,
             camera_buffer: camera_buffer,
             object_transform_data_lookup: HashMap::new(),
-            image_bind_groups: HashMap::new(),
+            per_object_bind_groups: HashMap::new(),
         }
     }
 
@@ -146,25 +145,12 @@ impl Renderer {
 
         for obj in scene.objects_sorted_by_z {
             let uuid = *obj.uuid();
-            if self.image_bind_groups.contains_key(&uuid) {
+            if self.per_object_bind_groups.contains_key(&uuid) {
                 continue;
             }
-            match &obj.anim_data {
-                crate::anim_object::AnimObject::Image(image, _) => {
-                    if let Err(e) = load_image_bind_group(device, queue, &image.path)
-                        .map(|bg| self.image_bind_groups.insert(uuid, vec![bg]))
-                    {
-                        log::error!("Failed to load image '{}': {:?}", image.path, e);
-                    }
-                }
-                crate::anim_object::AnimObject::Svg(svg, _) => {
-                    if let Err(e) = load_svg_bind_group(device, queue, svg)
-                        .map(|bg| self.image_bind_groups.insert(uuid, vec![bg]))
-                    {
-                        log::error!("Failed to load svg '{}': {:?}", svg.path, e);
-                    }
-                }
-                _ => {}
+            if let Some(loader) = obj.anim_data.bind_group_loader() {
+                let groups = loader(device, queue);
+                self.per_object_bind_groups.insert(uuid, groups);
             }
         }
     }
@@ -199,15 +185,11 @@ impl Renderer {
 
             render_pass.set_bind_group(TRANSFORM_BIND_INDEX, bind_group, &[]);
 
-            let object_bind_groups = match &object.anim_data {
-                crate::anim_object::AnimObject::Image(_, _)
-                | crate::anim_object::AnimObject::Svg(_, _) => self
-                    .image_bind_groups
-                    .get(object.uuid())
-                    .map(|v| v.as_slice())
-                    .unwrap_or(&[]),
-                _ => &object.render_data.object_bind_groups,
-            };
+            let object_bind_groups = self
+                .per_object_bind_groups
+                .get(object.uuid())
+                .map(|v| v.as_slice())
+                .unwrap_or(&[]);
             for (i, bg) in object_bind_groups.iter().enumerate() {
                 render_pass.set_bind_group(OTHER_BINDING_OFFSET + i as u32, bg, &[]);
             }

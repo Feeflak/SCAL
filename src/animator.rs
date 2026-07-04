@@ -2,7 +2,8 @@ use std::collections::HashMap;
 
 use crate::{
     anim_object::{
-        AnimObject, Transform,
+        Transform,
+        object_trait::{AnimObj, AnimObjectTrait},
         render::ObjectRenderData,
         text::{TextManager, atlas::GlyphUpdateData},
     },
@@ -17,7 +18,7 @@ use log::debug;
 use uuid::Uuid;
 #[derive(Debug, Clone)]
 pub struct Object {
-    pub anim_data: AnimObject,
+    pub anim_data: AnimObj,
     pub render_data: ObjectRenderData,
 }
 impl Object {

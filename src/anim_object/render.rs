@@ -7,21 +7,10 @@ use wgpu::TextureFormat;
 
 use crate::{
     anim_object::{
-        AnimObject,
+        object_trait::{AnimObj, AnimObjectTrait},
         image::create_image_pipeline,
-        image::mesh::generate_image_mesh_data,
-        svg::mesh::generate_svg_mesh_data,
-        primitive_shapes::{
-            create_shape_pipeline,
-            mesh::{
-                generate_circle_mesh_data, generate_polygon_mesh_data,
-                generate_rectangle_mesh_data,
-            },
-        },
-        text::{
-            TextManager, code::mesh::generate_code_mesh, mesh::generate_text_mesh,
-            pipeline::create_text_pipeline,
-        },
+        primitive_shapes::create_shape_pipeline,
+        text::{TextManager, pipeline::create_text_pipeline},
     },
     animator::{Animator, Object},
     renderer::{Index, Vertex},
@@ -32,33 +21,15 @@ pub enum PipelineKind {
     Text,
     Image,
 }
-impl AnimObject {
-    pub fn generate_mesh_data(
-        &mut self,
-        text_manager: &mut TextManager,
-    ) -> (Vec<Vertex>, Vec<Index>, PipelineKind) {
-        match self {
-            AnimObject::Code(code, transform) => {
-                generate_code_mesh(text_manager, transform.uuid, code)
-            }
-            AnimObject::Text(text, _) => generate_text_mesh(text_manager, &text),
-            AnimObject::Square(square, _) => generate_rectangle_mesh_data(square),
-            AnimObject::Circle(circle, _) => generate_circle_mesh_data(circle),
-            AnimObject::Polygon(polygon, _) => generate_polygon_mesh_data(polygon),
-            AnimObject::Image(image, _) => generate_image_mesh_data(image),
-            AnimObject::Svg(svg, _) => generate_svg_mesh_data(svg),
-        }
-    }
-}
 impl Animator {
-    pub fn add_anim_object(&mut self, mut anim_data: AnimObject) -> Result<()> {
+    pub fn add_anim_object(&mut self, mut anim_data: AnimObj) -> Result<()> {
         if let Some(parent_uuid) = anim_data.transform().parent {
             self.check_cycle(&anim_data.transform().uuid, &parent_uuid)?;
         }
 
         let (render_data, mut indices) = {
             let (vertives, mut indices, pipeline) =
-                anim_data.generate_mesh_data(&mut self.text_manager);
+                anim_data.generate_mesh(&mut self.text_manager);
 
             let vertex_base = self.vertices.len();
             let index_base = self.indices.len();
@@ -84,7 +55,7 @@ impl Animator {
         self.vertices.append(&mut render_data.vertices.clone());
         self.indices.append(&mut indices);
 
-        let id = anim_data.transform().uuid;
+        let id = anim_data.uuid();
 
         let obj_idx = self.objects.len();
         self.objects_lookup.insert(id, obj_idx);
@@ -97,8 +68,8 @@ impl Animator {
         Ok(())
     }
 
-    pub fn remove_anim_object(&mut self, obj: AnimObject) {
-        let id = obj.transform().uuid;
+    pub fn remove_anim_object(&mut self, obj: AnimObj) {
+        let id = obj.uuid();
 
         let Some(object_index) = self.objects_lookup.remove(&id) else {
             return;

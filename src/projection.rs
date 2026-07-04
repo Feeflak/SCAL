@@ -62,7 +62,7 @@ impl Transform {
         Mat4::from_scale_rotation_translation(
             Vec3::new(self.scale.x, self.scale.y, 1.0),
             Quat::from_rotation_z(self.rotation.to_radians()),
-            Vec3::new(self.pos.x, self.pos.y, self.pos.z),
+            Vec3::new(self.position.x, self.position.y, self.position.z),
         )
     }
 }
