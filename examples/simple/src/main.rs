@@ -7,6 +7,7 @@ use log::{LevelFilter, info};
 use scal::{
     anim_object::{
         AnimObject, Transform,
+        image::{Image as Img, StretchMode},
         primitive_shapes::{Circle, Polygon, Rectangle},
         text::{
             Align, Text,
@@ -54,6 +55,7 @@ async fn main() -> Result<()> {
     builder.filter_level(LEVEL_FILTER);
     builder.init();
     let handle = Handle::current();
+
     let encoding_settings = scal::encoder::EncodingSettings {
         output_path: "test.mov".to_string(),
         codec_type: scal::encoder::CodecType::PRORES,
@@ -153,42 +155,6 @@ async fn main() -> Result<()> {
             rect.transform()
                 .move_local(vec2(0.5, 0.5), 1., AnimationCurve::EaseOutBack),
             (rect
-                .transform()
-                .move_local(CANVAS_SIZE / 2., 1., AnimationCurve::EaseInOutBack)),
-            (rect
-                .transform()
-                .move_local(vec2(0.5, 0.5), 1., AnimationCurve::EaseOutBack)),
-            (rect
-                .transform()
-                .move_local(CANVAS_SIZE / 2., 1., AnimationCurve::EaseInOutBack)),
-            (circle
-                .transform()
-                .move_local(vec2(0.5, 600.), 1., AnimationCurve::EaseOutBack)),
-            (circle
-                .transform()
-                .move_local(vec2(1200., 500.), 1., AnimationCurve::EaseInOutBack)),
-            (hex.transform()
-                .move_local(vec2(1600., 100.), 1., AnimationCurve::EaseOutBack)),
-            (hex.transform()
-                .move_local(vec2(800., 300.), 1., AnimationCurve::EaseInOutBack)),
-            (triangle.transform()
-                .move_local(vec2(100., 700.), 1., AnimationCurve::EaseOutBack)),
-            (triangle.transform()
-                .move_local(vec2(1600., 700.), 1., AnimationCurve::EaseInOutBack)),
-            (triangle.transform()
-                .move_local(vec2(100., 700.), 1., AnimationCurve::EaseOutBack)),
-            (triangle.transform()
-                .move_local(vec2(1600., 700.), 1., AnimationCurve::EaseInOutBack)),
-            (code
-                .transform()
-                .move_local(vec2(0.5, 0.5), 1., AnimationCurve::EaseOutBack)),
-            (code
-                .transform()
-                .move_local(CANVAS_SIZE / 2., 1., AnimationCurve::EaseInOutBack)),
-            (code
-                .transform()
-                .move_local(vec2(0.5, 0.5), 1., AnimationCurve::EaseOutBack)),
-            (code
                 .transform()
                 .move_local(CANVAS_SIZE / 2., 1., AnimationCurve::EaseInOutBack)),
         ],

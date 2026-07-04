@@ -1,13 +1,14 @@
 use std::collections::HashMap;
 
 use anyhow::Result;
-use glam::{Mat4, Vec2};
+use glam::Mat4;
 use log::debug;
 use wgpu::TextureFormat;
 
 use crate::{
     anim_object::{
-        AnimObject, Transform,
+        AnimObject,
+        image::{create_image_pipeline, mesh::generate_image_mesh_data},
         primitive_shapes::{
             create_shape_pipeline,
             mesh::{
@@ -27,7 +28,7 @@ use crate::{
 pub enum PipelineKind {
     Shape,
     Text,
-    // later: Sprite, Mesh3D, Particle, etc.
+    Image,
 }
 impl AnimObject {
     pub fn generate_mesh_data(
@@ -42,6 +43,7 @@ impl AnimObject {
             AnimObject::Square(square, _) => generate_rectangle_mesh_data(square),
             AnimObject::Circle(circle, _) => generate_circle_mesh_data(circle),
             AnimObject::Polygon(polygon, _) => generate_polygon_mesh_data(polygon),
+            AnimObject::Image(image, _) => generate_image_mesh_data(image),
         }
     }
 }
@@ -70,6 +72,7 @@ impl Animator {
                     vertices: vertives.clone(),
                     indices_base_index: index_base,
                     indices_count: indices.len(),
+                    object_bind_groups: vec![],
                 },
                 indices,
             )
@@ -80,7 +83,8 @@ impl Animator {
 
         let id = anim_data.transform().uuid;
 
-        self.objects_lookup.insert(id, self.objects.len());
+        let obj_idx = self.objects.len();
+        self.objects_lookup.insert(id, obj_idx);
         self.objects.push(Object {
             anim_data,
             render_data,
@@ -123,6 +127,7 @@ pub(crate) struct ObjectRenderData {
     pub indices_base_index: usize,
     pub indices_count: usize,
     pub pipeline: PipelineKind,
+    pub object_bind_groups: Vec<wgpu::BindGroup>,
 }
 pub(crate) struct PipelineData {
     pub pipeline: wgpu::RenderPipeline,
@@ -134,5 +139,6 @@ pub(crate) fn get_pipelines(device: &wgpu::Device) -> HashMap<PipelineKind, Pipe
     HashMap::from([
         (PipelineKind::Text, create_text_pipeline(device, FORMAT)),
         (PipelineKind::Shape, create_shape_pipeline(device, FORMAT)),
+        (PipelineKind::Image, create_image_pipeline(device, FORMAT)),
     ])
 }

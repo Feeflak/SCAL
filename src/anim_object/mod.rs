@@ -5,6 +5,7 @@ use uuid::Uuid;
 
 use crate::anim_op::{self, AnimationCurve};
 
+pub mod image;
 pub mod primitive_shapes;
 pub mod render;
 pub mod text;
@@ -22,6 +23,7 @@ pub enum AnimObject {
     Square(primitive_shapes::Rectangle, Transform),
     Circle(primitive_shapes::Circle, Transform),
     Polygon(primitive_shapes::Polygon, Transform),
+    Image(image::Image, Transform),
 }
 impl AnimObject {
     pub fn transform_mut(&mut self) -> &mut Transform {
@@ -31,6 +33,7 @@ impl AnimObject {
             AnimObject::Square(_, t) => t,
             AnimObject::Circle(_, t) => t,
             AnimObject::Polygon(_, t) => t,
+            AnimObject::Image(_, t) => t,
         }
     }
     pub fn transform(&self) -> &Transform {
@@ -40,6 +43,7 @@ impl AnimObject {
             AnimObject::Square(_, t) => t,
             AnimObject::Circle(_, t) => t,
             AnimObject::Polygon(_, t) => t,
+            AnimObject::Image(_, t) => t,
         }
     }
 }
