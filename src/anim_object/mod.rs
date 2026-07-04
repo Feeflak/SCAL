@@ -8,6 +8,7 @@ use crate::anim_op::{self, AnimationCurve};
 pub mod image;
 pub mod primitive_shapes;
 pub mod render;
+pub mod svg;
 pub mod text;
 
 impl PartialEq for AnimObject {
@@ -24,6 +25,7 @@ pub enum AnimObject {
     Circle(primitive_shapes::Circle, Transform),
     Polygon(primitive_shapes::Polygon, Transform),
     Image(image::Image, Transform),
+    Svg(svg::Svg, Transform),
 }
 impl AnimObject {
     pub fn transform_mut(&mut self) -> &mut Transform {
@@ -34,6 +36,7 @@ impl AnimObject {
             AnimObject::Circle(_, t) => t,
             AnimObject::Polygon(_, t) => t,
             AnimObject::Image(_, t) => t,
+            AnimObject::Svg(_, t) => t,
         }
     }
     pub fn transform(&self) -> &Transform {
@@ -44,6 +47,7 @@ impl AnimObject {
             AnimObject::Circle(_, t) => t,
             AnimObject::Polygon(_, t) => t,
             AnimObject::Image(_, t) => t,
+            AnimObject::Svg(_, t) => t,
         }
     }
 }

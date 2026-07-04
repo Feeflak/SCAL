@@ -5,6 +5,7 @@ use wgpu::util::DeviceExt;
 use wgpu::{BindGroup, BindGroupLayout, Buffer};
 
 use crate::anim_object::image::load_image_bind_group;
+use crate::anim_object::svg::load_svg_bind_group;
 use crate::anim_object::render::{PipelineData, PipelineKind};
 use crate::animator::{Object, Scene};
 use crate::projection::Camera;
@@ -148,15 +149,22 @@ impl Renderer {
             if self.image_bind_groups.contains_key(&uuid) {
                 continue;
             }
-            if let crate::anim_object::AnimObject::Image(image, _) = &obj.anim_data {
-                match load_image_bind_group(device, queue, &image.path) {
-                    Ok(bg) => {
-                        self.image_bind_groups.insert(uuid, vec![bg]);
-                    }
-                    Err(e) => {
+            match &obj.anim_data {
+                crate::anim_object::AnimObject::Image(image, _) => {
+                    if let Err(e) = load_image_bind_group(device, queue, &image.path)
+                        .map(|bg| self.image_bind_groups.insert(uuid, vec![bg]))
+                    {
                         log::error!("Failed to load image '{}': {:?}", image.path, e);
                     }
                 }
+                crate::anim_object::AnimObject::Svg(svg, _) => {
+                    if let Err(e) = load_svg_bind_group(device, queue, svg)
+                        .map(|bg| self.image_bind_groups.insert(uuid, vec![bg]))
+                    {
+                        log::error!("Failed to load svg '{}': {:?}", svg.path, e);
+                    }
+                }
+                _ => {}
             }
         }
     }
@@ -192,7 +200,8 @@ impl Renderer {
             render_pass.set_bind_group(TRANSFORM_BIND_INDEX, bind_group, &[]);
 
             let object_bind_groups = match &object.anim_data {
-                crate::anim_object::AnimObject::Image(_, _) => self
+                crate::anim_object::AnimObject::Image(_, _)
+                | crate::anim_object::AnimObject::Svg(_, _) => self
                     .image_bind_groups
                     .get(object.uuid())
                     .map(|v| v.as_slice())

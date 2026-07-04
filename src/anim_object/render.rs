@@ -8,7 +8,9 @@ use wgpu::TextureFormat;
 use crate::{
     anim_object::{
         AnimObject,
-        image::{create_image_pipeline, mesh::generate_image_mesh_data},
+        image::create_image_pipeline,
+        image::mesh::generate_image_mesh_data,
+        svg::mesh::generate_svg_mesh_data,
         primitive_shapes::{
             create_shape_pipeline,
             mesh::{
@@ -44,6 +46,7 @@ impl AnimObject {
             AnimObject::Circle(circle, _) => generate_circle_mesh_data(circle),
             AnimObject::Polygon(polygon, _) => generate_polygon_mesh_data(polygon),
             AnimObject::Image(image, _) => generate_image_mesh_data(image),
+            AnimObject::Svg(svg, _) => generate_svg_mesh_data(svg),
         }
     }
 }
