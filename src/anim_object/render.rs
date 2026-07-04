@@ -8,13 +8,13 @@ use wgpu::TextureFormat;
 
 use crate::{
     anim_object::{
-        object_trait::{AnimObj, AnimObjectTrait},
+        object_trait::AnimObj,
         image::create_image_pipeline,
         primitive_shapes::create_shape_pipeline,
-        text::{TextManager, pipeline::create_text_pipeline},
+        text::{pipeline::create_text_pipeline},
     },
     animator::{Animator, Object},
-    renderer::{Index, Vertex},
+    renderer::Vertex,
 };
 #[derive(Copy, Clone, Debug, Eq, PartialEq, Hash)]
 pub enum PipelineKind {

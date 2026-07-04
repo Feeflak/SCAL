@@ -1,10 +1,6 @@
-use anyhow::Result;
 use glam::{Mat4, Quat, Vec2, Vec3, vec3};
 
-use crate::{
-    anim_object::Transform,
-    animator::{Animator, Scene},
-};
+use crate::anim_object::Transform;
 
 #[derive(Clone, Copy)]
 pub struct Camera {

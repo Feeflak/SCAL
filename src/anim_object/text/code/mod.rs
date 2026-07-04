@@ -6,8 +6,6 @@ use anyhow::{Context, Result};
 use cosmic_text::Color;
 use tree_sitter_highlight::HighlightConfiguration;
 
-use std::ops::Range;
-
 use uuid::Uuid;
 
 use crate::{
@@ -108,6 +106,17 @@ pub struct Code {
     pub syntax: Syntax,
     pub lines: Vec<TextLine>,
     pub dirty: bool,
+    pub anim_reveal: f32,
+    pub anim_spacing: f32,
+    pub anim_line_start: usize,
+    pub anim_line_end: usize,
+    pub anim_style: CodeAnimationStyle,
+}
+
+#[derive(Clone, Debug)]
+pub enum CodeAnimationStyle {
+    TypeWriter,
+    Fold,
 }
 
 impl Code {
@@ -121,8 +130,9 @@ impl Code {
         from_line: usize,
         anim_curve: AnimationCurve,
         duration: f32,
+        style: CodeAnimationStyle,
     ) -> AnimOP {
-        AnimOP::CodeAddLines(self.id, text, from_line, duration, anim_curve)
+        AnimOP::CodeAddLines(self.id, text, from_line, duration, anim_curve, style)
     }
 
     pub fn modify_line(
@@ -131,8 +141,9 @@ impl Code {
         new_text: String,
         anim_curve: AnimationCurve,
         duration: f32,
+        style: CodeAnimationStyle,
     ) -> AnimOP {
-        AnimOP::CodeModifyLine(self.id, line, new_text, duration, anim_curve)
+        AnimOP::CodeModifyLine(self.id, line, new_text, duration, anim_curve, style)
     }
 
     pub fn remove_lines(
@@ -140,8 +151,9 @@ impl Code {
         lines: std::ops::Range<u32>,
         anim_curve: AnimationCurve,
         duration: f32,
+        style: CodeAnimationStyle,
     ) -> AnimOP {
-        AnimOP::CodeRemoveLines(self.id, lines, duration, anim_curve)
+        AnimOP::CodeRemoveLines(self.id, lines, duration, anim_curve, style)
     }
     pub fn new(
         text: String,
@@ -163,6 +175,11 @@ impl Code {
             font_size,
             lines: vec![],
             dirty: true,
+            anim_reveal: 1.0,
+            anim_spacing: 0.0,
+            anim_line_start: 0,
+            anim_line_end: usize::MAX,
+            anim_style: CodeAnimationStyle::TypeWriter,
         }
     }
 

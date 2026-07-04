@@ -156,7 +156,7 @@ fn copy_texture_to_buffer(
     slot: &readback::Slot,
 ) -> Result<()> {
     let id = slot.id;
-    debug!("MAP: {id}");
+    // debug!("MAP: {id}");
 
     let mut cmd = device.create_command_encoder(&Default::default());
 
@@ -192,7 +192,7 @@ fn copy_texture_to_buffer(
             let owned = data.to_vec();
 
             drop(data);
-            debug!("UNMAP: {id}");
+            // debug!("UNMAP: {id}");
             buffer.unmap();
 
             encoder_send

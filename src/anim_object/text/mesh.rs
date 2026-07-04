@@ -6,7 +6,6 @@ use crate::{
     renderer::Vertex,
 };
 use glam::vec2;
-use log::info;
 pub fn generate_text_mesh(
     manager: &mut TextManager,
     text: &Text,

@@ -6,7 +6,7 @@ use glam::Vec2;
 use log::debug;
 use uuid::Uuid;
 
-use crate::anim_object::object_trait::{AnimObj, AnimObjectTrait};
+use crate::anim_object::object_trait::AnimObj;
 use crate::animator::Animator;
 use crate::types::*;
 
@@ -16,9 +16,9 @@ pub enum AnimOP {
     TransformMovePos(Uuid, Vec2, Seconds, AnimationCurve),
     TransformRotate(Uuid, f32, Seconds, AnimationCurve),
     TransformScale(Uuid, Vec2, Seconds, AnimationCurve),
-    CodeAddLines(Uuid, String, usize, Seconds, AnimationCurve),
-    CodeModifyLine(Uuid, u32, String, Seconds, AnimationCurve),
-    CodeRemoveLines(Uuid, std::ops::Range<u32>, Seconds, AnimationCurve),
+    CodeAddLines(Uuid, String, usize, Seconds, AnimationCurve, crate::anim_object::text::code::CodeAnimationStyle),
+    CodeModifyLine(Uuid, u32, String, Seconds, AnimationCurve, crate::anim_object::text::code::CodeAnimationStyle),
+    CodeRemoveLines(Uuid, std::ops::Range<u32>, Seconds, AnimationCurve, crate::anim_object::text::code::CodeAnimationStyle),
     All(Vec<AnimOP>),
     Wait(Seconds),
 }
@@ -40,14 +40,14 @@ impl TryInto<Animation> for AnimOP {
             AnimOP::TransformScale(uuid, target, duration, curve) => {
                 transform::scale_to(uuid, target, duration, curve)
             }
-            AnimOP::CodeAddLines(uuid, text, from_line, duration, curve) => {
-                code::add_lines(uuid, text, from_line, duration, curve)
+            AnimOP::CodeAddLines(uuid, text, from_line, duration, curve, style) => {
+                code::add_lines(uuid, text, from_line, duration, curve, style)
             }
-            AnimOP::CodeModifyLine(uuid, line, new_text, duration, curve) => {
-                code::modify_line(uuid, line, new_text, duration, curve)
+            AnimOP::CodeModifyLine(uuid, line, new_text, duration, curve, style) => {
+                code::modify_line(uuid, line, new_text, duration, curve, style)
             }
-            AnimOP::CodeRemoveLines(uuid, lines, duration, curve) => {
-                code::remove_lines(uuid, lines, duration, curve)
+            AnimOP::CodeRemoveLines(uuid, lines, duration, curve, style) => {
+                code::remove_lines(uuid, lines, duration, curve, style)
             }
             AnimOP::All(anim_ops) => get_all_animation(anim_ops)?,
             AnimOP::Wait(duration) => Animation::new(

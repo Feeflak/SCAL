@@ -4,7 +4,6 @@ use uuid::Uuid;
 use wgpu::util::DeviceExt;
 use wgpu::{BindGroup, BindGroupLayout, Buffer};
 
-use crate::anim_object::object_trait::AnimObjectTrait;
 use crate::anim_object::render::{PipelineData, PipelineKind};
 use crate::animator::{Object, Scene};
 use crate::projection::Camera;
@@ -164,8 +163,12 @@ impl Renderer {
         const CAMERA_BIND_INDEX: u32 = 0;
         const TRANSFORM_BIND_INDEX: u32 = 1;
         const OTHER_BINDING_OFFSET: u32 = 2;
-        render_pass.set_vertex_buffer(0, self.vertex_buffer.slice(..));
-        render_pass.set_index_buffer(self.index_buffer.slice(..), wgpu::IndexFormat::Uint32);
+        if self.vertex_buffer_size > 0 {
+            render_pass.set_vertex_buffer(0, self.vertex_buffer.slice(..));
+        }
+        if self.index_buffer_size > 0 {
+            render_pass.set_index_buffer(self.index_buffer.slice(..), wgpu::IndexFormat::Uint32);
+        }
         render_pass.set_bind_group(CAMERA_BIND_INDEX, &self.camera_bind_group, &[]);
         let mut current_pipeline: Option<PipelineKind> = None;
         for object in objects_sorted_by_z {
@@ -194,13 +197,15 @@ impl Renderer {
                 render_pass.set_bind_group(OTHER_BINDING_OFFSET + i as u32, bg, &[]);
             }
 
-            render_pass.draw_indexed(
-                object.render_data.indices_base_index as u32
-                    ..(object.render_data.indices_base_index + object.render_data.indices_count)
-                        as u32,
-                0,
-                0..1,
-            );
+            if object.render_data.indices_count > 0 {
+                render_pass.draw_indexed(
+                    object.render_data.indices_base_index as u32
+                        ..(object.render_data.indices_base_index + object.render_data.indices_count)
+                            as u32,
+                    0,
+                    0..1,
+                );
+            }
         }
     }
 }

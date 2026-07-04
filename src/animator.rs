@@ -3,7 +3,7 @@ use std::collections::HashMap;
 use crate::{
     anim_object::{
         Transform,
-        object_trait::{AnimObj, AnimObjectTrait},
+        object_trait::AnimObj,
         render::ObjectRenderData,
         text::{TextManager, atlas::GlyphUpdateData},
     },

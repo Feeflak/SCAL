@@ -17,7 +17,7 @@ use object_trait::AnimObj;
 use self::image::{Image, StretchMode};
 use self::primitive_shapes::{Circle, Polygon, Rectangle};
 use self::svg::Svg;
-use self::text::{code::Code, code::TextLine, Align, Text};
+use self::text::{code::Code, code::CodeAnimationStyle, code::TextLine, Align, Text};
 
 use self::text::code::Syntax;
 use self::text::code::theme::Theme;
@@ -47,6 +47,11 @@ pub fn code(
         syntax,
         lines,
         dirty: true,
+        anim_reveal: 1.0,
+        anim_spacing: 0.0,
+        anim_line_start: 0,
+        anim_line_end: usize::MAX,
+        anim_style: CodeAnimationStyle::TypeWriter,
     }
 }
 

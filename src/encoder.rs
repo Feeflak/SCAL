@@ -2,7 +2,7 @@ use anyhow::Result;
 use ffmpeg::software::scaling::{context::Context, flag::Flags};
 
 use ffmpeg_next as ffmpeg;
-use log::{info, debug};
+use log::{debug, info};
 use tokio::sync::mpsc::{Receiver, Sender};
 
 use crate::renderer::RenderingSettings;
@@ -82,7 +82,7 @@ impl Encoder {
 
     fn push_frame(&mut self, bytes: &[u8]) -> Result<()> {
         assert_eq!(bytes.len(), self.width as usize * self.height as usize * 4);
-        debug!("push_frame 1");
+        // debug!("push_frame 1");
 
         let mut rgba =
             ffmpeg::frame::Video::new(ffmpeg::format::Pixel::RGBA, self.width, self.height);
@@ -107,7 +107,7 @@ impl Encoder {
             dst[dst_start..dst_end].copy_from_slice(&bytes[src_start..src_end]);
         }
 
-        debug!("push_frame 2");
+        // debug!("push_frame 2");
 
         let mut frame = ffmpeg::frame::Video::empty();
         self.scaler.run(&rgba, &mut frame)?;
@@ -116,7 +116,7 @@ impl Encoder {
 
         self.encoder.send_frame(&frame)?;
 
-        debug!("push_frame 3");
+        // debug!("push_frame 3");
 
         let mut packet = ffmpeg::Packet::empty();
 
