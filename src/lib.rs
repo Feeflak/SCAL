@@ -9,6 +9,7 @@ pub mod anim_op;
 mod anim_render;
 pub mod animator;
 pub mod encoder;
+pub mod prelude;
 pub mod projection;
 mod readback;
 pub mod renderer;
