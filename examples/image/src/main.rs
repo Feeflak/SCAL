@@ -15,7 +15,6 @@ use tokio::runtime::Handle;
 
 const LEVEL_FILTER: LevelFilter = LevelFilter::Info;
 pub const CANVAS_SIZE: Vec2 = vec2(1920., 1080.);
-pub const XY0: Vec3 = vec3(1., 1., 0.);
 #[tokio::main]
 async fn main() -> Result<()> {
     let mut builder = colog::default_builder();

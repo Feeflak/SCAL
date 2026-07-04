@@ -18,7 +18,7 @@ use scal::{
         },
         wait,
     },
-    anim_op::AnimationCurve,
+    anim_op::{AnimationCurve, all},
     projection::Camera,
     types::Color,
 };
@@ -48,7 +48,6 @@ const THEME: LazyLock<Theme> = LazyLock::new(|| {
     })
 });
 pub const CANVAS_SIZE: Vec2 = vec2(1920., 1080.);
-pub const XY0: Vec3 = vec3(1., 1., 0.);
 #[tokio::main]
 async fn main() -> Result<()> {
     let mut builder = colog::default_builder();
@@ -152,8 +151,13 @@ async fn main() -> Result<()> {
             hex.instantiate(),
             triangle.instantiate(),
             wait(1.0),
-            rect.transform()
-                .move_local(vec2(0.5, 0.5), 1., AnimationCurve::EaseOutBack),
+            all(vec![
+                triangle
+                    .transform()
+                    .move_local(vec2(350., 800.), 1., AnimationCurve::EaseOutBack),
+                rect.transform()
+                    .move_local(vec2(0.5, 0.5), 1., AnimationCurve::EaseOutBack),
+            ]),
             (rect
                 .transform()
                 .move_local(CANVAS_SIZE / 2., 1., AnimationCurve::EaseInOutBack)),

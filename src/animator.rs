@@ -13,7 +13,7 @@ use crate::{
 };
 use anyhow::{Context, Result, bail};
 use glam::Mat4;
-use log::{debug, info};
+use log::debug;
 use uuid::Uuid;
 #[derive(Debug, Clone)]
 pub struct Object {

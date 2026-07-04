@@ -77,6 +77,12 @@ impl Transform {
     pub fn move_local(&self, to: Vec2, time: Seconds, curve: AnimationCurve) -> AnimOP {
         AnimOP::TransformMovePos(self.uuid, to, time, curve)
     }
+    pub fn rotate_to(&self, to: f32, time: Seconds, curve: AnimationCurve) -> AnimOP {
+        AnimOP::TransformRotate(self.uuid, to, time, curve)
+    }
+    pub fn scale_to(&self, to: Vec2, time: Seconds, curve: AnimationCurve) -> AnimOP {
+        AnimOP::TransformScale(self.uuid, to, time, curve)
+    }
     pub fn add_children(&self, children: Vec<AnimObject>) -> AnimOP {
         todo!()
     }

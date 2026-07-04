@@ -1,7 +1,7 @@
 mod transform;
 
 use anyhow::Result;
-use glam::{Vec2, vec3};
+use glam::Vec2;
 use log::debug;
 use uuid::Uuid;
 
@@ -13,6 +13,8 @@ use crate::types::*;
 pub enum AnimOP {
     Instantiate(AnimObject),
     TransformMovePos(Uuid, Vec2, Seconds, AnimationCurve),
+    TransformRotate(Uuid, f32, Seconds, AnimationCurve),
+    TransformScale(Uuid, Vec2, Seconds, AnimationCurve),
     All(Vec<AnimOP>),
     Wait(Seconds),
 }
@@ -25,32 +27,16 @@ impl TryInto<Animation> for AnimOP {
                 animator.add_anim_object(anim_object.clone())?;
                 Ok(())
             })),
-            AnimOP::TransformMovePos(uuid, pos, duration, curve) => Animation::new(
-                duration,
-                curve,
-                Box::new(move |animator, initial_pos_store| {
-                    let pos = animator.get_object(&uuid)?.transform().pos;
-                    initial_pos_store.push(pos.x);
-                    initial_pos_store.push(pos.y);
-                    Ok(())
-                }),
-                Some(Box::new(move |animator, t, initial_pos| {
-                    // lerp
-
-                    let obj = animator.get_object_mut(&uuid)?;
-
-                    let transform = obj.anim_data.transform_mut();
-                    let new_pos = vec3(
-                        initial_pos[0] + t * (pos.x - initial_pos[0]),
-                        initial_pos[1] + t * (pos.y - initial_pos[1]),
-                        transform.pos.z,
-                    );
-                    transform.pos = new_pos;
-
-                    Ok(())
-                })),
-            ),
-            AnimOP::All(anim_ops) => todo!(),
+            AnimOP::TransformMovePos(uuid, pos, duration, curve) => {
+                transform::move_pos(uuid, pos, duration, curve)
+            }
+            AnimOP::TransformRotate(uuid, target, duration, curve) => {
+                transform::rotate_to(uuid, target, duration, curve)
+            }
+            AnimOP::TransformScale(uuid, target, duration, curve) => {
+                transform::scale_to(uuid, target, duration, curve)
+            }
+            AnimOP::All(anim_ops) => get_all_animation(anim_ops)?,
             AnimOP::Wait(duration) => Animation::new(
                 duration,
                 AnimationCurve::Linear,
@@ -61,6 +47,60 @@ impl TryInto<Animation> for AnimOP {
     }
 
     type Error = anyhow::Error;
+}
+pub fn all(ops: Vec<AnimOP>) -> AnimOP {
+    AnimOP::All(ops)
+}
+pub fn get_all_animation(ops: Vec<AnimOP>) -> Result<Animation> {
+    let mut dur = 0_f32;
+    for operation in &ops {
+        let anim: Animation = operation.to_owned().try_into()?;
+        if anim.update.is_some() {
+            dur = dur.max(anim.total_duration);
+        }
+    }
+    let start = Box::new({
+        let loc_ops = ops.to_owned();
+        move |animator: &mut Animator, store: &mut Vec<f32>| {
+            store.clear();
+            for op in loc_ops.to_owned() {
+                let anim: Animation = op.try_into()?;
+                let mut data = vec![];
+                (*anim.start)(animator, &mut data)?;
+                store.push(data.len() as f32);
+                store.append(&mut data);
+            }
+            Ok(())
+        }
+    });
+    let update = if dur != 0. {
+        let t: Option<UpdateAnimationFunction> = Some(Box::new(
+            move |animator: &mut Animator, t: f32, store: &mut Vec<f32>| {
+                let mut updated_store = vec![];
+                let mut store_index = 0;
+                for op in ops.to_owned() {
+                    let anim: Animation = op.try_into()?;
+                    if let Some(update) = anim.update {
+                        let to_read = store[store_index] as usize;
+                        // +1 to skip the to_read;
+                        let mut temp_store =
+                            store[store_index + 1..store_index + 1 + to_read].to_vec();
+                        (*update)(animator, t, &mut temp_store);
+                        store_index += to_read + 1;
+                        updated_store.push(temp_store.len() as f32);
+                        updated_store.append(&mut temp_store);
+                    }
+                }
+                *store = updated_store;
+                Ok(())
+            },
+        ));
+        t
+    } else {
+        None
+    };
+
+    Ok(Animation::new(dur, AnimationCurve::Linear, start, update))
 }
 
 #[derive(Clone, Debug)]
