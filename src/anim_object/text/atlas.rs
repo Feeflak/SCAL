@@ -110,6 +110,7 @@ impl GlyphAtlas {
             }
         }
         self.cursor_x += width + 1;
+        self.row_height = self.row_height.max(height);
 
         if self.cursor_x + width >= self.width {
             self.cursor_x = 0;

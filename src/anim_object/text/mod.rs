@@ -113,16 +113,11 @@ impl TextManager {
         for (line_index, line) in code.lines.iter().enumerate() {
             for span in &line.spans {
                 owned_spans.push((
-                    span.value.trim_end_matches('\n').to_string(),
+                    span.value.clone(),
                     Attrs::new()
                         .family(Family::Name(&code.font_family))
                         .color(span.color.into()),
                 ));
-            }
-
-            // Preserve source line structure
-            if line_index + 1 != code.lines.len() {
-                owned_spans.push(("\n".to_string(), default_attrs.clone()));
             }
         }
 
