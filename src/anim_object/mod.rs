@@ -47,7 +47,6 @@ pub fn code(
         syntax,
         lines,
         dirty: true,
-        visible_lines: usize::MAX,
     }
 }
 

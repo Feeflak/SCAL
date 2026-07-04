@@ -7,7 +7,9 @@ pub(crate) mod render;
 use std::collections::HashMap;
 
 use crate::{
+    anim_object::object_trait::{AnimObjectTrait, BindGroupLoader, MeshResult},
     anim_object::text::code::{Code, highliter::CodeHighlighter},
+    anim_object::Transform,
     types::*,
 };
 use cosmic_text::{Attrs, Buffer, Family, FontSystem, Metrics, Shaping};
@@ -41,11 +43,37 @@ pub enum FontSpec {
 }
 #[derive(Clone, Debug)]
 pub struct Text {
+    pub id: Uuid,
     pub font_family: String,
     pub alignment: Align,
     pub value: String,
     pub color: Color,
     pub font_size: f32,
+    pub transform: Transform,
+}
+
+impl AnimObjectTrait for Text {
+    fn transform(&self) -> &Transform {
+        &self.transform
+    }
+    fn transform_mut(&mut self) -> &mut Transform {
+        &mut self.transform
+    }
+    fn generate_mesh(&mut self, mgr: &mut TextManager) -> MeshResult {
+        crate::anim_object::text::mesh::generate_text_mesh(mgr, self)
+    }
+    fn bind_group_loader(&self) -> Option<BindGroupLoader> {
+        None
+    }
+    fn clone_box(&self) -> Box<dyn AnimObjectTrait> {
+        Box::new(self.clone())
+    }
+    fn as_any(&self) -> &dyn std::any::Any {
+        self
+    }
+    fn as_any_mut(&mut self) -> &mut dyn std::any::Any {
+        self
+    }
 }
 
 pub struct TextManager {
@@ -66,12 +94,13 @@ impl TextManager {
             atlas: atlas::GlyphAtlas::new(),
         }
     }
-    pub fn layout_code(&mut self, code: &Code, id: Uuid) -> Buffer {
+    pub fn layout_code(&mut self, code: &mut Code, id: Uuid) -> Buffer {
         if !code.dirty {
             if let Some(buffer) = self.layouts.get(&id) {
                 return buffer.to_owned();
             }
         }
+        code.dirty = false;
         let metrics = Metrics::new(code.font_size, code.font_size * 1.2);
 
         let mut buffer = Buffer::new(&mut self.font_system, metrics);

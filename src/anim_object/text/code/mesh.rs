@@ -22,7 +22,7 @@ pub fn generate_code_mesh(
     let mut vertices = Vec::new();
     let mut indices = Vec::new();
 
-    for run in buffer.layout_runs() {
+    for (_, run) in buffer.layout_runs().enumerate() {
         for glyph in run.glyphs {
             let physical = glyph.physical((0.0, 0.0), 1.0);
 

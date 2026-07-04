@@ -6,9 +6,18 @@ use anyhow::{Context, Result};
 use cosmic_text::Color;
 use tree_sitter_highlight::HighlightConfiguration;
 
-use crate::anim_object::text::{
-    Align,
-    code::{highliter::CodeHighlighter, theme::Theme},
+use std::ops::Range;
+
+use uuid::Uuid;
+
+use crate::{
+    anim_object::Transform,
+    anim_object::object_trait::{AnimObj, AnimObjectTrait, BindGroupLoader, MeshResult},
+    anim_object::text::{
+        Align,
+        code::{highliter::CodeHighlighter, theme::Theme},
+    },
+    anim_op::{AnimOP, AnimationCurve},
 };
 
 #[derive(Clone, Debug, Hash, PartialEq, Eq)]
@@ -89,6 +98,8 @@ pub struct TextLine {
 
 #[derive(Clone, Debug)]
 pub struct Code {
+    pub id: Uuid,
+    pub transform: Transform,
     pub source_code: String,
     pub theme: Theme,
     pub font_family: String,
@@ -100,6 +111,38 @@ pub struct Code {
 }
 
 impl Code {
+    pub fn instantiate(&self) -> AnimOP {
+        AnimOP::Instantiate(AnimObj(Box::new(self.clone())))
+    }
+
+    pub fn add_lines(
+        &self,
+        text: String,
+        from_line: usize,
+        anim_curve: AnimationCurve,
+        duration: f32,
+    ) -> AnimOP {
+        AnimOP::CodeAddLines(self.id, text, from_line, duration, anim_curve)
+    }
+
+    pub fn modify_line(
+        &self,
+        line: u32,
+        new_text: String,
+        anim_curve: AnimationCurve,
+        duration: f32,
+    ) -> AnimOP {
+        AnimOP::CodeModifyLine(self.id, line, new_text, duration, anim_curve)
+    }
+
+    pub fn remove_lines(
+        &self,
+        lines: std::ops::Range<u32>,
+        anim_curve: AnimationCurve,
+        duration: f32,
+    ) -> AnimOP {
+        AnimOP::CodeRemoveLines(self.id, lines, duration, anim_curve)
+    }
     pub fn new(
         text: String,
         syntax: Syntax,
@@ -107,8 +150,11 @@ impl Code {
         font_family: String,
         alignment: Align,
         font_size: f32,
+        transform: Transform,
     ) -> Self {
         Self {
+            id: Uuid::new_v4(),
+            transform,
             alignment,
             source_code: text,
             syntax,
@@ -119,11 +165,11 @@ impl Code {
             dirty: true,
         }
     }
+
     pub fn update_highlight_if_dirty(&mut self, highlighter: &mut CodeHighlighter) -> Result<()> {
         if !self.dirty {
             return Ok(());
         }
-        self.dirty = false;
 
         self.lines.clear();
 
@@ -149,5 +195,29 @@ impl Code {
         }
 
         Ok(())
+    }
+}
+
+impl AnimObjectTrait for Code {
+    fn transform(&self) -> &Transform {
+        &self.transform
+    }
+    fn transform_mut(&mut self) -> &mut Transform {
+        &mut self.transform
+    }
+    fn generate_mesh(&mut self, mgr: &mut crate::anim_object::text::TextManager) -> MeshResult {
+        crate::anim_object::text::code::mesh::generate_code_mesh(mgr, self.transform.uuid, self)
+    }
+    fn bind_group_loader(&self) -> Option<BindGroupLoader> {
+        None
+    }
+    fn clone_box(&self) -> Box<dyn AnimObjectTrait> {
+        Box::new(self.clone())
+    }
+    fn as_any(&self) -> &dyn std::any::Any {
+        self
+    }
+    fn as_any_mut(&mut self) -> &mut dyn std::any::Any {
+        self
     }
 }

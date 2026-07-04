@@ -1,7 +1,8 @@
 use std::collections::HashMap;
 
-use anyhow::Result;
+use anyhow::{Context, Result};
 use glam::Mat4;
+use uuid::Uuid;
 use log::debug;
 use wgpu::TextureFormat;
 
@@ -65,6 +66,52 @@ impl Animator {
         });
 
         debug!("add_anim_object- objects:{:?}", self.objects);
+        Ok(())
+    }
+
+    pub fn regenerate_object_mesh(&mut self, uuid: &Uuid) -> Result<()> {
+        let obj_idx = *self
+            .objects_lookup
+            .get(uuid)
+            .context("object not found for mesh regeneration")?;
+        let obj = &mut self.objects[obj_idx];
+
+        let (new_vertices_data, mut new_indices, pipeline) =
+            obj.anim_data.generate_mesh(&mut self.text_manager);
+
+        let old_vert_start = obj.render_data.vertices_base_index;
+        let old_vert_count = obj.render_data.vertices.len();
+        let old_idx_start = obj.render_data.indices_base_index;
+        let old_idx_count = obj.render_data.indices_count;
+
+        let new_vert_count = new_vertices_data.len();
+        let vert_diff = new_vert_count as isize - old_vert_count as isize;
+        let new_idx_count = new_indices.len();
+        let idx_diff = new_idx_count as isize - old_idx_count as isize;
+
+        for idx in &mut new_indices {
+            *idx += old_vert_start as u32;
+        }
+
+        self.vertices
+            .splice(old_vert_start..old_vert_start + old_vert_count, new_vertices_data.clone());
+        self.indices
+            .splice(old_idx_start..old_idx_start + old_idx_count, new_indices);
+
+        obj.render_data.vertices = new_vertices_data;
+        obj.render_data.indices_count = new_idx_count;
+        obj.render_data.pipeline = pipeline;
+
+        for other in self.objects.iter_mut() {
+            if other.render_data.vertices_base_index > old_vert_start {
+                other.render_data.vertices_base_index =
+                    (other.render_data.vertices_base_index as isize + vert_diff) as usize;
+            }
+            if other.render_data.indices_base_index > old_idx_start {
+                other.render_data.indices_base_index =
+                    (other.render_data.indices_base_index as isize + idx_diff) as usize;
+            }
+        }
         Ok(())
     }
 

@@ -1,3 +1,4 @@
+pub mod code;
 mod transform;
 
 use anyhow::Result;
@@ -5,16 +6,19 @@ use glam::Vec2;
 use log::debug;
 use uuid::Uuid;
 
-use crate::anim_object::AnimObject;
+use crate::anim_object::object_trait::{AnimObj, AnimObjectTrait};
 use crate::animator::Animator;
 use crate::types::*;
 
 #[derive(Clone, Debug)]
 pub enum AnimOP {
-    Instantiate(AnimObject),
+    Instantiate(AnimObj),
     TransformMovePos(Uuid, Vec2, Seconds, AnimationCurve),
     TransformRotate(Uuid, f32, Seconds, AnimationCurve),
     TransformScale(Uuid, Vec2, Seconds, AnimationCurve),
+    CodeAddLines(Uuid, String, usize, Seconds, AnimationCurve),
+    CodeModifyLine(Uuid, u32, String, Seconds, AnimationCurve),
+    CodeRemoveLines(Uuid, std::ops::Range<u32>, Seconds, AnimationCurve),
     All(Vec<AnimOP>),
     Wait(Seconds),
 }
@@ -22,9 +26,9 @@ impl TryInto<Animation> for AnimOP {
     fn try_into(self) -> Result<Animation> {
         // let skip = Box::new(|_, _| Ok(()));
         Ok(match self {
-            AnimOP::Instantiate(anim_object) => Animation::instant(Box::new(move |animator, _| {
+            AnimOP::Instantiate(anim_obj) => Animation::instant(Box::new(move |animator, _| {
                 debug!("Instantiate");
-                animator.add_anim_object(anim_object.clone())?;
+                animator.add_anim_object(anim_obj.clone())?;
                 Ok(())
             })),
             AnimOP::TransformMovePos(uuid, pos, duration, curve) => {
@@ -35,6 +39,15 @@ impl TryInto<Animation> for AnimOP {
             }
             AnimOP::TransformScale(uuid, target, duration, curve) => {
                 transform::scale_to(uuid, target, duration, curve)
+            }
+            AnimOP::CodeAddLines(uuid, text, from_line, duration, curve) => {
+                code::add_lines(uuid, text, from_line, duration, curve)
+            }
+            AnimOP::CodeModifyLine(uuid, line, new_text, duration, curve) => {
+                code::modify_line(uuid, line, new_text, duration, curve)
+            }
+            AnimOP::CodeRemoveLines(uuid, lines, duration, curve) => {
+                code::remove_lines(uuid, lines, duration, curve)
             }
             AnimOP::All(anim_ops) => get_all_animation(anim_ops)?,
             AnimOP::Wait(duration) => Animation::new(

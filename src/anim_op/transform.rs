@@ -15,7 +15,7 @@ pub fn move_pos(
         duration,
         curve,
         Box::new(move |animator, storage| {
-            let pos = animator.get_object(&uuid)?.transform().pos;
+            let pos = animator.get_object(&uuid)?.transform().position;
             storage.push(pos.x);
             storage.push(pos.y);
             Ok(())
@@ -23,10 +23,10 @@ pub fn move_pos(
         Some(Box::new(move |animator, t, storage| {
             let obj = animator.get_object_mut(&uuid)?;
             let transform = obj.anim_data.transform_mut();
-            transform.pos = vec3(
+            transform.position = vec3(
                 storage[0] + t * (target.x - storage[0]),
                 storage[1] + t * (target.y - storage[1]),
-                transform.pos.z,
+                transform.position.z,
             );
             Ok(())
         })),
