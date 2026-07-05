@@ -1,5 +1,6 @@
 use std::any::Any;
 
+use glam::Vec2;
 use uuid::Uuid;
 
 use crate::anim_object::render::PipelineKind;
@@ -21,6 +22,16 @@ pub trait AnimObjectTrait: Any + std::fmt::Debug + Send {
     fn clone_box(&self) -> Box<dyn AnimObjectTrait>;
     fn as_any(&self) -> &dyn Any;
     fn as_any_mut(&mut self) -> &mut dyn Any;
+
+    fn size(&self) -> Vec2 {
+        Vec2::ZERO
+    }
+    fn layout_parent(&self) -> Option<Uuid> {
+        self.transform().layout_container
+    }
+    fn set_layout_parent(&mut self, parent: Option<Uuid>) {
+        self.transform_mut().layout_container = parent;
+    }
 }
 
 pub type BindGroupLoader = Box<dyn Fn(&wgpu::Device, &wgpu::Queue) -> Vec<wgpu::BindGroup>>;

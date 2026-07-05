@@ -31,6 +31,9 @@ impl AnimObjectTrait for Image {
     fn transform_mut(&mut self) -> &mut Transform {
         &mut self.transform
     }
+    fn size(&self) -> Vec2 {
+        self.size
+    }
     fn generate_mesh(&mut self, _mgr: &mut crate::anim_object::text::TextManager) -> MeshResult {
         generate_image_mesh_data(self)
     }

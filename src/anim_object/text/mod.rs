@@ -13,6 +13,7 @@ use crate::{
     types::*,
 };
 use cosmic_text::{Attrs, Buffer, Family, FontSystem, Metrics, Shaping};
+use glam::Vec2;
 use tree_sitter_highlight::Highlighter;
 use uuid::Uuid;
 /// RGBA
@@ -58,6 +59,12 @@ impl AnimObjectTrait for Text {
     }
     fn transform_mut(&mut self) -> &mut Transform {
         &mut self.transform
+    }
+    fn size(&self) -> Vec2 {
+        let line_count = self.value.lines().count().max(1);
+        let height = line_count as f32 * self.font_size * 1.2;
+        let width = self.value.len() as f32 * self.font_size * 0.5;
+        glam::vec2(width, height)
     }
     fn generate_mesh(&mut self, mgr: &mut TextManager) -> MeshResult {
         crate::anim_object::text::mesh::generate_text_mesh(mgr, self)

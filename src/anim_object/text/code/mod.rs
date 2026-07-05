@@ -4,6 +4,7 @@ pub mod mesh;
 pub mod theme;
 use anyhow::{Context, Result};
 use cosmic_text::Color;
+use glam::Vec2;
 use tree_sitter_highlight::HighlightConfiguration;
 
 use uuid::Uuid;
@@ -166,7 +167,7 @@ impl Code {
         transform: Transform,
     ) -> Self {
         Self {
-            id: Uuid::new_v4(),
+            id: transform.uuid,
             transform,
             alignment,
             source_code: text,
@@ -237,6 +238,16 @@ impl AnimObjectTrait for Code {
     }
     fn transform_mut(&mut self) -> &mut Transform {
         &mut self.transform
+    }
+    fn size(&self) -> Vec2 {
+        let total_lines = self.source_code.lines().count().max(1);
+        let animated_count = self.anim_line_end.saturating_sub(self.anim_line_start);
+        let base_count = total_lines.saturating_sub(animated_count);
+        let visible_animated = (animated_count as f32 * self.anim_reveal) as usize;
+        let visible_lines = (base_count + visible_animated).max(1);
+        let height = visible_lines as f32 * self.font_size * 1.2;
+        let width = self.source_code.len() as f32 * self.font_size * 0.5;
+        glam::vec2(width, height)
     }
     fn generate_mesh(&mut self, mgr: &mut crate::anim_object::text::TextManager) -> MeshResult {
         crate::anim_object::text::code::mesh::generate_code_mesh(mgr, self.transform.uuid, self)

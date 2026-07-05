@@ -378,6 +378,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "code_window"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "colog",
+ "glam",
+ "log",
+ "scal",
+ "tokio",
+]
+
+[[package]]
 name = "codespan-reporting"
 version = "0.13.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"

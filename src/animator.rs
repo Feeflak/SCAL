@@ -6,6 +6,7 @@ use crate::{
         object_trait::AnimObj,
         render::ObjectRenderData,
         text::{TextManager, atlas::GlyphUpdateData},
+        compose::LayoutContainer,
     },
     anim_op::{AnimOP, Animation},
     anim_render::AnimationState,
@@ -44,6 +45,8 @@ pub struct Animator {
     pub vertices: Vec<Vertex>,
     pub indices: Vec<Index>,
     pub text_manager: TextManager,
+    pub layout_containers: HashMap<Uuid, LayoutContainer>,
+    pub layout_resizing_in_progress: bool,
 }
 
 pub struct Scene<'a> {
@@ -80,6 +83,8 @@ impl Animator {
             indices: vec![],
             vertices: vec![],
             objects_lookup: HashMap::new(),
+            layout_containers: HashMap::new(),
+            layout_resizing_in_progress: false,
         })
     }
 

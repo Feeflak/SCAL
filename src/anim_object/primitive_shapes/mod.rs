@@ -1,6 +1,6 @@
 pub mod mesh;
 
-use glam::Vec2;
+use glam::{Vec2, vec2};
 
 use crate::anim_object::object_trait::{AnimObjectTrait, BindGroupLoader, MeshResult};
 use crate::anim_object::render::PipelineData;
@@ -27,6 +27,9 @@ impl AnimObjectTrait for Rectangle {
     }
     fn transform_mut(&mut self) -> &mut Transform {
         &mut self.transform
+    }
+    fn size(&self) -> Vec2 {
+        self.size
     }
     fn generate_mesh(&mut self, _mgr: &mut crate::anim_object::text::TextManager) -> MeshResult {
         generate_rectangle_mesh_data(self)
@@ -59,6 +62,10 @@ impl AnimObjectTrait for Circle {
     fn transform_mut(&mut self) -> &mut Transform {
         &mut self.transform
     }
+    fn size(&self) -> Vec2 {
+        let d = self.radius * 2.0;
+        vec2(d, d)
+    }
     fn generate_mesh(&mut self, _mgr: &mut crate::anim_object::text::TextManager) -> MeshResult {
         generate_circle_mesh_data(self)
     }
@@ -90,6 +97,10 @@ impl AnimObjectTrait for Polygon {
     }
     fn transform_mut(&mut self) -> &mut Transform {
         &mut self.transform
+    }
+    fn size(&self) -> Vec2 {
+        let d = self.radius * 2.0;
+        vec2(d, d)
     }
     fn generate_mesh(&mut self, _mgr: &mut crate::anim_object::text::TextManager) -> MeshResult {
         generate_polygon_mesh_data(self)

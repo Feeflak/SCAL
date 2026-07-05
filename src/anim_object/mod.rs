@@ -5,6 +5,8 @@ use uuid::Uuid;
 
 use crate::anim_op::{self, AnimationCurve};
 
+pub mod code_window;
+pub mod compose;
 pub mod image;
 pub mod object_trait;
 pub mod primitive_shapes;
@@ -14,6 +16,11 @@ pub mod text;
 
 use object_trait::AnimObj;
 
+pub use self::code_window::CodeWindow;
+pub use self::code_window::code_window;
+pub use self::compose::{
+    LayoutResult, LayoutContainer, LayoutDir, Alignment, PinPoint, LayoutBackground, LayoutItem, layout,
+};
 use self::image::{Image, StretchMode};
 use self::primitive_shapes::{Circle, Polygon, Rectangle};
 use self::svg::Svg;
@@ -168,6 +175,7 @@ pub struct Transform {
     pub parent: Option<Uuid>,
     pub position: Vec3,
     pub rotation: f32,
+    pub layout_container: Option<Uuid>,
 }
 impl Transform {
     pub fn position_to(&self, to: Vec2, time: Seconds, curve: AnimationCurve) -> AnimOP {
@@ -189,6 +197,7 @@ impl Transform {
             parent: parent.map(|obj| obj.uuid()),
             position,
             scale,
+            layout_container: None,
         }
     }
 }
