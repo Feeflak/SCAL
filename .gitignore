@@ -24,3 +24,5 @@ target
 /examples/image/test.mov
 /examples/simple/test.mov
 /examples/svg/test.mov
+/examples/code/test.mov
+/examples/code/src/test.mov

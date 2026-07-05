@@ -1,14 +1,9 @@
 use anyhow::Result;
 
-use glam::{Vec2, Vec3, vec2, vec3};
+use glam::{Vec2, vec2, vec3};
 use log::{LevelFilter, info};
 use scal::{
-    anim_object::{
-        AnimObject, Transform,
-        image::{Image as Img, StretchMode},
-        svg::Svg,
-        wait,
-    },
+    anim_object::*,
     projection::Camera,
     types::Color,
 };
@@ -36,18 +31,17 @@ async fn main() -> Result<()> {
         fps: 60,
     };
 
-    let svg = AnimObject::Svg(
-        Svg {
-            fill: Some(Color::GREEN),
-            tint: Color::WHITE,
-            stroke: Some(Color::WHITE),
-            stroke_width: Some(0.25),
-            path: "test.svg".to_string(),
-            size: vec2(800., 500.),
-            stretch: StretchMode::Fill,
-        },
+    let svg = svg(
         Transform::new(None, vec3(400., 250., 1.), 0., Vec2::ONE),
+        "test.svg".to_string(),
+        vec2(800., 500.),
+        Color::WHITE,
+        Some(Color::GREEN),
+        Some(Color::WHITE),
+        Some(0.25),
+        scal::anim_object::image::StretchMode::Fill,
     );
+
     scal::run_loop(
         &handle,
         encoding_settings,

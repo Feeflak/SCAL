@@ -1,13 +1,9 @@
 use anyhow::Result;
 
-use glam::{Vec2, Vec3, vec2, vec3};
+use glam::{Vec2, vec2, vec3};
 use log::{LevelFilter, info};
 use scal::{
-    anim_object::{
-        AnimObject, Transform,
-        image::{Image as Img, StretchMode},
-        wait,
-    },
+    anim_object::*,
     projection::Camera,
     types::Color,
 };
@@ -35,35 +31,30 @@ async fn main() -> Result<()> {
         fps: 60,
     };
 
-    let img = AnimObject::Image(
-        Img {
-            path: "test.png".to_string(),
-            size: vec2(800., 500.),
-            color: Color::new(1., 1., 1., 1.),
-            stretch: StretchMode::Fill,
-        },
+    let img = image(
         Transform::new(None, vec3(400., 250., 1.), 0., Vec2::ONE),
+        "test.png".to_string(),
+        vec2(800., 500.),
+        Color::new(1., 1., 1., 1.),
+        scal::anim_object::image::StretchMode::Fill,
     );
 
-    let img2 = AnimObject::Image(
-        Img {
-            path: "test.png".to_string(),
-            size: vec2(800., 500.),
-            color: Color::new(1., 1., 1., 1.),
-            stretch: StretchMode::Fit,
-        },
+    let img2 = image(
         Transform::new(None, vec3(800., 250., 1.), 0., Vec2::ONE),
+        "test.png".to_string(),
+        vec2(800., 500.),
+        Color::new(1., 1., 1., 1.),
+        scal::anim_object::image::StretchMode::Fit,
     );
 
-    let img_fit = AnimObject::Image(
-        Img {
-            path: "test.png".to_string(),
-            size: vec2(150., 200.),
-            color: Color::new(1., 1., 0.8, 1.),
-            stretch: StretchMode::Fit,
-        },
+    let img_fit = image(
         Transform::new(None, vec3(1600., 250., 0.), 0., Vec2::ONE),
+        "test.png".to_string(),
+        vec2(150., 200.),
+        Color::new(1., 1., 0.8, 1.),
+        scal::anim_object::image::StretchMode::Fit,
     );
+
     scal::run_loop(
         &handle,
         encoding_settings,
