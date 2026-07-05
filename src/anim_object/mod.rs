@@ -50,8 +50,9 @@ pub fn code(
         anim_reveal: 1.0,
         anim_spacing: 0.0,
         anim_line_start: 0,
-        anim_line_end: usize::MAX,
+        anim_line_end: 0,
         anim_style: CodeAnimationStyle::TypeWriter,
+        anim_spacing_accum: 0.0,
     }
 }
 

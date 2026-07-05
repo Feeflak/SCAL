@@ -33,38 +33,60 @@ pub fn generate_code_mesh(
     let mut vertices = Vec::new();
     let mut indices = Vec::new();
 
+    let layout_runs: Vec<_> = buffer.layout_runs().collect();
+
     // TypeWriter: pre-count total glyphs in animated range
     let total_animated_glyphs = if matches!(code.anim_style, CodeAnimationStyle::TypeWriter) {
-        buffer
-            .layout_runs()
-            .enumerate()
-            .filter(|(i, _)| *i >= line_start && *i < line_end)
-            .flat_map(|(_, r)| r.glyphs.iter())
-            .count()
+        let mut gl = 0usize;
+        let mut li = 0usize;
+        let mut ply: Option<f32> = None;
+        for run in &layout_runs {
+            let cur_y = run.line_y;
+            if let Some(prev) = ply {
+                if (cur_y - prev).abs() > line_height * 0.5 {
+                    li += 1;
+                }
+            }
+            ply = Some(cur_y);
+            if li >= line_start && li < line_end {
+                gl += run.glyphs.len();
+            }
+        }
+        gl
     } else {
         0
     };
     let mut animated_glyphs_emitted = 0usize;
 
-    for (run_idx, run) in buffer.layout_runs().enumerate() {
-        let after_animated = run_idx >= line_end;
-        let in_animated = run_idx >= line_start && run_idx < line_end;
+    let mut li: usize = 0;
+    let mut ply: Option<f32> = None;
+    for run in &layout_runs {
+        let cur_y = run.line_y;
+        if let Some(prev) = ply {
+            if (cur_y - prev).abs() > line_height * 0.5 {
+                li += 1;
+            }
+        }
+        ply = Some(cur_y);
 
-        let y_offset = if after_animated {
-            new_line_count as f32 * line_height * spacing
-        } else if in_animated {
-            (run_idx - line_start) as f32 * line_height * spacing
+        let after_animated = li >= line_end;
+        let in_animated = li >= line_start && li < line_end;
+
+        let y_offset = if in_animated {
+            (li - line_start) as f32 * line_height * (spacing - 1.0)
+        } else if after_animated && new_line_count > 0 {
+            -(new_line_count as f32 - 1.0) * line_height * (1.0 - spacing)
         } else {
             0.0
         };
 
         let line_visible = if in_animated {
-            let line_idx = run_idx - line_start;
+            let line_index = li - line_start;
             match code.anim_style {
                 CodeAnimationStyle::TypeWriter => true,
                 CodeAnimationStyle::Fold => {
                     let line_threshold = reveal * num_animated_lines as f32;
-                    (line_idx as f32) < line_threshold
+                    (line_index as f32) < line_threshold
                 }
             }
         } else {

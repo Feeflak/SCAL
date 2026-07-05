@@ -111,6 +111,7 @@ pub struct Code {
     pub anim_line_start: usize,
     pub anim_line_end: usize,
     pub anim_style: CodeAnimationStyle,
+    pub anim_spacing_accum: f32,
 }
 
 #[derive(Clone, Debug)]
@@ -178,8 +179,9 @@ impl Code {
             anim_reveal: 1.0,
             anim_spacing: 0.0,
             anim_line_start: 0,
-            anim_line_end: usize::MAX,
+            anim_line_end: 0,
             anim_style: CodeAnimationStyle::TypeWriter,
+            anim_spacing_accum: 0.0,
         }
     }
 
@@ -191,15 +193,29 @@ impl Code {
         self.lines.clear();
 
         let mut spans = highlighter.highlight_code(&self.source_code, &self.theme, &self.syntax)?;
-        let mut current_line = Vec::new();
+        let mut current_line: Vec<TextSpan> = Vec::new();
 
         while let Some(span) = spans.pop() {
             if span.value.contains('\n') {
-                current_line.push(span);
-
-                self.lines.push(TextLine {
-                    spans: std::mem::take(&mut current_line),
-                });
+                let parts: Vec<&str> = span.value.split('\n').collect();
+                for (i, part) in parts.iter().enumerate() {
+                    if !part.is_empty() {
+                        current_line.push(TextSpan {
+                            color: span.color,
+                            value: part.to_string(),
+                        });
+                    }
+                    if i < parts.len() - 1 {
+                        if !current_line.is_empty() {
+                            if let Some(last) = current_line.last_mut() {
+                                last.value.push('\n');
+                            }
+                            self.lines.push(TextLine {
+                                spans: std::mem::take(&mut current_line),
+                            });
+                        }
+                    }
+                }
             } else {
                 current_line.push(span);
             }

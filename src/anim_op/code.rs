@@ -1,5 +1,6 @@
 use std::ops::Range;
 
+use log::info;
 use uuid::Uuid;
 
 use crate::anim_object::text::code::{Code, CodeAnimationStyle};
@@ -11,11 +12,13 @@ fn code_mut(obj: &mut dyn std::any::Any) -> Option<&mut Code> {
 }
 
 fn insert_lines(source: &mut String, text: &str, from_line: usize) -> usize {
+    let text = text.trim_matches('\n');
     let mut lines: Vec<&str> = source.lines().collect();
     let insert_pos = from_line.min(lines.len());
     for (i, line) in text.lines().enumerate() {
         lines.insert(insert_pos + i, line);
     }
+    info!("lines: {lines:?}");
     *source = lines.join("\n");
     text.lines().count()
 }
@@ -35,6 +38,7 @@ fn remove_line_range(source: &mut String, start: usize, end: usize) {
             kept.push(line);
         }
     }
+
     *source = kept.join("\n");
 }
 
@@ -46,27 +50,35 @@ pub fn add_lines(
     curve: AnimationCurve,
     style: CodeAnimationStyle,
 ) -> Animation {
-    let new_line_count = text.lines().count();
+    let new_line_count = text.trim_matches('\n').lines().count();
 
     let anim_style = style.clone();
-    let start = Box::new(move |animator: &mut crate::animator::Animator, storage: &mut Vec<f32>| {
-        let obj = animator.get_object_mut(&uuid)?;
-        if let Some(code) = code_mut(obj.anim_data.as_any_mut()) {
-            insert_lines(&mut code.source_code, &text, from_line);
-            code.dirty = true;
-            code.anim_reveal = 0.0;
-            code.anim_spacing = 0.0;
-            code.anim_line_start = from_line;
-            code.anim_line_end = from_line + new_line_count;
-            code.anim_style = anim_style.clone();
-            storage.push(from_line as f32);
-        }
-        let _ = obj;
-        animator.regenerate_object_mesh(&uuid)?;
-        Ok(())
-    });
+    let start = Box::new(
+        move |animator: &mut crate::animator::Animator, storage: &mut Vec<f32>| {
+            let obj = animator.get_object_mut(&uuid)?;
+            if let Some(code) = code_mut(obj.anim_data.as_any_mut()) {
+                // Accumulate line count from any previous completed animation
+                let prev_count = code.anim_line_end.saturating_sub(code.anim_line_start);
+                code.anim_spacing_accum += prev_count as f32;
 
-    let update: Option<Box<dyn Fn(&mut crate::animator::Animator, f32, &mut Vec<f32>) -> anyhow::Result<()>>> = match style {
+                insert_lines(&mut code.source_code, &text, from_line);
+                code.dirty = true;
+                code.anim_reveal = 0.0;
+                code.anim_spacing = 0.0;
+                code.anim_line_start = from_line;
+                code.anim_line_end = from_line + new_line_count;
+                code.anim_style = anim_style.clone();
+                storage.push(from_line as f32);
+            }
+            let _ = obj;
+            animator.regenerate_object_mesh(&uuid)?;
+            Ok(())
+        },
+    );
+
+    let update: Option<
+        Box<dyn Fn(&mut crate::animator::Animator, f32, &mut Vec<f32>) -> anyhow::Result<()>>,
+    > = match style {
         CodeAnimationStyle::TypeWriter => Some(Box::new(move |animator, t, _storage| {
             let obj = animator.get_object_mut(&uuid)?;
             if let Some(code) = code_mut(obj.anim_data.as_any_mut()) {
@@ -81,7 +93,11 @@ pub fn add_lines(
                 }
                 log::debug!(
                     "TypeWriter add_lines t={:.4} reveal={:.4}->{:.4} spacing={:.4}->{:.4}",
-                    t, prev_reveal, code.anim_reveal, prev_spacing, code.anim_spacing
+                    t,
+                    prev_reveal,
+                    code.anim_reveal,
+                    prev_spacing,
+                    code.anim_spacing
                 );
             }
             let _ = obj;
@@ -97,7 +113,11 @@ pub fn add_lines(
                 code.anim_spacing = t;
                 log::debug!(
                     "Fold add_lines t={:.4} reveal={:.4}->{:.4} spacing={:.4}->{:.4}",
-                    t, prev_reveal, code.anim_reveal, prev_spacing, code.anim_spacing
+                    t,
+                    prev_reveal,
+                    code.anim_reveal,
+                    prev_spacing,
+                    code.anim_spacing
                 );
             }
             let _ = obj;
@@ -118,23 +138,27 @@ pub fn modify_line(
     style: CodeAnimationStyle,
 ) -> Animation {
     let anim_style = style.clone();
-    let start = Box::new(move |animator: &mut crate::animator::Animator, _storage: &mut Vec<f32>| {
-        let obj = animator.get_object_mut(&uuid)?;
-        if let Some(code) = code_mut(obj.anim_data.as_any_mut()) {
-            replace_line(&mut code.source_code, line, &new_text);
-            code.dirty = true;
-            code.anim_reveal = 0.0;
-            code.anim_spacing = 0.0;
-            code.anim_line_start = line as usize;
-            code.anim_line_end = line as usize + 1;
-            code.anim_style = anim_style.clone();
-        }
-        let _ = obj;
-        animator.regenerate_object_mesh(&uuid)?;
-        Ok(())
-    });
+    let start = Box::new(
+        move |animator: &mut crate::animator::Animator, _storage: &mut Vec<f32>| {
+            let obj = animator.get_object_mut(&uuid)?;
+            if let Some(code) = code_mut(obj.anim_data.as_any_mut()) {
+                replace_line(&mut code.source_code, line, &new_text);
+                code.dirty = true;
+                code.anim_reveal = 0.0;
+                code.anim_spacing = 0.0;
+                code.anim_line_start = line as usize;
+                code.anim_line_end = line as usize + 1;
+                code.anim_style = anim_style.clone();
+            }
+            let _ = obj;
+            animator.regenerate_object_mesh(&uuid)?;
+            Ok(())
+        },
+    );
 
-    let update: Option<Box<dyn Fn(&mut crate::animator::Animator, f32, &mut Vec<f32>) -> anyhow::Result<()>>> = match style {
+    let update: Option<
+        Box<dyn Fn(&mut crate::animator::Animator, f32, &mut Vec<f32>) -> anyhow::Result<()>>,
+    > = match style {
         CodeAnimationStyle::TypeWriter => Some(Box::new(move |animator, t, _storage| {
             let obj = animator.get_object_mut(&uuid)?;
             if let Some(code) = code_mut(obj.anim_data.as_any_mut()) {
@@ -171,25 +195,33 @@ pub fn remove_lines(
     let end_line = lines.end;
 
     let anim_style = style.clone();
-    let start = Box::new(move |animator: &mut crate::animator::Animator, storage: &mut Vec<f32>| {
-        let obj = animator.get_object_mut(&uuid)?;
-        if let Some(code) = code_mut(obj.anim_data.as_any_mut()) {
-            remove_line_range(&mut code.source_code, start_line as usize, end_line as usize);
-            code.dirty = true;
-            code.anim_reveal = 1.0;
-            code.anim_spacing = 1.0;
-            code.anim_line_start = start_line as usize;
-            code.anim_line_end = end_line as usize;
-            code.anim_style = anim_style.clone();
-            storage.push(start_line as f32);
-            storage.push(end_line as f32);
-        }
-        let _ = obj;
-        animator.regenerate_object_mesh(&uuid)?;
-        Ok(())
-    });
+    let start = Box::new(
+        move |animator: &mut crate::animator::Animator, storage: &mut Vec<f32>| {
+            let obj = animator.get_object_mut(&uuid)?;
+            if let Some(code) = code_mut(obj.anim_data.as_any_mut()) {
+                remove_line_range(
+                    &mut code.source_code,
+                    start_line as usize,
+                    end_line as usize,
+                );
+                code.dirty = true;
+                code.anim_reveal = 1.0;
+                code.anim_spacing = 1.0;
+                code.anim_line_start = start_line as usize;
+                code.anim_line_end = end_line as usize;
+                code.anim_style = anim_style.clone();
+                storage.push(start_line as f32);
+                storage.push(end_line as f32);
+            }
+            let _ = obj;
+            animator.regenerate_object_mesh(&uuid)?;
+            Ok(())
+        },
+    );
 
-    let update: Option<Box<dyn Fn(&mut crate::animator::Animator, f32, &mut Vec<f32>) -> anyhow::Result<()>>> = match style {
+    let update: Option<
+        Box<dyn Fn(&mut crate::animator::Animator, f32, &mut Vec<f32>) -> anyhow::Result<()>>,
+    > = match style {
         CodeAnimationStyle::TypeWriter => Some(Box::new(move |animator, t, _storage| {
             let obj = animator.get_object_mut(&uuid)?;
             if let Some(code) = code_mut(obj.anim_data.as_any_mut()) {
