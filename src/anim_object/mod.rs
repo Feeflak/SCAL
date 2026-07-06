@@ -56,6 +56,8 @@ pub fn code(
         lines,
         dirty: true,
         padding,
+        show_line_numbers: false,
+        line_number_color: Color::new(0.5, 0.5, 0.5, 0.6),
         anim_reveal: 1.0,
         anim_spacing: 0.0,
         anim_line_start: 0,

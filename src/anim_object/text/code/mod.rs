@@ -108,6 +108,8 @@ pub struct Code {
     pub lines: Vec<TextLine>,
     pub dirty: bool,
     pub padding: f32,
+    pub show_line_numbers: bool,
+    pub line_number_color: crate::types::Color,
     pub anim_reveal: f32,
     pub anim_spacing: f32,
     pub anim_line_start: usize,
@@ -181,6 +183,8 @@ impl Code {
             lines: vec![],
             dirty: true,
             padding,
+            show_line_numbers: false,
+            line_number_color: crate::types::Color::new(0.5, 0.5, 0.5, 0.6),
             anim_reveal: 1.0,
             anim_spacing: 0.0,
             anim_line_start: 0,
@@ -262,7 +266,12 @@ impl AnimObjectTrait for Code {
             .map(|l| l.len())
             .max()
             .unwrap_or(1);
-        let width = max_visible_line_width as f32 * self.font_size * 0.6;
+        let mut gutter_width = 0.0;
+        if self.show_line_numbers {
+            let digits = total_lines.ilog10() as usize + 1;
+            gutter_width = (digits as f32 + 1.0) * self.font_size * 0.6;
+        }
+        let width = max_visible_line_width as f32 * self.font_size * 0.6 + gutter_width;
         glam::vec2(width, height) + vec2(p, p)
     }
     fn generate_mesh(&mut self, mgr: &mut crate::anim_object::text::TextManager) -> MeshResult {

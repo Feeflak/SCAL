@@ -123,7 +123,22 @@ impl TextManager {
         // Keep the backing strings alive while set_rich_text consumes them.
         let mut owned_spans: Vec<(String, Attrs)> = Vec::new();
 
+        let line_count = code.lines.len();
+        let gutter_digits = if line_count > 0 {
+            (line_count.ilog10() + 1) as usize
+        } else {
+            1
+        };
         for (line_index, line) in code.lines.iter().enumerate() {
+            if code.show_line_numbers {
+                let num_str = format!("{:>w$} ", line_index + 1, w = gutter_digits);
+                owned_spans.push((
+                    num_str,
+                    Attrs::new()
+                        .family(Family::Name(&code.font_family))
+                        .color(code.line_number_color.into()),
+                ));
+            }
             for span in &line.spans {
                 owned_spans.push((
                     span.value.clone(),

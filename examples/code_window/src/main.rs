@@ -61,7 +61,7 @@ async fn main() -> Result<()> {
     let curve = AnimationCurve::Linear;
 
     // Code object (keep reference for animation)
-    let code = Code::new(
+    let mut code = Code::new(
         "fn main() {\n    println!(\"Hello, world!\");\n}\n".to_string(),
         Syntax::Rust,
         THEME.to_owned(),
@@ -71,6 +71,7 @@ async fn main() -> Result<()> {
         transform(Vec3::ZERO),
         24.0,
     );
+    code.show_line_numbers = true;
 
     let circle_r = 12.0;
 
