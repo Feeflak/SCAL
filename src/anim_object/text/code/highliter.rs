@@ -46,11 +46,9 @@ impl CodeHighlighter {
                             }
                         },
                         None => {
-                            if value
-                                .split_whitespace()
-                                .collect::<String>()
-                                .chars()
-                                .all(|c| c.is_ascii_punctuation())
+                            if ["=>", "_", ",", ";", "."]
+                                .iter()
+                                .any(|pat| value.contains(pat))
                             {
                                 syntax_theme
                                     .color_for_name("punctuation")
