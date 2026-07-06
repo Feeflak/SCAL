@@ -61,12 +61,14 @@ pub fn add_lines(
                 let prev_count = code.anim_line_end.saturating_sub(code.anim_line_start);
                 code.anim_spacing_accum += prev_count as f32;
 
+                let original_line_count = code.source_code.lines().count();
+                let actual_insert_pos = from_line.min(original_line_count);
                 insert_lines(&mut code.source_code, &text, from_line);
                 code.dirty = true;
                 code.anim_reveal = 0.0;
                 code.anim_spacing = 0.0;
-                code.anim_line_start = from_line;
-                code.anim_line_end = from_line + new_line_count;
+                code.anim_line_start = actual_insert_pos;
+                code.anim_line_end = actual_insert_pos + new_line_count;
                 code.anim_style = anim_style.clone();
                 storage.push(from_line as f32);
             }
