@@ -246,7 +246,14 @@ impl AnimObjectTrait for Code {
         let visible_animated = (animated_count as f32 * self.anim_reveal) as usize;
         let visible_lines = (base_count + visible_animated).max(1);
         let height = visible_lines as f32 * self.font_size * 1.2;
-        let width = self.source_code.len() as f32 * self.font_size * 0.5;
+        let lines: Vec<&str> = self.source_code.lines().collect();
+        let max_visible_line_width = lines
+            .iter()
+            .take(visible_lines)
+            .map(|l| l.len())
+            .max()
+            .unwrap_or(1);
+        let width = max_visible_line_width as f32 * self.font_size * 0.6;
         glam::vec2(width, height)
     }
     fn generate_mesh(&mut self, mgr: &mut crate::anim_object::text::TextManager) -> MeshResult {

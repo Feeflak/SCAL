@@ -202,7 +202,7 @@ impl Renderer {
                     object.render_data.indices_base_index as u32
                         ..(object.render_data.indices_base_index + object.render_data.indices_count)
                             as u32,
-                    0,
+                    object.render_data.vertices_base_index as i32,
                     0..1,
                 );
             }
