@@ -18,10 +18,22 @@ const LEVEL_FILTER: LevelFilter = LevelFilter::Info;
 const THEME: LazyLock<Theme> = LazyLock::new(|| {
     Theme::from_base16(Base16 {
         colors: [
-            0x11121d.into(), 0x1A1B2A.into(), 0x212234.into(), 0x282c34.into(),
-            0x4a5057.into(), 0xa0a8cd.into(), 0xa0a8cd.into(), 0xa0a8cd.into(),
-            0xee6d85.into(), 0xf6955b.into(), 0xd7a65f.into(), 0x95c561.into(),
-            0x38a89d.into(), 0x7199ee.into(), 0xa485dd.into(), 0x773440.into(),
+            0x11121d.into(),
+            0x1A1B2A.into(),
+            0x212234.into(),
+            0x282c34.into(),
+            0x4a5057.into(),
+            0xa0a8cd.into(),
+            0xa0a8cd.into(),
+            0xa0a8cd.into(),
+            0xee6d85.into(),
+            0xf6955b.into(),
+            0xd7a65f.into(),
+            0x95c561.into(),
+            0x38a89d.into(),
+            0x7199ee.into(),
+            0xa485dd.into(),
+            0x773440.into(),
         ],
     })
 });
@@ -41,8 +53,8 @@ async fn main() -> Result<()> {
         camera: Camera::new(CANVAS_SIZE, Vec2::ZERO, 1.),
         background_color: Color::new(0.8, 0.8, 0.8, 0.),
         buffer_count: 3,
-        width: 1920,
-        height: 1080,
+        width: 3840,
+        height: 2160,
         fps: 60,
     };
     let curve = AnimationCurve::Linear;
@@ -55,29 +67,30 @@ async fn main() -> Result<()> {
         "SF Pro Display Bold".to_string(),
         scal::anim_object::text::Align::Left,
         20.,
-        Transform::new(None, Vec3::ZERO, 0., Vec2::ONE),
+        transform(Vec3::ZERO),
+        24.0,
     );
 
     let circle_r = 12.0;
 
     // Traffic lights + title text arranged in a Row inside the title bar
     let c1 = circle(
-        Transform::new(None, Vec3::ZERO, 0., Vec2::ONE),
+        transform(Vec3::ZERO),
         circle_r,
         Color::new(1.0, 0.373, 0.341, 1.0),
     );
     let c2 = circle(
-        Transform::new(None, Vec3::ZERO, 0., Vec2::ONE),
+        transform(Vec3::ZERO),
         circle_r,
         Color::new(1.0, 0.741, 0.180, 1.0),
     );
     let c3 = circle(
-        Transform::new(None, Vec3::ZERO, 0., Vec2::ONE),
+        transform(Vec3::ZERO),
         circle_r,
-        Color::new(1.0, 0.373, 0.341, 1.0),
+        Color::new(0.337, 1., 0.337, 1.0),
     );
     let title_text = text(
-        Transform::new(None, Vec3::ZERO, 0., Vec2::ONE),
+        transform(Vec3::ZERO),
         "src/main.rs".to_string(),
         "SF Pro Display Bold".to_string(),
         scal::anim_object::text::Align::Left,
@@ -92,12 +105,17 @@ async fn main() -> Result<()> {
         vec![c1.into(), c2.into(), c3.into(), title_text.into()],
         LayoutBackground {
             color: Color::new(0.106, 0.106, 0.106, 1.0),
-            corner_radius: 0.5,
+            corner_radius: 5.,
         },
         LayoutDir::Row,
         Alignment::Center,
         8.0,
-        0.0, 0.0, 28.0, 0.0,
+        -28.0,
+        -28.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
     );
 
     // Outer Column layout: title_layout background + code
@@ -107,12 +125,17 @@ async fn main() -> Result<()> {
         vec![title_layout.into(), code.clone().into()],
         LayoutBackground {
             color: Color::new(0.176, 0.176, 0.176, 1.0),
-            corner_radius: 0.5,
+            corner_radius: 5.,
         },
         LayoutDir::Column,
         Alignment::Start,
+        25.0,
         0.0,
-        0.0, 24.0, 24.0, 24.0,
+        0.0,
+        0.0,
+        0.0,
+        800.0,
+        800.0,
     );
 
     scal::run_loop(

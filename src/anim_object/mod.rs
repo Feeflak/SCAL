@@ -42,6 +42,7 @@ pub fn code(
     font_size: f32,
     syntax: Syntax,
     lines: Vec<TextLine>,
+    padding: f32,
 ) -> Code {
     Code {
         id: transform.uuid,
@@ -54,6 +55,7 @@ pub fn code(
         syntax,
         lines,
         dirty: true,
+        padding,
         anim_reveal: 1.0,
         anim_spacing: 0.0,
         anim_line_start: 0,

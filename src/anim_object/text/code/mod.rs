@@ -4,7 +4,7 @@ pub mod mesh;
 pub mod theme;
 use anyhow::{Context, Result};
 use cosmic_text::Color;
-use glam::Vec2;
+use glam::{Vec2, vec2};
 use tree_sitter_highlight::HighlightConfiguration;
 
 use uuid::Uuid;
@@ -107,6 +107,7 @@ pub struct Code {
     pub syntax: Syntax,
     pub lines: Vec<TextLine>,
     pub dirty: bool,
+    pub padding: f32,
     pub anim_reveal: f32,
     pub anim_spacing: f32,
     pub anim_line_start: usize,
@@ -166,6 +167,7 @@ impl Code {
         alignment: Align,
         font_size: f32,
         transform: Transform,
+        padding: f32,
     ) -> Self {
         Self {
             id: transform.uuid,
@@ -178,6 +180,7 @@ impl Code {
             font_size,
             lines: vec![],
             dirty: true,
+            padding,
             anim_reveal: 1.0,
             anim_spacing: 0.0,
             anim_line_start: 0,
@@ -242,8 +245,9 @@ impl AnimObjectTrait for Code {
         &mut self.transform
     }
     fn size(&self) -> Vec2 {
+        let p = self.padding * 2.0;
         if let Some(cached) = self.cached_size {
-            return cached;
+            return cached + vec2(p, p);
         }
         let total_lines = self.source_code.lines().count().max(1);
         let animated_count = self.anim_line_end.saturating_sub(self.anim_line_start);
@@ -259,7 +263,7 @@ impl AnimObjectTrait for Code {
             .max()
             .unwrap_or(1);
         let width = max_visible_line_width as f32 * self.font_size * 0.6;
-        glam::vec2(width, height)
+        glam::vec2(width, height) + vec2(p, p)
     }
     fn generate_mesh(&mut self, mgr: &mut crate::anim_object::text::TextManager) -> MeshResult {
         crate::anim_object::text::code::mesh::generate_code_mesh(mgr, self.transform.uuid, self)

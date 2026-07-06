@@ -135,6 +135,7 @@ pub fn code_window(
             0.,
             Vec2::ONE,
         ),
+        0.0,
     );
 
     CodeWindow {
