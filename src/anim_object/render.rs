@@ -146,6 +146,14 @@ impl Animator {
             return Ok(());
         }
 
+        // If this container's background is itself a child of another container
+        // (nested layout), its size is managed by the parent — skip independent resize.
+        if let Ok(bg) = self.get_object(&container.background_uuid) {
+            if bg.anim_data.layout_parent().is_some() {
+                return Ok(());
+            }
+        }
+
         let sizes: Vec<Vec2> = match container.child_uuids.iter()
             .map(|id| self.get_object(id).map(|o| o.anim_data.size()))
             .collect::<Result<Vec<_>>>() {
