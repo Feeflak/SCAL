@@ -49,15 +49,16 @@ impl GlyphAtlas {
             None
         }
     }
-    pub fn new() -> Self {
+    pub fn new(scale: f32) -> Self {
+        let size = (1024.0 * scale).ceil() as usize;
         Self {
             glyphs: HashMap::new(),
             dirty: true,
 
-            width: 1024,
-            height: 1024,
+            width: size as u32,
+            height: size as u32,
 
-            pixels: vec![0; 1024 * 1024],
+            pixels: vec![0; size * size],
 
             cursor_x: 0,
             cursor_y: 0,

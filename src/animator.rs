@@ -67,7 +67,7 @@ pub struct FrameAnimationOutput<'a> {
     pub glyph_update_data: Option<GlyphUpdateData<'a>>,
 }
 impl Animator {
-    pub fn new(mut animations: Vec<AnimOP>, fps: u32, camera: Camera) -> Result<Self> {
+    pub fn new(mut animations: Vec<AnimOP>, fps: u32, camera: Camera, text_scale: f32) -> Result<Self> {
         let first_anim = animations
             .pop()
             .take()
@@ -75,7 +75,7 @@ impl Animator {
         debug!("first_anim: {first_anim:?}");
         Ok(Self {
             camera,
-            text_manager: TextManager::new(),
+            text_manager: TextManager::new(text_scale),
             fps,
             anim_state: AnimationState::new(first_anim)?,
             animations_left: animations,

@@ -285,4 +285,5 @@ pub struct RenderingSettings {
     pub height: u32,
     pub fps: u32,
     pub buffer_count: u32,
+    pub text_resolution_multiplier: f32,
 }

@@ -7,7 +7,8 @@ pub struct TextRenderer {
     pub bind_group: wgpu::BindGroup,
 }
 impl TextRenderer {
-    pub fn new(device: &wgpu::Device) -> Self {
+    pub fn new(device: &wgpu::Device, scale: f32) -> Self {
+        let atlas_size = (1024.0 * scale).ceil() as u32;
         let texture_bind_group_layout =
             device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
                 label: Some("text_texture_bind_group_layout"),
@@ -33,8 +34,8 @@ impl TextRenderer {
         let texture = device.create_texture(&wgpu::TextureDescriptor {
             label: Some("glyph atlas"),
             size: wgpu::Extent3d {
-                width: 1024,
-                height: 1024,
+                width: atlas_size,
+                height: atlas_size,
                 depth_or_array_layers: 1,
             },
             mip_level_count: 1,

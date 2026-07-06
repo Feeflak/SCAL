@@ -92,17 +92,19 @@ pub struct TextManager {
     pub font_system: FontSystem,
     pub atlas: atlas::GlyphAtlas,
     pub layouts: HashMap<Uuid, Buffer>,
+    pub scale: f32,
 }
 
 impl TextManager {
-    pub fn new() -> Self {
+    pub fn new(scale: f32) -> Self {
         Self {
             layouts: HashMap::new(),
             code_highlighter: CodeHighlighter {
                 highlighter: Highlighter::new(),
             },
             font_system: FontSystem::new(),
-            atlas: atlas::GlyphAtlas::new(),
+            atlas: atlas::GlyphAtlas::new(scale),
+            scale,
         }
     }
     pub fn layout_code(&mut self, code: &mut Code, id: Uuid) -> Buffer {

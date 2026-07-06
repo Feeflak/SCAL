@@ -11,22 +11,23 @@ pub fn generate_text_mesh(
     text: &mut Text,
 ) -> (Vec<Vertex>, Vec<u32>, PipelineKind) {
     let buffer = manager.layout(text);
+    let scale = manager.scale;
 
     let mut vertices = vec![];
     let mut indices = vec![];
 
     for run in buffer.layout_runs() {
         for glyph in run.glyphs {
-            let physical = glyph.physical((0., 0.), 1.0);
+            let physical = glyph.physical((0., 0.), scale);
 
             let glyph_info = manager
                 .atlas
                 .get_or_insert(&mut manager.font_system, physical.cache_key);
 
-            let x = glyph.x + glyph_info.bearing.x;
-            let y = run.line_y - glyph_info.bearing.y;
-            let w = glyph_info.width;
-            let h = glyph_info.height;
+            let x = glyph.x + glyph_info.bearing.x / scale;
+            let y = run.line_y - glyph_info.bearing.y / scale;
+            let w = glyph_info.width / scale;
+            let h = glyph_info.height / scale;
 
             let base = vertices.len() as u32;
 

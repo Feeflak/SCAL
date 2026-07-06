@@ -19,6 +19,7 @@ pub fn generate_code_mesh(
     code.update_highlight_if_dirty(&mut manager.code_highlighter)
         .expect("code highlighting did not succeed");
     let buffer = manager.layout_code(code, id);
+    let scale = manager.scale;
 
     let reveal = code.anim_reveal;
     let spacing = code.anim_spacing;
@@ -108,17 +109,17 @@ pub fn generate_code_mesh(
                 animated_glyphs_emitted += 1;
             }
 
-            let physical = glyph.physical((0.0, 0.0), 1.0);
+            let physical = glyph.physical((0.0, 0.0), scale);
 
             let glyph_info = manager
                 .atlas
                 .get_or_insert(&mut manager.font_system, physical.cache_key);
 
-            let x = glyph.x + glyph_info.bearing.x;
-            let y = run.line_y - glyph_info.bearing.y + y_offset;
+            let x = glyph.x + glyph_info.bearing.x / scale;
+            let y = run.line_y - glyph_info.bearing.y / scale + y_offset;
 
-            let w = glyph_info.width;
-            let h = glyph_info.height;
+            let w = glyph_info.width / scale;
+            let h = glyph_info.height / scale;
 
             if h <= 0.0 {
                 continue;

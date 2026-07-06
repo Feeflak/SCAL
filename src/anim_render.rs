@@ -62,7 +62,7 @@ pub async fn render_animations(
     let (pipelines, mut text_renderer) = {
         let mut pipelines = crate::anim_object::render::get_pipelines(&device);
 
-        let text_renderer = TextRenderer::new(&device);
+        let text_renderer = TextRenderer::new(&device, rendering_settings.text_resolution_multiplier);
         pipelines
             .get_mut(&PipelineKind::Text)
             .expect("there was no text pipeline")
@@ -74,6 +74,7 @@ pub async fn render_animations(
         animations,
         rendering_settings.fps,
         rendering_settings.camera,
+        rendering_settings.text_resolution_multiplier,
     )
     .context("while initiating the animator")?;
     while let Some(frame_animation_data) = animator
