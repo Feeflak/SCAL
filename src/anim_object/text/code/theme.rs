@@ -28,6 +28,13 @@ impl SyntaxTheme {
             default_color: base.colors[5],
         }
     }
+
+    pub fn color_for_name(&self, name: &str) -> Option<Color> {
+        self.highlight_names
+            .iter()
+            .position(|&n| n == name)
+            .and_then(|idx| self.highlight_colors.get(idx).copied())
+    }
 }
 
 #[derive(Debug, Clone)]

@@ -45,7 +45,21 @@ impl CodeHighlighter {
                                 syntax_theme.default_color
                             }
                         },
-                        None => syntax_theme.default_color,
+                        None => {
+                            if value
+                                .split_whitespace()
+                                .collect::<String>()
+                                .chars()
+                                .all(|c| c.is_ascii_punctuation())
+                            {
+                                syntax_theme
+                                    .color_for_name("punctuation")
+                                    .or_else(|| syntax_theme.color_for_name("operator"))
+                                    .unwrap_or(syntax_theme.default_color)
+                            } else {
+                                syntax_theme.default_color
+                            }
+                        }
                     };
 
                     output.push(TextSpan {
