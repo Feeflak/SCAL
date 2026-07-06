@@ -148,7 +148,16 @@ async fn main() -> Result<()> {
             result.instantiate(),
             wait(1.0),
             code.add_lines(
-                "\nfn fib(n: u32) -> u32 {\n    match n {\n        0 => 0,\n        1 => 1,\n        _ => fib(n-1) + fib(n-2),\n    }\n}\n".into(),
+                r#"
+fn fib(n: u32) -> u32 {
+    match n {
+        0 => 0,
+        1 => 1,
+        _ => fib(n - 1) + fib(n - 2),
+    }
+}
+                "#
+                .into(),
                 4,
                 curve.clone(),
                 5.0,
