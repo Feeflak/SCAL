@@ -2,10 +2,7 @@ use anyhow::{Context, Result};
 use log::warn;
 use tree_sitter_highlight::{Highlight, HighlightEvent};
 
-use crate::{
-    anim_object::text::code::{Syntax, TextSpan, theme::Theme},
-    types::Color,
-};
+use crate::anim_object::text::code::{Syntax, TextSpan, theme::Theme};
 
 pub struct CodeHighlighter {
     pub highlighter: tree_sitter_highlight::Highlighter,
@@ -38,22 +35,23 @@ impl CodeHighlighter {
                 HighlightEvent::Source { start, end } => {
                     let value = source_code[start..end].to_string();
 
-                    let color = match current_highlight
-                        .and_then(|idx| syntax_theme.highlight_colors.get(idx))
-                        .copied()
-                    {
-                        Some(c) => c,
-                        None => {
-                            warn!("there was no highlit color for: {value}, using white");
-                            Color::WHITE
-                        }
+                    let color = match current_highlight {
+                        Some(idx) => match syntax_theme.highlight_colors.get(idx).copied() {
+                            Some(c) => c,
+                            None => {
+                                warn!(
+                                    "no highlight color for highlight index {idx}, using default"
+                                );
+                                syntax_theme.default_color
+                            }
+                        },
+                        None => syntax_theme.default_color,
                     };
 
                     output.push(TextSpan {
                         color: color.into(),
                         value,
                     });
-
                 }
 
                 HighlightEvent::HighlightStart(Highlight(index)) => {

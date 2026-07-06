@@ -11,6 +11,7 @@ pub struct HighlightSpec {
 pub struct SyntaxTheme {
     pub highlight_names: Vec<&'static str>,
     pub highlight_colors: Vec<Color>,
+    pub default_color: Color,
 }
 
 impl SyntaxTheme {
@@ -24,6 +25,7 @@ impl SyntaxTheme {
         Self {
             highlight_names: spec.names,
             highlight_colors: colors,
+            default_color: base.colors[5],
         }
     }
 }

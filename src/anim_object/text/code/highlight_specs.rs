@@ -12,49 +12,85 @@ pub fn all_specs() -> Vec<(Syntax, HighlightSpec)> {
 pub fn rust_spec() -> HighlightSpec {
     HighlightSpec {
         names: vec![
+            "attribute",
             "comment",
-            "keyword",
-            "keyword.function",
-            "function",
-            "method",
-            "type",
-            "string",
-            "number",
             "constant",
             "constant.builtin",
+            "constructor",
+            "embedded",
+            "escape",
+            "function",
+            "function.builtin",
+            "function.macro",
+            "keyword",
+            "keyword.function",
+            "keyword.operator",
+            "keyword.return",
+            "label",
+            "lifetime",
+            "macro",
+            "method",
+            "module",
+            "namespace",
+            "number",
+            "operator",
+            "property",
+            "field",
+            "punctuation",
+            "punctuation.bracket",
+            "punctuation.delimiter",
+            "punctuation.special",
+            "string",
+            "string.special",
+            "type",
+            "type.builtin",
             "variable",
             "variable.builtin",
-            "property",
-            "operator",
-            "punctuation",
-            "attribute",
-            "macro",
-            "lifetime",
+            "variable.parameter",
             "self",
         ],
+
         indices: vec![
+            12, // attribute
             3,  // comment
-            8,  // keyword
-            8,  // keyword.function
-            13, // function
-            13, // method
-            14, // type
-            10, // string
-            9,  // number
             11, // constant
             11, // constant.builtin
+            14, // constructor
+            5,  // embedded
+            10, // escape
+            13, // function
+            13, // function.builtin
+            13, // function.macro
+            8,  // keyword
+            8,  // keyword.function
+            8,  // keyword.operator
+            8,  // keyword.return
+            12, // label
+            8,  // lifetime
+            13, // macro
+            13, // method
+            14, // module
+            14, // namespace
+            9,  // number
+            15, // operator
+            5,  // property
+            5,  // field
+            15, // punctuation
+            5,  // punctuation.bracket
+            15, // punctuation.delimiter
+            15, // punctuation.special
+            10, // string
+            10, // string.special
+            14, // type
+            14, // type.builtin
             5,  // variable
             5,  // variable.builtin
-            6,  // property
-            7,  // operator
-            4,  // punctuation
-            12, // attribute
-            13, // macro
-            8,  // lifetime
+            5,  // variable.parameter
             5,  // self
         ],
     }
 }
+
 pub fn nix_spec() -> HighlightSpec {
     HighlightSpec {
         names: vec![
