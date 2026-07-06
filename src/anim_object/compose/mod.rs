@@ -155,6 +155,43 @@ fn compute_bg_center(position: Vec3, w: f32, h: f32, pin: PinPoint) -> Vec3 {
     }
 }
 
+fn relayout_nested_children(bg_size: Vec2, container: &LayoutContainer, items: &mut [AnimObj]) {
+    let content_left = -bg_size.x / 2.0 + container.padding_left;
+    let content_right = bg_size.x / 2.0 - container.padding_right;
+    let content_bottom = bg_size.y / 2.0 - container.padding_bottom;
+    let content_top = -bg_size.y / 2.0 + container.padding_top;
+
+    let mut y = content_top;
+    let mut x = content_left;
+
+    for (i, child) in items.iter_mut().enumerate() {
+        let s = child.size();
+        let (child_x, child_y) = match container.direction {
+            LayoutDir::Column => {
+                let cx = match container.alignment {
+                    Alignment::Start => content_left + s.x / 2.0,
+                    Alignment::Center => 0.0,
+                    Alignment::End => content_right - s.x / 2.0,
+                };
+                let cy = y + s.y / 2.0;
+                y += s.y + container.gap;
+                (cx, cy)
+            }
+            LayoutDir::Row => {
+                let cx = x + s.x / 2.0;
+                let cy = match container.alignment {
+                    Alignment::Start => content_bottom - s.y / 2.0,
+                    Alignment::Center => 0.0,
+                    Alignment::End => content_top + s.y / 2.0,
+                };
+                x += s.x + container.gap;
+                (cx, cy)
+            }
+        };
+        child.transform_mut().position = vec3(child_x, child_y, 0.0);
+    }
+}
+
 pub fn layout(
     position: Vec3,
     pin_point: PinPoint,
@@ -169,12 +206,12 @@ pub fn layout(
     min_height: f32,
 ) -> LayoutResult {
     let mut anim_items = Vec::with_capacity(items.len());
-    let mut nested_ops = Vec::new();
+    let mut nested_layouts: Vec<LayoutResult> = Vec::new();
     for item in items {
         match item {
             LayoutItem::Object(obj) => anim_items.push(obj),
             LayoutItem::Layout(lr) => {
-                nested_ops.push(lr.instantiate_children());
+                nested_layouts.push(lr.clone());
                 anim_items.push(lr.background);
             }
         }
@@ -206,6 +243,27 @@ pub fn layout(
     let container_uuid = container_inner.id;
     let container_obj = AnimObj(Box::new(container_inner));
 
+    // Stretch Rectangle children to fill total width and center them at background center
+    let mut sizes = sizes;
+    for (i, item) in anim_items.iter_mut().enumerate() {
+        if let Some(rect) = item.as_any_mut().downcast_mut::<Rectangle>() {
+            rect.size.x = total_w;
+        }
+        sizes[i] = item.size();
+    }
+    // Relayout nested containers whose background was stretched
+    for nested in &mut nested_layouts {
+        let bg_size = {
+            let bg = anim_items.iter().find(|a| a.uuid() == nested.background.uuid());
+            match bg.and_then(|b| b.as_any().downcast_ref::<Rectangle>()) {
+                Some(r) => r.size,
+                None => continue,
+            }
+        };
+        let container = nested.container.as_any().downcast_ref::<LayoutContainer>().unwrap().clone();
+        relayout_nested_children(bg_size, &container, &mut nested.items);
+    }
+
     let content_top = -total_h / 2.0 + padding_top;
     let content_left = -total_w / 2.0 + padding_left;
     let content_right = total_w / 2.0 - padding_right;
@@ -216,10 +274,15 @@ pub fn layout(
             let mut y = content_top;
             for (i, item) in anim_items.iter_mut().enumerate() {
                 let s = sizes[i];
-                let x = match alignment {
-                    Alignment::Start => content_left + s.x / 2.0,
-                    Alignment::Center => 0.0,
-                    Alignment::End => content_right - s.x / 2.0,
+                let is_stretched = item.as_any().downcast_ref::<Rectangle>().is_some();
+                let x = if is_stretched {
+                    0.0
+                } else {
+                    match alignment {
+                        Alignment::Start => content_left + s.x / 2.0,
+                        Alignment::Center => 0.0,
+                        Alignment::End => content_right - s.x / 2.0,
+                    }
                 };
                 item.transform_mut().position = vec3(x, y + s.y / 2.0, 0.0);
                 item.transform_mut().parent = Some(bg_uuid);
@@ -231,10 +294,15 @@ pub fn layout(
             let mut x = content_left;
             for (i, item) in anim_items.iter_mut().enumerate() {
                 let s = sizes[i];
-                let y = match alignment {
-                    Alignment::Start => content_bottom - s.y / 2.0,
-                    Alignment::Center => 0.0,
-                    Alignment::End => content_top + s.y / 2.0,
+                let is_stretched = item.as_any().downcast_ref::<Rectangle>().is_some();
+                let y = if is_stretched {
+                    0.0
+                } else {
+                    match alignment {
+                        Alignment::Start => content_bottom - s.y / 2.0,
+                        Alignment::Center => 0.0,
+                        Alignment::End => content_top + s.y / 2.0,
+                    }
                 };
                 item.transform_mut().position = vec3(x + s.x / 2.0, y, 0.0);
                 item.transform_mut().parent = Some(bg_uuid);
@@ -244,6 +312,7 @@ pub fn layout(
         }
     }
 
+    let nested_ops: Vec<AnimOP> = nested_layouts.iter().map(|n| n.instantiate_children()).collect();
     LayoutResult {
         background: bg,
         container: container_obj,

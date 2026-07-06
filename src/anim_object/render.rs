@@ -25,6 +25,8 @@ pub enum PipelineKind {
 }
 impl Animator {
     pub fn add_anim_object(&mut self, mut anim_data: AnimObj) -> Result<()> {
+        let id = anim_data.uuid();
+
         if let Some(container) = anim_data.as_any().downcast_ref::<LayoutContainer>() {
             self.layout_containers.insert(container.id, container.clone());
         }
@@ -57,8 +59,6 @@ impl Animator {
         self.vertices.append(&mut render_data.vertices.clone());
         self.indices.append(&mut indices);
 
-        let id = anim_data.uuid();
-
         let obj_idx = self.objects.len();
         self.objects_lookup.insert(id, obj_idx);
         self.objects.push(Object {
@@ -67,6 +67,10 @@ impl Animator {
         });
 
         debug!("add_anim_object- objects:{:?}", self.objects);
+
+        // Reconcile estimated layout positions with actual mesh sizes
+        let _ = self.maybe_resize_layout(&id);
+
         Ok(())
     }
 
@@ -142,9 +146,12 @@ impl Animator {
             return Ok(());
         }
 
-        let sizes: Vec<Vec2> = container.child_uuids.iter()
+        let sizes: Vec<Vec2> = match container.child_uuids.iter()
             .map(|id| self.get_object(id).map(|o| o.anim_data.size()))
-            .collect::<Result<Vec<_>>>()?;
+            .collect::<Result<Vec<_>>>() {
+            Ok(s) => s,
+            Err(_) => return Ok(()),
+        };
         let max_w = sizes.iter().map(|s| s.x).fold(0.0f32, f32::max);
         let total_h: f32 = sizes.iter().map(|s| s.y).sum();
 
@@ -210,12 +217,17 @@ impl Animator {
                 }
             };
             let obj = self.get_object_mut(child_id)?;
-            obj.anim_data.transform_mut().position.x = child_x;
+            let is_stretched = obj.anim_data.as_any().downcast_ref::<Rectangle>().is_some();
+            obj.anim_data.transform_mut().position.x = if is_stretched {
+                0.0
+            } else {
+                child_x
+            };
             obj.anim_data.transform_mut().position.y = child_y;
 
             let mut regen = false;
             if let Some(rect) = obj.anim_data.as_any_mut().downcast_mut::<Rectangle>() {
-                rect.size.x = max_w;
+                rect.size.x = new_w;
                 regen = true;
             }
             if regen {
@@ -245,9 +257,12 @@ impl Animator {
             bg_size = rect.size;
         }
 
-        let sizes: Vec<Vec2> = container.child_uuids.iter()
+        let sizes: Vec<Vec2> = match container.child_uuids.iter()
             .map(|id| self.get_object(id).map(|o| o.anim_data.size()))
-            .collect::<Result<Vec<_>>>()?;
+            .collect::<Result<Vec<_>>>() {
+            Ok(s) => s,
+            Err(_) => return Ok(()),
+        };
         let max_w = bg_size.x - container.padding_left - container.padding_right;
 
         let content_left = -bg_size.x / 2.0 + container.padding_left;
