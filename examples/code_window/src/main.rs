@@ -56,6 +56,7 @@ async fn main() -> Result<()> {
         width: 3840,
         height: 2160,
         fps: 60,
+        text_resolution_multiplier: 2.0,
     };
     let curve = AnimationCurve::Linear;
 
@@ -112,8 +113,8 @@ async fn main() -> Result<()> {
         8.0,
         -28.0,
         -28.0,
-        0.0,
-        0.0,
+        25.0,
+        25.0,
         0.0,
         0.0,
     );
@@ -134,7 +135,7 @@ async fn main() -> Result<()> {
         0.0,
         0.0,
         0.0,
-        800.0,
+        1200.0,
         800.0,
     );
 
@@ -149,7 +150,7 @@ async fn main() -> Result<()> {
                 "\nfn fib(n: u32) -> u32 {\n    match n {\n        0 => 0,\n        1 => 1,\n        _ => fib(n-1) + fib(n-2),\n    }\n}\n".into(),
                 4,
                 curve.clone(),
-                3.0,
+                5.0,
                 CodeAnimationStyle::TypeWriter,
             ),
             wait(1.0),

@@ -29,6 +29,7 @@ async fn main() -> Result<()> {
         width: 1920,
         height: 1080,
         fps: 60,
+        text_resolution_multiplier: 1.0,
     };
 
     let img = image(

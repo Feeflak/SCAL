@@ -56,6 +56,7 @@ async fn main() -> Result<()> {
         width: 1920,
         height: 1080,
         fps: 60,
+        text_resolution_multiplier: 1.0,
     };
     let curve = AnimationCurve::Linear;
     let code = code(
@@ -77,6 +78,7 @@ const THEME: LazyLock<Theme> = LazyLock::new(|| {
         10.,
         Syntax::Rust,
         vec![],
+        0.0,
     );
     scal::run_loop(
         &handle,

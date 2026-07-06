@@ -56,6 +56,7 @@ async fn main() -> Result<()> {
         width: 1920,
         height: 1080,
         fps: 60,
+        text_resolution_multiplier: 1.0,
     };
     let code = code(
         transform(CANVAS_SIZE.extend(0.) / 2.),
@@ -66,6 +67,7 @@ async fn main() -> Result<()> {
         55.,
         Syntax::Rust,
         vec![],
+        0.0,
     );
 
     let rect = rectangle(
