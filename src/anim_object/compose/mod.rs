@@ -60,6 +60,8 @@ pub struct LayoutContainer {
     pub gap: f32,
     pub direction: LayoutDir,
     pub alignment: Alignment,
+    pub min_width: f32,
+    pub min_height: f32,
 }
 
 impl LayoutContainer {
@@ -71,6 +73,8 @@ impl LayoutContainer {
         gap: f32,
         padding_top: f32, padding_bottom: f32,
         padding_left: f32, padding_right: f32,
+        min_width: f32,
+        min_height: f32,
     ) -> Self {
         Self {
             id: Uuid::new_v4(),
@@ -88,6 +92,7 @@ impl LayoutContainer {
             alignment,
             gap,
             padding_top, padding_bottom, padding_left, padding_right,
+            min_width, min_height,
         }
     }
 }
@@ -160,6 +165,8 @@ pub fn layout(
     gap: f32,
     padding_top: f32, padding_bottom: f32,
     padding_left: f32, padding_right: f32,
+    min_width: f32,
+    min_height: f32,
 ) -> LayoutResult {
     let mut anim_items = Vec::with_capacity(items.len());
     let mut nested_ops = Vec::new();
@@ -178,8 +185,8 @@ pub fn layout(
     let max_w = sizes.iter().map(|s| s.x).fold(0.0f32, f32::max);
     let content_h: f32 = sizes.iter().map(|s| s.y).sum();
     let gaps = gap * (anim_items.len() as f32 - 1.0).max(0.0);
-    let total_w = max_w + padding_left + padding_right;
-    let total_h = content_h + padding_top + padding_bottom + gaps;
+    let total_w = (max_w + padding_left + padding_right).max(min_width);
+    let total_h = (content_h + padding_top + padding_bottom + gaps).max(min_height);
 
     let mut bg = crate::anim_object::rectangle(
         Transform::new(None, Vec3::ZERO, 0.0, Vec2::ONE),
@@ -194,6 +201,7 @@ pub fn layout(
     let container_inner = LayoutContainer::new(
         bg_uuid, child_uuids, layout_dir, alignment, gap,
         padding_top, padding_bottom, padding_left, padding_right,
+        min_width, min_height,
     );
     let container_uuid = container_inner.id;
     let container_obj = AnimObj(Box::new(container_inner));

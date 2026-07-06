@@ -164,6 +164,23 @@ pub fn generate_code_mesh(
         }
     }
 
+    // Center mesh around origin and cache actual extent for accurate layout sizing
+    if !vertices.is_empty() {
+        let mut min = vertices[0].position;
+        let mut max = min;
+        for v in &vertices {
+            min = min.min(v.position);
+            max = max.max(v.position);
+        }
+        let center = (min + max) * 0.5;
+        for v in &mut vertices {
+            v.position -= center;
+        }
+        code.cached_size = Some(max - min);
+    } else {
+        code.cached_size = None;
+    }
+
     let run_count = buffer.layout_runs().count();
     log::debug!(
         "generate_code_mesh style={:?} reveal={:.4} spacing={:.4} line=[{}, {}) animated_glyphs={} emitted={} verts={} indices={} runs={}",

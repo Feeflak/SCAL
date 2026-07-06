@@ -8,7 +8,7 @@ use crate::{
 use glam::vec2;
 pub fn generate_text_mesh(
     manager: &mut TextManager,
-    text: &Text,
+    text: &mut Text,
 ) -> (Vec<Vertex>, Vec<u32>, PipelineKind) {
     let buffer = manager.layout(text);
 
@@ -55,6 +55,22 @@ pub fn generate_text_mesh(
 
             indices.extend([base, base + 1, base + 2, base + 2, base + 3, base]);
         }
+    }
+
+    if !vertices.is_empty() {
+        let mut min = vertices[0].position;
+        let mut max = min;
+        for v in &vertices {
+            min = min.min(v.position);
+            max = max.max(v.position);
+        }
+        let center = (min + max) * 0.5;
+        for v in &mut vertices {
+            v.position -= center;
+        }
+        text.cached_size = Some(max - min);
+    } else {
+        text.cached_size = None;
     }
 
     (vertices, indices, PipelineKind::Text)

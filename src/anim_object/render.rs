@@ -149,8 +149,8 @@ impl Animator {
         let total_h: f32 = sizes.iter().map(|s| s.y).sum();
 
         let gaps = container.gap * (container.child_uuids.len() as f32 - 1.0).max(0.0);
-        let new_w = max_w + container.padding_left + container.padding_right;
-        let new_h = total_h + container.padding_top + container.padding_bottom + gaps;
+        let new_w = (max_w + container.padding_left + container.padding_right).max(container.min_width);
+        let new_h = (total_h + container.padding_top + container.padding_bottom + gaps).max(container.min_height);
 
         let old_bg_size: Vec2;
         let old_bg_pos: Vec3;

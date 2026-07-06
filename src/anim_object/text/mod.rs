@@ -51,6 +51,7 @@ pub struct Text {
     pub color: Color,
     pub font_size: f32,
     pub transform: Transform,
+    pub cached_size: Option<Vec2>,
 }
 
 impl AnimObjectTrait for Text {
@@ -61,6 +62,9 @@ impl AnimObjectTrait for Text {
         &mut self.transform
     }
     fn size(&self) -> Vec2 {
+        if let Some(cached) = self.cached_size {
+            return cached;
+        }
         let line_count = self.value.lines().count().max(1);
         let height = line_count as f32 * self.font_size * 1.2;
         let width = self.value.len() as f32 * self.font_size * 0.5;

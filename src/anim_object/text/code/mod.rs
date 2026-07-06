@@ -113,6 +113,7 @@ pub struct Code {
     pub anim_line_end: usize,
     pub anim_style: CodeAnimationStyle,
     pub anim_spacing_accum: f32,
+    pub cached_size: Option<Vec2>,
 }
 
 #[derive(Clone, Debug)]
@@ -183,6 +184,7 @@ impl Code {
             anim_line_end: 0,
             anim_style: CodeAnimationStyle::TypeWriter,
             anim_spacing_accum: 0.0,
+            cached_size: None,
         }
     }
 
@@ -240,6 +242,9 @@ impl AnimObjectTrait for Code {
         &mut self.transform
     }
     fn size(&self) -> Vec2 {
+        if let Some(cached) = self.cached_size {
+            return cached;
+        }
         let total_lines = self.source_code.lines().count().max(1);
         let animated_count = self.anim_line_end.saturating_sub(self.anim_line_start);
         let base_count = total_lines.saturating_sub(animated_count);

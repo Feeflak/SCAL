@@ -60,6 +60,7 @@ pub fn code(
         anim_line_end: 0,
         anim_style: CodeAnimationStyle::TypeWriter,
         anim_spacing_accum: 0.0,
+        cached_size: None,
     }
 }
 
@@ -79,6 +80,7 @@ pub fn text(
         color,
         font_size,
         transform,
+        cached_size: None,
     }))
 }
 
