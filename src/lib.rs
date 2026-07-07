@@ -1,5 +1,5 @@
 use crate::anim_op::AnimOP;
-use crate::encoder::EncodingSettings;
+use crate::encoder::{CodecType, EncodingSettings};
 use crate::renderer::RenderingSettings;
 use anyhow::{Context, Result, bail};
 use log::info;
@@ -9,6 +9,7 @@ pub mod anim_op;
 mod anim_render;
 pub mod animator;
 pub mod encoder;
+pub mod nv12;
 pub mod prelude;
 pub mod projection;
 mod readback;
@@ -27,6 +28,13 @@ pub async fn run_loop(
     if (rendering_settings.width * 4) % 256 != 0 {
         bail!("Wgpu needs the bytes_per_row(width * 4) value to be multiple of 256");
     }
+    let codec_type = encoding_settings.codec_type;
+    let use_nv12 = matches!(codec_type, CodecType::H264 | CodecType::H264Nvenc);
+    let pixel_buffer_size = if use_nv12 {
+        (rendering_settings.width * rendering_settings.height * 3 / 2) as usize
+    } else {
+        (rendering_settings.width * rendering_settings.height * BYTES_PER_PIXEL) as usize
+    };
     let instance = wgpu::Instance::default();
 
     let adapter = instance
@@ -40,7 +48,7 @@ pub async fn run_loop(
         .unwrap();
     readback::init_buffers(
         rendering_settings.buffer_count,
-        (rendering_settings.width * rendering_settings.height * BYTES_PER_PIXEL) as usize,
+        pixel_buffer_size,
         &device,
     )
     .context("while initializing buffers")?;
@@ -66,6 +74,7 @@ pub async fn run_loop(
         encoder_send,
         device,
         rendering_settings,
+        codec_type,
     )
     .await
     .context("while rendering the animation")?;

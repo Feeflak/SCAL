@@ -18,6 +18,7 @@ pub(crate) struct Encoder {
     scaler: Option<Context>,
     rgba_frame: ffmpeg::frame::Video,
     yuv_frame: ffmpeg::frame::Video,
+    use_nv12: bool,
 
     total_encode_time: std::time::Duration,
     timing_memcpy: std::time::Duration,
@@ -37,6 +38,7 @@ impl Encoder {
         ffmpeg::init()?;
 
         let is_nvenc = matches!(settings.codec_type, CodecType::H264Nvenc);
+        let use_nv12 = matches!(settings.codec_type, CodecType::H264 | CodecType::H264Nvenc);
 
         let global_header = output
             .format()
@@ -54,10 +56,10 @@ impl Encoder {
 
         context.set_width(width);
         context.set_height(height);
-        let (pixel_format, use_rgba) = match settings.codec_type {
-            CodecType::H264Nvenc => (ffmpeg::format::Pixel::RGBA, true),
-            CodecType::H264 => (ffmpeg::format::Pixel::YUV420P, false),
-            CodecType::PRORES => (ffmpeg::format::Pixel::YUV444P10LE, false),
+        let pixel_format = if use_nv12 {
+            ffmpeg::format::Pixel::NV12
+        } else {
+            ffmpeg::format::Pixel::YUV444P10LE
         };
         context.set_format(pixel_format);
         context.set_time_base((1, fps as i32));
@@ -68,7 +70,7 @@ impl Encoder {
 
         let rgba_frame = ffmpeg::frame::Video::new(ffmpeg::format::Pixel::RGBA, width, height);
         let yuv_frame = ffmpeg::frame::Video::new(pixel_format, width, height);
-        let scaler = if use_rgba {
+        let scaler = if use_nv12 {
             None
         } else {
             Some(Context::get(
@@ -87,7 +89,6 @@ impl Encoder {
                 ("tune", "ll"),
                 ("rc", "constqp"),
                 ("qp", "23"),
-                ("rgb_mode", "1"),
             ]
             .iter()
             .collect();
@@ -107,6 +108,7 @@ impl Encoder {
             scaler,
             rgba_frame,
             yuv_frame,
+            use_nv12,
             output,
             encoder,
             stream_index,
@@ -123,16 +125,51 @@ impl Encoder {
 
     fn push_frame(&mut self, bytes: &[u8]) -> Result<()> {
         let t0 = std::time::Instant::now();
-        assert_eq!(bytes.len(), self.width as usize * self.height as usize * 4);
 
-        self.rgba_frame.set_pts(Some(self.frame_index));
         self.frame_index += 1;
 
-        let row_bytes = self.width as usize * 4;
-
         let t_mem = std::time::Instant::now();
-        {
-            let stride = self.rgba_frame.stride(0);
+        if self.use_nv12 {
+            let y_size = self.width as usize * self.height as usize;
+            let expected = y_size + y_size / 2;
+            assert_eq!(bytes.len(), expected);
+
+            self.yuv_frame.set_pts(Some(self.frame_index - 1));
+
+            let y_stride = self.yuv_frame.stride(0) as usize;
+            let uv_stride = self.yuv_frame.stride(1) as usize;
+            let row_bytes = self.width as usize;
+
+            let dst_y = self.yuv_frame.data_mut(0);
+            if y_stride == row_bytes {
+                dst_y[..y_size].copy_from_slice(&bytes[..y_size]);
+            } else {
+                for y in 0..self.height as usize {
+                    let src = y * row_bytes;
+                    let dst = y * y_stride;
+                    dst_y[dst..dst + row_bytes].copy_from_slice(&bytes[src..src + row_bytes]);
+                }
+            }
+
+            let uv_size = y_size / 2;
+            let dst_uv = self.yuv_frame.data_mut(1);
+            if uv_stride == row_bytes {
+                dst_uv[..uv_size].copy_from_slice(&bytes[y_size..y_size + uv_size]);
+            } else {
+                for y in 0..(self.height as usize / 2) {
+                    let src = y_size + y * row_bytes;
+                    let dst = y * uv_stride;
+                    dst_uv[dst..dst + row_bytes].copy_from_slice(&bytes[src..src + row_bytes]);
+                }
+            }
+        } else {
+            let expected = self.width as usize * self.height as usize * 4;
+            assert_eq!(bytes.len(), expected);
+
+            self.rgba_frame.set_pts(Some(self.frame_index - 1));
+
+            let row_bytes = self.width as usize * 4;
+            let stride = self.rgba_frame.stride(0) as usize;
             let dst = self.rgba_frame.data_mut(0);
             if stride == row_bytes {
                 dst[..bytes.len()].copy_from_slice(bytes);
@@ -149,13 +186,14 @@ impl Encoder {
 
         let t_conv = std::time::Instant::now();
         if let Some(scaler) = &mut self.scaler {
-            self.yuv_frame.set_pts(Some(self.frame_index - 1));
             scaler.run(&self.rgba_frame, &mut self.yuv_frame)?;
         }
         self.timing_convert += t_conv.elapsed();
 
         let t_nv = std::time::Instant::now();
         let send_frame = if self.scaler.is_some() {
+            &self.yuv_frame
+        } else if self.use_nv12 {
             &self.yuv_frame
         } else {
             &self.rgba_frame

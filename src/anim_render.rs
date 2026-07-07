@@ -1,20 +1,22 @@
 use crate::{
-    BYTES_PER_PIXEL,
     anim_object::{render::PipelineKind, text::render::TextRenderer},
     animator::Animator,
+    encoder::CodecType,
     types::Seconds,
 };
 use anyhow::{Context, Ok, Result};
 use tokio::sync::mpsc::Sender;
 
-use log::{debug, info};
+use log::info;
 use wgpu::{Device, Texture};
 
 use crate::{
     anim_op::AnimOP,
     encoder::{self, EncoderComunication},
+    nv12::Nv12Converter,
     readback::{self, ReadbackRing},
     renderer::{Renderer, RenderingSettings},
+    BYTES_PER_PIXEL,
 };
 
 #[derive(Debug)]
@@ -42,6 +44,7 @@ pub async fn render_animations(
     encoder_send: Sender<encoder::EncoderComunication>,
     device: Device,
     rendering_settings: RenderingSettings,
+    codec_type: CodecType,
 ) -> Result<()> {
     let mut renderer = Renderer::new(&device);
     const MSAA_SAMPLE_COUNT: u32 = 4;
@@ -72,9 +75,23 @@ pub async fn render_animations(
         sample_count: 1,
         dimension: wgpu::TextureDimension::D2,
         format: wgpu::TextureFormat::Rgba8Unorm,
-        usage: wgpu::TextureUsages::RENDER_ATTACHMENT | wgpu::TextureUsages::COPY_SRC,
+        usage: wgpu::TextureUsages::RENDER_ATTACHMENT
+            | wgpu::TextureUsages::COPY_SRC
+            | wgpu::TextureUsages::TEXTURE_BINDING,
         view_formats: &[],
     });
+
+    let use_nv12 = matches!(codec_type, CodecType::H264 | CodecType::H264Nvenc);
+    let nv12 = if use_nv12 {
+        Some(Nv12Converter::new(
+            &device,
+            &resolve_texture,
+            rendering_settings.width,
+            rendering_settings.height,
+        ))
+    } else {
+        None
+    };
 
     let (pipelines, mut text_renderer) = {
         let mut pipelines = crate::anim_object::render::get_pipelines(&device, MSAA_SAMPLE_COUNT);
@@ -166,20 +183,33 @@ pub async fn render_animations(
         timing_wait_slot += t2a.elapsed();
 
         let t2b = std::time::Instant::now();
-        copy_texture_to_buffer(
-            encoder_send.clone(),
-            &queue,
-            rendering_settings,
-            &device,
-            &resolve_texture,
-            slot,
-        )
-        .context("while copying texture to the buffer")?;
-        timing_gpu_copy += t2b.elapsed();
+        if use_nv12 {
+            let t_sub = std::time::Instant::now();
+            queue.submit(Some(encoder.finish()));
+            timing_submit += t_sub.elapsed();
 
-        let t2c = std::time::Instant::now();
-        queue.submit(Some(encoder.finish()));
-        timing_submit += t2c.elapsed();
+            nv12.as_ref().unwrap().run_and_copy(
+                &device,
+                &queue,
+                slot,
+                encoder_send.clone(),
+            );
+        } else {
+            copy_texture_to_buffer(
+                encoder_send.clone(),
+                &queue,
+                rendering_settings,
+                &device,
+                &resolve_texture,
+                slot,
+            )
+            .context("while copying texture to the buffer")?;
+
+            let t2c = std::time::Instant::now();
+            queue.submit(Some(encoder.finish()));
+            timing_submit += t2c.elapsed();
+        }
+        timing_gpu_copy += t2b.elapsed();
 
         frame_count += 1;
     }
