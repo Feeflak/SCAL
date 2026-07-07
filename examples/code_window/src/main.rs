@@ -2,7 +2,7 @@ use std::sync::LazyLock;
 
 use anyhow::Result;
 
-use glam::{Vec2, Vec3, vec2};
+use glam::{Vec2, Vec3, Vec3Swizzles, vec2, vec3};
 use log::{LevelFilter, info};
 use scal::{
     anim_object::text::code::{
@@ -58,7 +58,6 @@ async fn main() -> Result<()> {
         fps: 60,
         text_resolution_multiplier: 2.0,
     };
-    let curve = AnimationCurve::Linear;
 
     // Code object (keep reference for animation)
     let mut code = Code::new(
@@ -104,7 +103,7 @@ async fn main() -> Result<()> {
     let title_layout = layout(
         Vec3::ZERO,
         PinPoint::C,
-        vec![c1.into(), c2.into(), c3.into(), title_text.into()],
+        vec![c1.clone().into(), c2.into(), c3.into(), title_text.into()],
         LayoutBackground {
             color: Color::new(0.106, 0.106, 0.106, 1.0),
             corner_radius: 5.,
@@ -112,7 +111,7 @@ async fn main() -> Result<()> {
         LayoutDir::Row,
         Alignment::Center,
         8.0,
-        -28.0,
+        -50.0,
         -28.0,
         25.0,
         25.0,
@@ -121,7 +120,7 @@ async fn main() -> Result<()> {
     );
 
     // Outer Column layout: title_layout background + code
-    let result = layout(
+    let code_window = layout(
         CANVAS_SIZE.extend(0.) / 2.,
         PinPoint::C,
         vec![title_layout.into(), code.clone().into()],
@@ -139,31 +138,75 @@ async fn main() -> Result<()> {
         1200.0,
         800.0,
     );
+    const POINTER_SIZE: f32 = 80.;
+    let pointer = svg(
+        transform(vec3(500., 500., 1.)),
+        "./pointer-tool.svg",
+        Vec2::ONE * POINTER_SIZE,
+        Color::WHITE,
+        None,
+        None,
+        None,
+        image::StretchMode::Fit,
+    );
 
     scal::run_loop(
         &handle,
         encoding_settings,
         rendering_settings,
         vec![
-            result.instantiate(),
+            code_window.instantiate(),
+            pointer.instantiate(),
             wait(1.0),
             code.add_lines(
                 r#"
 fn fib(n: u32) -> u32 {
+    info!("Hello, world!");
+    let a = CodeAnimationStyle::TypeWriter;
+    let b = vec![1, 2, 3, 4];
     match n {
         0 => 0,
         1 => 1,
         _ => fib(n - 1) + fib(n - 2),
     }
 }
-                "#
-                .into(),
+                "#,
                 4,
-                curve.clone(),
+                AnimationCurve::Linear,
                 5.0,
                 CodeAnimationStyle::TypeWriter,
             ),
             wait(1.0),
+            pointer.transform().position_to_object(
+                &c1,
+                Vec2::ONE * 25.,
+                1.0,
+                AnimationCurve::EaseOutBack,
+            ),
+            // macOS button press: quick down, quick up
+            c1.transform()
+                .scale_to(Vec2::ONE * 0.85, 0.1, AnimationCurve::EaseOutCubic),
+            c1.transform()
+                .scale_to(Vec2::ONE, 0.15, AnimationCurve::EaseOutCubic),
+            // Window shrinks into the close button (macOS-style)
+            all(vec![
+                code_window.background.transform().position_to_object(
+                    &c1,
+                    Vec2::ZERO,
+                    0.3,
+                    AnimationCurve::EaseOutCubic,
+                ),
+                code_window.background.transform().scale_to(
+                    Vec2::ZERO,
+                    0.3,
+                    AnimationCurve::EaseOutCubic,
+                ),
+            ]),
+            pointer.transform().position_to(
+                vec2(0., -1.) * 3000.,
+                0.5,
+                AnimationCurve::EaseInOutCubic,
+            ),
         ],
     )
     .await?;
