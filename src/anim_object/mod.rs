@@ -191,6 +191,15 @@ impl Transform {
     pub fn position_to(&self, to: Vec2, time: Seconds, curve: AnimationCurve) -> AnimOP {
         AnimOP::TransformMovePos(self.uuid, to, time, curve)
     }
+    pub fn position_to_object(
+        &self,
+        target: &AnimObj,
+        offset: Vec2,
+        time: Seconds,
+        curve: AnimationCurve,
+    ) -> AnimOP {
+        AnimOP::TransformMoveToObj(self.uuid, target.uuid(), offset, time, curve)
+    }
     pub fn rotate_to(&self, to: f32, time: Seconds, curve: AnimationCurve) -> AnimOP {
         AnimOP::TransformRotate(self.uuid, to, time, curve)
     }
