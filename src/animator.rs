@@ -106,7 +106,11 @@ impl Animator {
             if let Some(update) = animation.update
                 && self.anim_state.time < animation.total_duration
             {
-                let t = self.anim_state.time / animation.total_duration;
+                let t = if self.anim_state.time + 1. / self.fps as f32 >= animation.total_duration {
+                    1.0
+                } else {
+                    self.anim_state.time / animation.total_duration
+                };
                 (*update)(self, animation.curve.apply(t), &mut storage)
                     .context("while running the update function of an animation")?;
                 self.anim_state.time += 1. / self.fps as f32;
