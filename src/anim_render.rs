@@ -94,10 +94,27 @@ pub async fn render_animations(
         rendering_settings.text_resolution_multiplier,
     )
     .context("while initiating the animator")?;
-    while let Some(frame_animation_data) = animator
-        .animate_next_frame()
-        .context("while rendering next frame")?
-    {
+
+    let mut timing_animation = std::time::Duration::ZERO;
+    let mut timing_render = std::time::Duration::ZERO;
+    let mut timing_wait_slot = std::time::Duration::ZERO;
+    let mut timing_gpu_copy = std::time::Duration::ZERO;
+    let mut timing_submit = std::time::Duration::ZERO;
+    let mut frame_count = 0u64;
+    let timing_start = std::time::Instant::now();
+
+    loop {
+        let t0 = std::time::Instant::now();
+        let frame_animation_data = animator
+            .animate_next_frame()
+            .context("while rendering next frame")?;
+        timing_animation += t0.elapsed();
+
+        let frame_animation_data = match frame_animation_data {
+            Some(d) => d,
+            None => break,
+        };
+
         let scene = frame_animation_data.scene;
 
         let msaa_view = msaa_texture.create_view(&Default::default());
@@ -107,6 +124,7 @@ pub async fn render_animations(
             label: Some("Frame Encoder"),
         });
 
+        let t1 = std::time::Instant::now();
         {
             let mut render_pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
                 label: Some("Main Pass"),
@@ -138,12 +156,16 @@ pub async fn render_animations(
                 &mut renderer,
             );
         }
+        timing_render += t1.elapsed();
 
+        let t2a = std::time::Instant::now();
         let slot = readback_ring
             .next()
             .await
             .context("renderer channel was closed")?;
+        timing_wait_slot += t2a.elapsed();
 
+        let t2b = std::time::Instant::now();
         copy_texture_to_buffer(
             encoder_send.clone(),
             &queue,
@@ -153,10 +175,51 @@ pub async fn render_animations(
             slot,
         )
         .context("while copying texture to the buffer")?;
+        timing_gpu_copy += t2b.elapsed();
 
+        let t2c = std::time::Instant::now();
         queue.submit(Some(encoder.finish()));
+        timing_submit += t2c.elapsed();
+
+        frame_count += 1;
     }
 
+    let total = timing_animation + timing_render + timing_wait_slot + timing_gpu_copy + timing_submit;
+    info!("=== Pipeline Timing ===");
+    info!(
+        "Total frames: {frame_count}  |  Wall time: {:.2?}",
+        timing_start.elapsed()
+    );
+    info!(
+        "Animation       | total: {:.3}s  | avg: {:.1}ms  | {:.0}%",
+        timing_animation.as_secs_f64(),
+        timing_animation.as_secs_f64() / frame_count as f64 * 1000.0,
+        timing_animation.as_secs_f64() / total.as_secs_f64() * 100.0
+    );
+    info!(
+        "GPU Render (CPU)| total: {:.3}s  | avg: {:.1}ms  | {:.0}%",
+        timing_render.as_secs_f64(),
+        timing_render.as_secs_f64() / frame_count as f64 * 1000.0,
+        timing_render.as_secs_f64() / total.as_secs_f64() * 100.0
+    );
+    info!(
+        "Wait Slot       | total: {:.3}s  | avg: {:.1}ms  | {:.0}%",
+        timing_wait_slot.as_secs_f64(),
+        timing_wait_slot.as_secs_f64() / frame_count as f64 * 1000.0,
+        timing_wait_slot.as_secs_f64() / total.as_secs_f64() * 100.0
+    );
+    info!(
+        "GPU Copy+Poll   | total: {:.3}s  | avg: {:.1}ms  | {:.0}%",
+        timing_gpu_copy.as_secs_f64(),
+        timing_gpu_copy.as_secs_f64() / frame_count as f64 * 1000.0,
+        timing_gpu_copy.as_secs_f64() / total.as_secs_f64() * 100.0
+    );
+    info!(
+        "Submit Render   | total: {:.3}s  | avg: {:.1}ms  | {:.0}%",
+        timing_submit.as_secs_f64(),
+        timing_submit.as_secs_f64() / frame_count as f64 * 1000.0,
+        timing_submit.as_secs_f64() / total.as_secs_f64() * 100.0
+    );
     info!("Finished Rendering");
     encoder_send.send(EncoderComunication::Finish).await?;
 

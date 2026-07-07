@@ -15,7 +15,15 @@ pub(crate) struct Encoder {
     width: u32,
     height: u32,
     frame_index: i64,
-    scaler: Context,
+    scaler: Option<Context>,
+    rgba_frame: ffmpeg::frame::Video,
+    yuv_frame: ffmpeg::frame::Video,
+
+    total_encode_time: std::time::Duration,
+    timing_memcpy: std::time::Duration,
+    timing_convert: std::time::Duration,
+    timing_nvenc: std::time::Duration,
+    frame_count: u64,
 }
 
 impl Encoder {
@@ -28,39 +36,65 @@ impl Encoder {
     ) -> Result<Self> {
         ffmpeg::init()?;
 
-        let codec = ffmpeg::encoder::find(settings.codec_type.into())
-            .ok_or(ffmpeg::Error::EncoderNotFound)?;
+        let is_nvenc = matches!(settings.codec_type, CodecType::H264Nvenc);
 
         let global_header = output
             .format()
             .flags()
             .contains(ffmpeg::format::Flags::GLOBAL_HEADER);
-        let mut stream = output.add_stream(codec)?;
+
+        let encoder_name: &str = match settings.codec_type {
+            CodecType::H264Nvenc => "h264_nvenc",
+            CodecType::H264 => "libx264",
+            CodecType::PRORES => "prores",
+        };
+        let mut stream = output.add_stream(encoder_name)?;
 
         let mut context = ffmpeg::codec::context::Context::new().encoder().video()?;
 
         context.set_width(width);
         context.set_height(height);
-        match settings.codec_type {
-            CodecType::H264 => context.set_format(ffmpeg::format::Pixel::YUV420P),
-            CodecType::PRORES => context.set_format(ffmpeg::format::Pixel::YUV444P10LE),
-        }
+        let (pixel_format, use_rgba) = match settings.codec_type {
+            CodecType::H264Nvenc => (ffmpeg::format::Pixel::RGBA, true),
+            CodecType::H264 => (ffmpeg::format::Pixel::YUV420P, false),
+            CodecType::PRORES => (ffmpeg::format::Pixel::YUV444P10LE, false),
+        };
+        context.set_format(pixel_format);
         context.set_time_base((1, fps as i32));
 
         if global_header {
             context.set_flags(ffmpeg::codec::Flags::GLOBAL_HEADER);
         }
 
-        let scaler = Context::get(
-            ffmpeg::format::Pixel::RGBA,
-            width,
-            height,
-            context.format(),
-            width,
-            height,
-            Flags::BILINEAR,
-        )?;
-        let encoder = context.open_as(codec)?;
+        let rgba_frame = ffmpeg::frame::Video::new(ffmpeg::format::Pixel::RGBA, width, height);
+        let yuv_frame = ffmpeg::frame::Video::new(pixel_format, width, height);
+        let scaler = if use_rgba {
+            None
+        } else {
+            Some(Context::get(
+                ffmpeg::format::Pixel::RGBA,
+                width,
+                height,
+                pixel_format,
+                width,
+                height,
+                Flags::BILINEAR,
+            )?)
+        };
+        let encoder = if is_nvenc {
+            let opts: ffmpeg::Dictionary = [
+                ("preset", "p1"),
+                ("tune", "ll"),
+                ("rc", "constqp"),
+                ("qp", "23"),
+                ("rgb_mode", "1"),
+            ]
+            .iter()
+            .collect();
+            context.open_as_with("h264_nvenc", opts)?
+        } else {
+            context.open_as(encoder_name)?
+        };
 
         stream.set_parameters(&encoder);
         stream.set_time_base((1, fps as i32));
@@ -71,52 +105,62 @@ impl Encoder {
 
         Ok(Self {
             scaler,
-            output: output,
+            rgba_frame,
+            yuv_frame,
+            output,
             encoder,
             stream_index,
             width,
             height,
             frame_index: 0,
+            total_encode_time: std::time::Duration::ZERO,
+            timing_memcpy: std::time::Duration::ZERO,
+            timing_convert: std::time::Duration::ZERO,
+            timing_nvenc: std::time::Duration::ZERO,
+            frame_count: 0,
         })
     }
 
     fn push_frame(&mut self, bytes: &[u8]) -> Result<()> {
+        let t0 = std::time::Instant::now();
         assert_eq!(bytes.len(), self.width as usize * self.height as usize * 4);
-        // debug!("push_frame 1");
 
-        let mut rgba =
-            ffmpeg::frame::Video::new(ffmpeg::format::Pixel::RGBA, self.width, self.height);
-
-        // Ensure frame is writable / properly allocated
-        rgba.set_pts(Some(self.frame_index));
+        self.rgba_frame.set_pts(Some(self.frame_index));
         self.frame_index += 1;
-
-        let stride = rgba.stride(0);
-        let dst = rgba.data_mut(0);
 
         let row_bytes = self.width as usize * 4;
 
-        // Copy row-by-row to respect FFmpeg alignment
-        for y in 0..self.height as usize {
-            let src_start = y * row_bytes;
-            let src_end = src_start + row_bytes;
-
-            let dst_start = y * stride;
-            let dst_end = dst_start + row_bytes;
-
-            dst[dst_start..dst_end].copy_from_slice(&bytes[src_start..src_end]);
+        let t_mem = std::time::Instant::now();
+        {
+            let stride = self.rgba_frame.stride(0);
+            let dst = self.rgba_frame.data_mut(0);
+            if stride == row_bytes {
+                dst[..bytes.len()].copy_from_slice(bytes);
+            } else {
+                for y in 0..self.height as usize {
+                    let src_start = y * row_bytes;
+                    let dst_start = y * stride;
+                    dst[dst_start..dst_start + row_bytes]
+                        .copy_from_slice(&bytes[src_start..src_start + row_bytes]);
+                }
+            }
         }
+        self.timing_memcpy += t_mem.elapsed();
 
-        // debug!("push_frame 2");
+        let t_conv = std::time::Instant::now();
+        if let Some(scaler) = &mut self.scaler {
+            self.yuv_frame.set_pts(Some(self.frame_index - 1));
+            scaler.run(&self.rgba_frame, &mut self.yuv_frame)?;
+        }
+        self.timing_convert += t_conv.elapsed();
 
-        let mut frame = ffmpeg::frame::Video::empty();
-        self.scaler.run(&rgba, &mut frame)?;
-
-        frame.set_pts(Some(self.frame_index - 1));
-
-        self.encoder.send_frame(&frame)?;
-
-        // debug!("push_frame 3");
+        let t_nv = std::time::Instant::now();
+        let send_frame = if self.scaler.is_some() {
+            &self.yuv_frame
+        } else {
+            &self.rgba_frame
+        };
+        self.encoder.send_frame(send_frame)?;
 
         let mut packet = ffmpeg::Packet::empty();
 
@@ -128,12 +172,39 @@ impl Encoder {
             );
             packet.write_interleaved(&mut self.output)?;
         }
+        self.timing_nvenc += t_nv.elapsed();
+
+        self.total_encode_time += t0.elapsed();
+        self.frame_count += 1;
 
         Ok(())
     }
     fn finish(&mut self) -> Result<()> {
         self.encoder.send_eof()?;
         self.output.write_trailer()?;
+
+        let fc = self.frame_count as f64;
+        info!(
+            "Encode total | total: {:.3}s  | avg: {:.1}ms  | frames: {}",
+            self.total_encode_time.as_secs_f64(),
+            self.total_encode_time.as_secs_f64() / fc * 1000.0,
+            self.frame_count,
+        );
+        info!(
+            "  memcpy     | total: {:.3}s  | avg: {:.1}ms",
+            self.timing_memcpy.as_secs_f64(),
+            self.timing_memcpy.as_secs_f64() / fc * 1000.0,
+        );
+        info!(
+            "  convert    | total: {:.3}s  | avg: {:.1}ms",
+            self.timing_convert.as_secs_f64(),
+            self.timing_convert.as_secs_f64() / fc * 1000.0,
+        );
+        info!(
+            "  nvenc api  | total: {:.3}s  | avg: {:.1}ms",
+            self.timing_nvenc.as_secs_f64(),
+            self.timing_nvenc.as_secs_f64() / fc * 1000.0,
+        );
 
         Ok(())
     }
@@ -206,16 +277,8 @@ pub fn start_encoding_task(
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum CodecType {
     H264,
+    H264Nvenc,
     PRORES,
-}
-
-impl From<CodecType> for ffmpeg_next::codec::Id {
-    fn from(value: CodecType) -> Self {
-        match value {
-            CodecType::H264 => ffmpeg_next::codec::Id::H264,
-            CodecType::PRORES => ffmpeg_next::codec::Id::PRORES,
-        }
-    }
 }
 pub enum EncoderComunication {
     Finish,

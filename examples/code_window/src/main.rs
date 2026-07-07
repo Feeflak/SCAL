@@ -47,7 +47,7 @@ async fn main() -> Result<()> {
 
     let encoding_settings = scal::encoder::EncodingSettings {
         output_path: "test.mov".to_string(),
-        codec_type: scal::encoder::CodecType::PRORES,
+        codec_type: scal::encoder::CodecType::H264Nvenc,
     };
     let rendering_settings = scal::renderer::RenderingSettings {
         camera: Camera::new(CANVAS_SIZE, Vec2::ZERO, 1.),
