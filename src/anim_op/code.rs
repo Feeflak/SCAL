@@ -3,7 +3,7 @@ use std::ops::Range;
 use log::info;
 use uuid::Uuid;
 
-use crate::anim_object::text::code::{Code, CodeAnimationStyle};
+use crate::anim_object::text::code::{Code, CodeAnimationStyle, CodeHighlight, CodeHighlightAction, CodeHighlightKind};
 use crate::anim_op::{Animation, AnimationCurve};
 use crate::types::*;
 
@@ -250,6 +250,56 @@ pub fn remove_lines(
             Ok(())
         })),
     };
+
+    Animation::new(duration, curve, start, update)
+}
+
+pub fn highlight_fade_in(
+    uuid: Uuid,
+    action: CodeHighlightAction,
+    duration: Seconds,
+    curve: AnimationCurve,
+) -> Animation {
+    let start = Box::new(
+        move |animator: &mut crate::animator::Animator, storage: &mut Vec<f32>| {
+            let obj = animator.get_object_mut(&uuid)?;
+            if let Some(code) = code_mut(obj.anim_data.as_any_mut()) {
+                let highlight = match &action {
+                    CodeHighlightAction::Lines { ranges, color, .. } => CodeHighlight {
+                        color: *color,
+                        kind: CodeHighlightKind::Lines { ranges: ranges.clone() },
+                        progress: 0.0,
+                    },
+                    CodeHighlightAction::Pattern { regex, color, .. } => CodeHighlight {
+                        color: *color,
+                        kind: CodeHighlightKind::Pattern { regex: regex.clone() },
+                        progress: 0.0,
+                    },
+                };
+                let idx = code.highlights.len();
+                code.highlights.push(highlight);
+                storage.push(idx as f32);
+            }
+            let _ = obj;
+            animator.regenerate_object_mesh(&uuid)?;
+            Ok(())
+        },
+    );
+
+    let update: Option<
+        Box<dyn Fn(&mut crate::animator::Animator, f32, &mut Vec<f32>) -> anyhow::Result<()>>,
+    > = Some(Box::new(move |animator, t, storage| {
+        let idx = storage.first().copied().unwrap_or(0.0) as usize;
+        let obj = animator.get_object_mut(&uuid)?;
+        if let Some(code) = code_mut(obj.anim_data.as_any_mut()) {
+            if let Some(hl) = code.highlights.get_mut(idx) {
+                hl.progress = t;
+            }
+        }
+        let _ = obj;
+        animator.regenerate_object_mesh(&uuid)?;
+        Ok(())
+    }));
 
     Animation::new(duration, curve, start, update)
 }

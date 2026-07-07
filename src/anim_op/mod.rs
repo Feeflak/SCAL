@@ -10,15 +10,27 @@ use crate::anim_object::object_trait::AnimObj;
 use crate::animator::Animator;
 use crate::types::*;
 
+use std::sync::Arc;
+
+#[derive(Clone)]
+pub struct CurrentClosure(pub std::sync::Arc<dyn Fn(AnimObj) -> AnimOP + Send + Sync>);
+impl std::fmt::Debug for CurrentClosure {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("CurrentClosure").finish_non_exhaustive()
+    }
+}
+
 #[derive(Clone, Debug)]
 pub enum AnimOP {
     Instantiate(AnimObj),
     TransformMovePos(Uuid, Vec2, Seconds, AnimationCurve),
     TransformRotate(Uuid, f32, Seconds, AnimationCurve),
     TransformScale(Uuid, Vec2, Seconds, AnimationCurve),
+
     CodeAddLines(Uuid, String, usize, Seconds, AnimationCurve, crate::anim_object::text::code::CodeAnimationStyle),
     CodeModifyLine(Uuid, u32, String, Seconds, AnimationCurve, crate::anim_object::text::code::CodeAnimationStyle),
     CodeRemoveLines(Uuid, std::ops::Range<u32>, Seconds, AnimationCurve, crate::anim_object::text::code::CodeAnimationStyle),
+    CodeHighlight(Uuid, crate::anim_object::text::code::CodeHighlightAction),
     All(Vec<AnimOP>),
     Wait(Seconds),
 }
@@ -40,6 +52,7 @@ impl TryInto<Animation> for AnimOP {
             AnimOP::TransformScale(uuid, target, duration, curve) => {
                 transform::scale_to(uuid, target, duration, curve)
             }
+
             AnimOP::CodeAddLines(uuid, text, from_line, duration, curve, style) => {
                 code::add_lines(uuid, text, from_line, duration, curve, style)
             }
@@ -48,6 +61,10 @@ impl TryInto<Animation> for AnimOP {
             }
             AnimOP::CodeRemoveLines(uuid, lines, duration, curve, style) => {
                 code::remove_lines(uuid, lines, duration, curve, style)
+            }
+            AnimOP::CodeHighlight(uuid, action) => {
+                let (duration, curve) = action.duration_and_curve();
+                code::highlight_fade_in(uuid, action, duration, curve)
             }
             AnimOP::All(anim_ops) => get_all_animation(anim_ops)?,
             AnimOP::Wait(duration) => Animation::new(

@@ -53,25 +53,25 @@ pub fn rust_spec() -> HighlightSpec {
         indices: vec![
             12, // attribute
             3,  // comment
-            11, // constant
-            11, // constant.builtin
-            14, // constructor
+            8,  // constant          (was 11 — dark orange for enum variants like TypeWriter)
+            8,  // constant.builtin
+            9,  // constructor       (was 14 — light orange like types)
             5,  // embedded
             10, // escape
             13, // function
             13, // function.builtin
-            13, // function.macro
-            8,  // keyword
-            8,  // keyword.function
-            8,  // keyword.operator
-            8,  // keyword.return
+            8,  // function.macro      (was 13 — red)
+            14, // keyword           (was 8 — purple)
+            14, // keyword.function
+            14, // keyword.operator
+            14, // keyword.return
             12, // label
-            8,  // lifetime
-            13, // macro
+            14, // lifetime          (was 8 — purple)
+            8,  // macro               (was 13 — red)
             13, // method
-            14, // module
-            14, // namespace
-            9,  // number
+            10, // module            (was 14 — light orange/almost yellow)
+            10, // namespace         (was 14 — light orange/almost yellow)
+            9,  // number            (dark orange)
             15, // operator
             5,  // property
             5,  // field
@@ -79,13 +79,13 @@ pub fn rust_spec() -> HighlightSpec {
             5,  // punctuation.bracket
             15, // punctuation.delimiter
             15, // punctuation.special
-            10, // string
-            10, // string.special
-            14, // type
-            14, // type.builtin
-            5,  // variable
+            11, // string            (was 10 — green)
+            11, // string.special
+            10, // type              (was 14 — light orange/almost yellow)
+            10, // type.builtin      (was 14 — light orange/almost yellow)
+            8,  // variable            (was 5 — red for let bindings)
             5,  // variable.builtin
-            5,  // variable.parameter
+            5,  // variable.parameter  (kept gray for fn params like `n`)
             5,  // self
         ],
     }
