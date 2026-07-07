@@ -44,8 +44,25 @@ pub async fn render_animations(
     rendering_settings: RenderingSettings,
 ) -> Result<()> {
     let mut renderer = Renderer::new(&device);
-    let texture = device.create_texture(&wgpu::TextureDescriptor {
-        label: Some("render target"),
+    const MSAA_SAMPLE_COUNT: u32 = 4;
+
+    let msaa_texture = device.create_texture(&wgpu::TextureDescriptor {
+        label: Some("msaa render target"),
+        size: wgpu::Extent3d {
+            width: rendering_settings.width,
+            height: rendering_settings.height,
+            depth_or_array_layers: 1,
+        },
+        mip_level_count: 1,
+        sample_count: MSAA_SAMPLE_COUNT,
+        dimension: wgpu::TextureDimension::D2,
+        format: wgpu::TextureFormat::Rgba8Unorm,
+        usage: wgpu::TextureUsages::RENDER_ATTACHMENT,
+        view_formats: &[],
+    });
+
+    let resolve_texture = device.create_texture(&wgpu::TextureDescriptor {
+        label: Some("resolve texture"),
         size: wgpu::Extent3d {
             width: rendering_settings.width,
             height: rendering_settings.height,
@@ -60,7 +77,7 @@ pub async fn render_animations(
     });
 
     let (pipelines, mut text_renderer) = {
-        let mut pipelines = crate::anim_object::render::get_pipelines(&device);
+        let mut pipelines = crate::anim_object::render::get_pipelines(&device, MSAA_SAMPLE_COUNT);
 
         let text_renderer = TextRenderer::new(&device, rendering_settings.text_resolution_multiplier);
         pipelines
@@ -83,7 +100,8 @@ pub async fn render_animations(
     {
         let scene = frame_animation_data.scene;
 
-        let texture_view = texture.create_view(&Default::default());
+        let msaa_view = msaa_texture.create_view(&Default::default());
+        let resolve_view = resolve_texture.create_view(&Default::default());
 
         let mut encoder = device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
             label: Some("Frame Encoder"),
@@ -93,11 +111,11 @@ pub async fn render_animations(
             let mut render_pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
                 label: Some("Main Pass"),
                 color_attachments: &[Some(wgpu::RenderPassColorAttachment {
-                    view: &texture_view,
-                    resolve_target: None,
+                    view: &msaa_view,
+                    resolve_target: Some(&resolve_view),
                     ops: wgpu::Operations {
                         load: wgpu::LoadOp::Clear(rendering_settings.background_color.into()),
-                        store: wgpu::StoreOp::Store,
+                        store: wgpu::StoreOp::Discard,
                     },
                     depth_slice: None,
                 })],
@@ -131,7 +149,7 @@ pub async fn render_animations(
             &queue,
             rendering_settings,
             &device,
-            &texture,
+            &resolve_texture,
             slot,
         )
         .context("while copying texture to the buffer")?;

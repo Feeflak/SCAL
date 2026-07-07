@@ -19,7 +19,9 @@ var<uniform> transform:mat4x4<f32>;
 fn vs_main(input: VertexInput) -> VertexOutput {
     var out: VertexOutput;
 
-    out.position = camera *  transform * vec4<f32>(input.position, 0.0, 1.0)  ; 
+    var world_pos = transform * vec4<f32>(input.position, 0.0, 1.0);
+    world_pos.z = 0.0;
+    out.position = camera * world_pos;
     out.color = input.color;
 
     return out;

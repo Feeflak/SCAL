@@ -121,6 +121,7 @@ impl AnimObjectTrait for Polygon {
 pub fn create_shape_pipeline(
     device: &wgpu::Device,
     surface_format: wgpu::TextureFormat,
+    sample_count: u32,
 ) -> PipelineData {
     let shader = device.create_shader_module(wgpu::ShaderModuleDescriptor {
         label: Some("shape_shader"),
@@ -195,7 +196,7 @@ pub fn create_shape_pipeline(
         depth_stencil: None,
 
         multisample: wgpu::MultisampleState {
-            count: 1,
+            count: sample_count,
             mask: !0,
             alpha_to_coverage_enabled: false,
         },

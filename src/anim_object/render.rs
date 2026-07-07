@@ -352,11 +352,23 @@ pub(crate) struct PipelineData {
     pub bind_groups: Vec<wgpu::BindGroup>,
 }
 
-pub(crate) fn get_pipelines(device: &wgpu::Device) -> HashMap<PipelineKind, PipelineData> {
+pub(crate) fn get_pipelines(
+    device: &wgpu::Device,
+    sample_count: u32,
+) -> HashMap<PipelineKind, PipelineData> {
     const FORMAT: TextureFormat = TextureFormat::Rgba8Unorm;
     HashMap::from([
-        (PipelineKind::Text, create_text_pipeline(device, FORMAT)),
-        (PipelineKind::Shape, create_shape_pipeline(device, FORMAT)),
-        (PipelineKind::Image, create_image_pipeline(device, FORMAT)),
+        (
+            PipelineKind::Text,
+            create_text_pipeline(device, FORMAT, sample_count),
+        ),
+        (
+            PipelineKind::Shape,
+            create_shape_pipeline(device, FORMAT, sample_count),
+        ),
+        (
+            PipelineKind::Image,
+            create_image_pipeline(device, FORMAT, sample_count),
+        ),
     ])
 }

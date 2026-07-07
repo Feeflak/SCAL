@@ -19,12 +19,13 @@ use object_trait::AnimObj;
 pub use self::code_window::CodeWindow;
 pub use self::code_window::code_window;
 pub use self::compose::{
-    LayoutResult, LayoutContainer, LayoutDir, Alignment, PinPoint, LayoutBackground, LayoutItem, layout,
+    Alignment, LayoutBackground, LayoutContainer, LayoutDir, LayoutItem, LayoutResult, PinPoint,
+    layout,
 };
 use self::image::{Image, StretchMode};
 use self::primitive_shapes::{Circle, Polygon, Rectangle};
 use self::svg::Svg;
-use self::text::{code::Code, code::CodeAnimationStyle, code::TextLine, Align, Text};
+use self::text::{Align, Text, code::Code, code::CodeAnimationStyle, code::TextLine};
 
 use self::text::code::Syntax;
 use self::text::code::theme::Theme;
@@ -65,6 +66,7 @@ pub fn code(
         anim_style: CodeAnimationStyle::TypeWriter,
         anim_spacing_accum: 0.0,
         cached_size: None,
+        highlights: vec![],
     }
 }
 
@@ -88,12 +90,7 @@ pub fn text(
     }))
 }
 
-pub fn rectangle(
-    transform: Transform,
-    size: Vec2,
-    corner_radius: f32,
-    color: Color,
-) -> AnimObj {
+pub fn rectangle(transform: Transform, size: Vec2, corner_radius: f32, color: Color) -> AnimObj {
     AnimObj(Box::new(Rectangle {
         size,
         corner_radius,
@@ -102,11 +99,7 @@ pub fn rectangle(
     }))
 }
 
-pub fn circle(
-    transform: Transform,
-    radius: f32,
-    color: Color,
-) -> AnimObj {
+pub fn circle(transform: Transform, radius: f32, color: Color) -> AnimObj {
     AnimObj(Box::new(Circle {
         radius,
         color,
@@ -114,12 +107,7 @@ pub fn circle(
     }))
 }
 
-pub fn polygon(
-    transform: Transform,
-    radius: f32,
-    sides: u32,
-    color: Color,
-) -> AnimObj {
+pub fn polygon(transform: Transform, radius: f32, sides: u32, color: Color) -> AnimObj {
     AnimObj(Box::new(Polygon {
         radius,
         sides,
@@ -146,7 +134,7 @@ pub fn image(
 
 pub fn svg(
     transform: Transform,
-    path: String,
+    path: &str,
     size: Vec2,
     tint: Color,
     fill: Option<Color>,
@@ -155,7 +143,7 @@ pub fn svg(
     stretch: StretchMode,
 ) -> AnimObj {
     AnimObj(Box::new(Svg {
-        path,
+        path: path.to_string(),
         size,
         tint,
         fill,
@@ -182,8 +170,24 @@ pub struct Transform {
     pub position: Vec3,
     pub rotation: f32,
     pub layout_container: Option<Uuid>,
+    pub world_uniform: Option<TransformUniform>,
+}
+#[derive(Clone, Debug)]
+pub struct TransformUniform {
+    pub scale: Vec2,
+    pub position: Vec3,
+    pub rotation: f32,
 }
 impl Transform {
+    pub fn get_world_uniform(&self) -> TransformUniform {
+        self.world_uniform
+            .clone()
+            .expect("The world matrix wasn't cached yet")
+    }
+    pub fn set_parent(&mut self, parent: Option<Uuid>) {
+        self.parent = parent;
+        self.world_uniform = None;
+    }
     pub fn position_to(&self, to: Vec2, time: Seconds, curve: AnimationCurve) -> AnimOP {
         AnimOP::TransformMovePos(self.uuid, to, time, curve)
     }
@@ -197,13 +201,15 @@ impl Transform {
 
 impl Transform {
     pub fn new(parent: Option<&AnimObj>, position: Vec3, rotation: f32, scale: Vec2) -> Self {
+        let parent_uuid = parent.map(|obj| obj.uuid());
         Self {
             rotation,
             uuid: Uuid::new_v4(),
-            parent: parent.map(|obj| obj.uuid()),
+            parent: parent_uuid,
             position,
             scale,
             layout_container: None,
+            world_uniform: None,
         }
     }
 }

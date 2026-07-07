@@ -22,7 +22,9 @@ var<uniform> transform:mat4x4<f32>;
 fn vs_main(input: VertexInput) -> VertexOutput {
     var out: VertexOutput;
 
-    out.position = camera * transform  * vec4<f32>(input.position, 0.0, 1.0);
+    var world_pos = transform * vec4<f32>(input.position, 0.0, 1.0);
+    world_pos.z = 0.0;
+    out.position = camera * world_pos;
 
     out.color = input.color;
     out.uv = input.uv;
@@ -46,6 +48,11 @@ var sampler0:sampler;
 fn fs_main(input: VertexOutput)
     -> @location(0) vec4<f32>
 {
+    // uv.x < 0.0 marks a solid-color quad (highlight background)
+    if (input.uv.x < 0.0) {
+        return input.color;
+    }
+
     let alpha =
         textureSample(
             atlas,
