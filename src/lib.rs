@@ -2,8 +2,9 @@ use crate::anim_op::AnimOP;
 use crate::encoder::{CodecType, EncodingSettings};
 use crate::renderer::RenderingSettings;
 use crate::sfx::{AudioEngine, ScheduledSound};
+use crate::types::Sfx;
 use anyhow::{Context, Result, bail};
-use log::info;
+use log::{debug, info};
 
 pub mod anim_object;
 pub mod anim_op;
@@ -25,14 +26,24 @@ pub async fn run_loop(
     rendering_settings: RenderingSettings,
     mut animations: Vec<AnimOP>,
 ) -> Result<()> {
-    let mut sfx_sounds = vec![];
-    animations.retain(|op| match op {
-        AnimOP::PlaySound(sfx) => {
-            sfx_sounds.push(sfx.clone());
-            false
+    fn collect_sounds(ops: &[AnimOP], out: &mut Vec<Sfx>) {
+        for op in ops {
+            match op {
+                AnimOP::PlaySound(sfx) => {
+                    debug!("collect_sounds found PlaySound: path={}, time_offset={}, duration={}", sfx.path, sfx.time_offset, sfx.duration);
+                    out.push(sfx.clone());
+                }
+                AnimOP::All(children) | AnimOP::Sequence(children) => {
+                    collect_sounds(children, out);
+                }
+                _ => {}
+            }
         }
-        _ => true,
-    });
+    }
+
+    let mut sfx_sounds = vec![];
+    collect_sounds(&animations, &mut sfx_sounds);
+    debug!("collect_sounds total: {}", sfx_sounds.len());
 
     let scheduled: Vec<ScheduledSound> = sfx_sounds
         .into_iter()
@@ -45,13 +56,15 @@ pub async fn run_loop(
             } else {
                 s.pitch
             };
-            ScheduledSound {
+            let ss = ScheduledSound {
                 path: s.path,
                 volume: s.volume,
                 pitch: pitch_var,
                 start_time: s.time_offset,
                 duration: s.duration,
-            }
+            };
+            debug!("ScheduledSound: path={}, start_time={}, duration={}, pitch={}", ss.path, ss.start_time, ss.duration, ss.pitch);
+            ss
         })
         .collect();
     let audio_engine = if scheduled.is_empty() {

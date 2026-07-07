@@ -230,28 +230,39 @@ impl Encoder {
     }
     fn write_audio(&mut self) -> Result<()> {
         let Some(ref engine) = self.audio_engine else {
+            debug!("no audio engine, skipping audio");
             return Ok(());
         };
         let Some(audio_encoder) = self.audio_encoder.as_mut() else {
+            debug!("no audio encoder, skipping audio");
             return Ok(());
         };
         let Some(audio_stream_index) = self.audio_stream_index else {
+            debug!("no audio stream index, skipping audio");
             return Ok(());
         };
         if engine.is_empty() {
+            debug!("audio engine has no sounds, skipping audio");
             return Ok(());
         }
 
         let pcm = engine.mix()?;
         if pcm.is_empty() {
+            debug!("mixed audio is empty, skipping audio");
             return Ok(());
         }
+
+        debug!("writing {} audio samples ({} frames)", pcm.len() / 2, pcm.len() / 2 / 1024 + 1);
 
         let total_samples = pcm.len() / 2;
 
         let frame_size = 1024usize;
         let mut offset = 0usize;
         let mut pts: i64 = 0;
+
+        debug!("write_audio: total_samples={}, st={}", total_samples, pcm.iter().take(10).map(|s| format!("{:.4}", s)).collect::<Vec<_>>().join(","));
+        let max_sample = pcm.iter().map(|s| s.abs()).fold(0.0_f32, f32::max);
+        debug!("write_audio: max sample magnitude = {}", max_sample);
 
         while offset < total_samples {
             let remaining = total_samples - offset;
@@ -270,6 +281,7 @@ impl Encoder {
                 }
             }
 
+            debug!("write_audio: sending frame pts={} offset={} samples={}", pts, offset, samples_this_frame);
             audio_encoder.send_frame(&frame)?;
 
             let mut packet = ffmpeg::Packet::empty();

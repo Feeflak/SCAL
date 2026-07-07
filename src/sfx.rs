@@ -33,22 +33,37 @@ impl AudioEngine {
             return Ok(vec![]);
         }
 
+        let mut decoded_sounds: Vec<(Vec<f32>, Seconds)> = vec![];
         let mut total_duration = 0.0_f32;
+
         for sound in &self.sounds {
-            let end = sound.start_time + sound.duration;
+            debug!("mixing sound: {} at t={}", sound.path, sound.start_time);
+            let samples = self.decode_and_transform(sound)?;
+            if samples.is_empty() {
+                debug!("  -> decoded empty, skipping");
+                continue;
+            }
+            let actual_duration = (samples.len() / 2) as Seconds / OUTPUT_SAMPLE_RATE as Seconds;
+            debug!("  -> decoded {} samples ({}s), start_sample={}", samples.len(), actual_duration, (sound.start_time.max(0.0) * OUTPUT_SAMPLE_RATE as f32) as usize);
+            let end = sound.start_time + actual_duration;
             if end > total_duration {
                 total_duration = end;
             }
+            decoded_sounds.push((samples, sound.start_time.max(0.0)));
+        }
+
+        if total_duration <= 0.0 {
+            return Ok(vec![]);
         }
         total_duration = total_duration.min(MAX_AUDIO_DURATION);
         let total_samples = (total_duration * OUTPUT_SAMPLE_RATE as f32).ceil() as usize;
         let mut mix_buffer = vec![0.0_f32; total_samples * 2];
 
-        for sound in &self.sounds {
-            debug!("mixing sound: {} at t={}", sound.path, sound.start_time);
-            let samples = self.decode_and_transform(sound)?;
-            let start_sample = (sound.start_time * OUTPUT_SAMPLE_RATE as f32) as usize;
-
+        for (samples, start_time) in &decoded_sounds {
+            let start_sample = (start_time * OUTPUT_SAMPLE_RATE as f32) as usize;
+            if start_sample >= total_samples {
+                continue;
+            }
             for (i, &sample) in samples.iter().enumerate() {
                 let mix_idx = start_sample + i;
                 if mix_idx >= total_samples {
@@ -148,9 +163,11 @@ impl AudioEngine {
             let mut pcm_stereo =
             apply_pitch_and_volume(pcm_stereo, sound.pitch, sound.volume);
 
-        let target_samples = (sound.duration * OUTPUT_SAMPLE_RATE as f32) as usize * 2;
-        if pcm_stereo.len() > target_samples {
-            pcm_stereo.truncate(target_samples);
+        if sound.duration > 0.0 {
+            let target_samples = (sound.duration * OUTPUT_SAMPLE_RATE as f32) as usize * 2;
+            if pcm_stereo.len() > target_samples {
+                pcm_stereo.truncate(target_samples);
+            }
         }
 
         Ok(pcm_stereo)

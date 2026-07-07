@@ -33,6 +33,7 @@ pub enum AnimOP {
     CodeHighlight(Uuid, crate::anim_object::text::code::CodeHighlightAction),
     Current { uuid: Uuid, closure: CurrentClosure },
     All(Vec<AnimOP>),
+    Sequence(Vec<AnimOP>),
     Wait(Seconds),
     PlaySound(Sfx),
 }
@@ -95,6 +96,7 @@ impl TryInto<Animation> for AnimOP {
                 code::highlight_fade_in(uuid, action, duration, curve)
             }
             AnimOP::All(anim_ops) => get_all_animation(anim_ops)?,
+            AnimOP::Sequence(anim_ops) => get_sequence_animation(anim_ops)?,
             AnimOP::Current { uuid, closure } => Animation::instant(Box::new(move |animator, _| {
                 let mut snapshot = animator.get_object(&uuid)?.anim_data.clone();
                 if let Ok(world) = animator.get_object_world_matrix(&uuid) {
@@ -127,8 +129,81 @@ pub fn play(sfx: Sfx, time_offset: Seconds) -> AnimOP {
         ..sfx
     })
 }
+pub fn sequence(ops: Vec<AnimOP>) -> AnimOP {
+    AnimOP::Sequence(ops)
+}
 pub fn all(ops: Vec<AnimOP>) -> AnimOP {
     AnimOP::All(ops)
+}
+pub fn get_sequence_animation(ops: Vec<AnimOP>) -> Result<Animation> {
+    let mut child_durations: Vec<f32> = Vec::with_capacity(ops.len());
+    let mut total_dur = 0_f32;
+    for op in &ops {
+        let anim: Animation = op.to_owned().try_into()?;
+        let d = if anim.update.is_some() {
+            anim.total_duration
+        } else {
+            0.0
+        };
+        child_durations.push(d);
+        total_dur += d;
+    }
+
+    let start = Box::new({
+        let loc_ops = ops.to_owned();
+        move |animator: &mut Animator, store: &mut Vec<f32>| {
+            store.clear();
+            for op in loc_ops.to_owned() {
+                let anim: Animation = op.try_into()?;
+                let mut data = vec![];
+                (*anim.start)(animator, &mut data)?;
+                store.push(data.len() as f32);
+                store.append(&mut data);
+            }
+            Ok(())
+        }
+    });
+
+    let update: Option<UpdateAnimationFunction> = if total_dur > 0. {
+        let ops_clone = ops.to_owned();
+        let durations = child_durations;
+        Some(Box::new(
+            move |animator: &mut Animator, t: f32, store: &mut Vec<f32>| {
+                let abs_time = t * total_dur;
+                let mut cumulative = 0_f32;
+                let mut store_index = 0;
+
+                for (i, op) in ops_clone.iter().enumerate() {
+                    let anim: Animation = op.to_owned().try_into()?;
+                    let to_read = store[store_index] as usize;
+                    let child_duration = durations[i];
+
+                    if child_duration > 0. && abs_time >= cumulative
+                        && abs_time < cumulative + child_duration
+                    {
+                        let local_t = (abs_time - cumulative) / child_duration;
+                        let mut temp_store =
+                            store[store_index + 1..store_index + 1 + to_read].to_vec();
+                        if let Some(update) = anim.update {
+                            (*update)(animator, local_t, &mut temp_store)?;
+                        }
+                        store[store_index + 1..store_index + 1 + to_read]
+                            .copy_from_slice(&temp_store);
+                        break;
+                    }
+
+                    cumulative += child_duration;
+                    store_index += to_read + 1;
+                }
+
+                Ok(())
+            },
+        ))
+    } else {
+        None
+    };
+
+    Ok(Animation::new(total_dur, AnimationCurve::Linear, start, update))
 }
 pub fn get_all_animation(ops: Vec<AnimOP>) -> Result<Animation> {
     let mut dur = 0_f32;

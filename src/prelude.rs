@@ -5,5 +5,5 @@ pub use crate::anim_object::{
     CodeWindow, code_window,
     LayoutResult, LayoutDir, Alignment, PinPoint, LayoutBackground, LayoutItem, layout,
 };
-pub use crate::anim_op::{AnimationCurve, AnimOP, all, play};
+pub use crate::anim_op::{AnimationCurve, AnimOP, all, play, sequence};
 pub use crate::types::{Color, Sfx};
