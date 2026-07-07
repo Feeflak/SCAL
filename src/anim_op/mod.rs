@@ -2,11 +2,12 @@ pub mod code;
 mod transform;
 
 use anyhow::Result;
-use glam::Vec2;
+use glam::{Vec2, Vec4Swizzles, vec3};
 use log::debug;
 use uuid::Uuid;
 
 use crate::anim_object::object_trait::AnimObj;
+use crate::anim_object::TransformUniform;
 use crate::animator::Animator;
 use crate::types::*;
 
@@ -24,6 +25,7 @@ impl std::fmt::Debug for CurrentClosure {
 pub enum AnimOP {
     Instantiate(AnimObj),
     TransformMovePos(Uuid, Vec2, Seconds, AnimationCurve),
+    TransformMoveToObj(Uuid, Uuid, Vec2, Seconds, AnimationCurve),
     TransformRotate(Uuid, f32, Seconds, AnimationCurve),
     TransformScale(Uuid, Vec2, Seconds, AnimationCurve),
 
@@ -31,6 +33,7 @@ pub enum AnimOP {
     CodeModifyLine(Uuid, u32, String, Seconds, AnimationCurve, crate::anim_object::text::code::CodeAnimationStyle),
     CodeRemoveLines(Uuid, std::ops::Range<u32>, Seconds, AnimationCurve, crate::anim_object::text::code::CodeAnimationStyle),
     CodeHighlight(Uuid, crate::anim_object::text::code::CodeHighlightAction),
+    Current { uuid: Uuid, closure: CurrentClosure },
     All(Vec<AnimOP>),
     Wait(Seconds),
 }
@@ -45,6 +48,32 @@ impl TryInto<Animation> for AnimOP {
             })),
             AnimOP::TransformMovePos(uuid, pos, duration, curve) => {
                 transform::move_pos(uuid, pos, duration, curve)
+            }
+            AnimOP::TransformMoveToObj(moving_uuid, target_uuid, offset, duration, curve) => {
+                Animation::new(
+                    duration,
+                    curve,
+                    Box::new(move |animator, storage| {
+                        let target = animator.get_object_world_matrix(&target_uuid)?;
+                        let pos = target.w_axis.xy() + offset;
+                        let current = animator.get_object(&moving_uuid)?.transform().position;
+                        storage.push(current.x);
+                        storage.push(current.y);
+                        storage.push(pos.x);
+                        storage.push(pos.y);
+                        Ok(())
+                    }),
+                    Some(Box::new(move |animator, t, storage| {
+                        let obj = animator.get_object_mut(&moving_uuid)?;
+                        let transform = obj.anim_data.transform_mut();
+                        transform.position = vec3(
+                            storage[0] + t * (storage[2] - storage[0]),
+                            storage[1] + t * (storage[3] - storage[1]),
+                            transform.position.z,
+                        );
+                        Ok(())
+                    })),
+                )
             }
             AnimOP::TransformRotate(uuid, target, duration, curve) => {
                 transform::rotate_to(uuid, target, duration, curve)
@@ -67,6 +96,20 @@ impl TryInto<Animation> for AnimOP {
                 code::highlight_fade_in(uuid, action, duration, curve)
             }
             AnimOP::All(anim_ops) => get_all_animation(anim_ops)?,
+            AnimOP::Current { uuid, closure } => Animation::instant(Box::new(move |animator, _| {
+                let mut snapshot = animator.get_object(&uuid)?.anim_data.clone();
+                if let Ok(world) = animator.get_object_world_matrix(&uuid) {
+                    let (scale, rot, trans) = world.to_scale_rotation_translation();
+                    snapshot.transform_mut().world_uniform = Some(TransformUniform {
+                        scale: scale.truncate(),
+                        position: trans,
+                        rotation: rot.to_euler(glam::EulerRot::ZYX).0.to_degrees(),
+                    });
+                }
+                let anim_op = (closure.0)(snapshot);
+                animator.animations_left.push(anim_op);
+                Ok(())
+            })),
             AnimOP::Wait(duration) => Animation::new(
                 duration,
                 AnimationCurve::Linear,
@@ -133,7 +176,7 @@ pub fn get_all_animation(ops: Vec<AnimOP>) -> Result<Animation> {
     Ok(Animation::new(dur, AnimationCurve::Linear, start, update))
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Copy, Debug)]
 pub enum AnimationCurve {
     Linear,
     EaseOutCubic,

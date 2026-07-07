@@ -5,13 +5,13 @@ use uuid::Uuid;
 
 use crate::anim_object::render::PipelineKind;
 use crate::anim_object::text::TextManager;
-use crate::anim_object::Transform;
-use crate::anim_op::AnimOP;
+use crate::anim_object::{Transform, TransformUniform};
+use crate::anim_op::{AnimOP, CurrentClosure};
 use crate::renderer::{Index, Vertex};
 
 pub type MeshResult = (Vec<Vertex>, Vec<Index>, PipelineKind);
 
-pub trait AnimObjectTrait: Any + std::fmt::Debug + Send {
+pub trait AnimObjectTrait: Any + std::fmt::Debug + Send + Sync {
     fn transform(&self) -> &Transform;
     fn transform_mut(&mut self) -> &mut Transform;
     fn uuid(&self) -> Uuid {
@@ -42,6 +42,15 @@ pub struct AnimObj(pub Box<dyn AnimObjectTrait>);
 impl AnimObj {
     pub fn instantiate(&self) -> AnimOP {
         AnimOP::Instantiate(self.clone())
+    }
+    pub fn current(&self, closure: impl Fn(AnimObj) -> AnimOP + 'static + Send + Sync) -> AnimOP {
+        AnimOP::Current {
+            uuid: self.uuid(),
+            closure: CurrentClosure(std::sync::Arc::new(closure)),
+        }
+    }
+    pub fn current_world_uniform(&self) -> TransformUniform {
+        self.transform().get_world_uniform()
     }
 }
 
