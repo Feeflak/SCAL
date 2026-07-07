@@ -162,17 +162,17 @@ impl From<Vec<AnimOP>> for AnimOP {
         AnimOP::All(value)
     }
 }
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Copy)]
 pub struct Transform {
-    pub scale: Vec2,
+    pub(crate) scale: Vec2,
     pub uuid: Uuid,
     pub parent: Option<Uuid>,
-    pub position: Vec3,
-    pub rotation: f32,
+    pub(crate) position: Vec3,
+    pub(crate) rotation: f32,
     pub layout_container: Option<Uuid>,
-    pub world_uniform: Option<TransformUniform>,
+    pub(crate) world_uniform: Option<TransformUniform>,
 }
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Copy)]
 pub struct TransformUniform {
     pub scale: Vec2,
     pub position: Vec3,
