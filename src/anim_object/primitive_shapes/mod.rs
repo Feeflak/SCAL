@@ -2,14 +2,12 @@ pub mod mesh;
 
 use glam::{Vec2, vec2};
 
-use crate::anim_object::object_trait::{AnimObjectTrait, BindGroupLoader, MeshResult};
-use crate::anim_object::render::PipelineData;
 use crate::anim_object::Transform;
+use crate::anim_object::object_trait::{AnimObjectTrait, BindGroupLoader, MeshResult};
 use crate::anim_object::primitive_shapes::mesh::{
-    generate_rectangle_mesh_data,
-    generate_circle_mesh_data,
-    generate_polygon_mesh_data,
+    generate_circle_mesh_data, generate_polygon_mesh_data, generate_rectangle_mesh_data,
 };
+use crate::anim_object::render::PipelineData;
 use crate::renderer::{Vertex, camera_bind_group_layout, transform_bind_group_layout};
 use crate::types::*;
 
@@ -48,7 +46,7 @@ impl AnimObjectTrait for Rectangle {
     }
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Copy)]
 pub struct Circle {
     pub radius: f32,
     pub color: Color,

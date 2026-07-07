@@ -128,8 +128,12 @@ pub enum CodeHighlightAction {
 impl CodeHighlightAction {
     pub fn duration_and_curve(&self) -> (f32, AnimationCurve) {
         match self {
-            CodeHighlightAction::Lines { duration, curve, .. } => (*duration, curve.clone()),
-            CodeHighlightAction::Pattern { duration, curve, .. } => (*duration, curve.clone()),
+            CodeHighlightAction::Lines {
+                duration, curve, ..
+            } => (*duration, curve.clone()),
+            CodeHighlightAction::Pattern {
+                duration, curve, ..
+            } => (*duration, curve.clone()),
         }
     }
 }
@@ -213,13 +217,20 @@ impl Code {
 
     pub fn add_lines(
         &self,
-        text: String,
+        text: &str,
         from_line: usize,
         anim_curve: AnimationCurve,
         duration: f32,
         style: CodeAnimationStyle,
     ) -> AnimOP {
-        AnimOP::CodeAddLines(self.id, text, from_line, duration, anim_curve, style)
+        AnimOP::CodeAddLines(
+            self.id,
+            text.to_string(),
+            from_line,
+            duration,
+            anim_curve,
+            style,
+        )
     }
 
     pub fn modify_line(

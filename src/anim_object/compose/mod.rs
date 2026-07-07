@@ -2,20 +2,40 @@ use glam::{Vec2, Vec3, vec2, vec3};
 use uuid::Uuid;
 
 use crate::anim_object::{
-    Transform, object_trait::{AnimObj, AnimObjectTrait, BindGroupLoader, MeshResult},
-    primitive_shapes::Rectangle, render::PipelineKind, text::TextManager,
+    Transform, TransformUniform,
+    object_trait::{AnimObj, AnimObjectTrait, BindGroupLoader, MeshResult},
+    primitive_shapes::Rectangle,
+    render::PipelineKind,
+    text::TextManager,
 };
 use crate::anim_op::AnimOP;
 use crate::types::Color;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum PinPoint { TL, TC, TR, LC, C, RC, BL, BC, BR }
+pub enum PinPoint {
+    TL,
+    TC,
+    TR,
+    LC,
+    C,
+    RC,
+    BL,
+    BC,
+    BR,
+}
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum LayoutDir { Column, Row }
+pub enum LayoutDir {
+    Column,
+    Row,
+}
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum Alignment { Start, Center, End }
+pub enum Alignment {
+    Start,
+    Center,
+    End,
+}
 
 #[derive(Clone, Debug)]
 pub struct LayoutBackground {
@@ -71,8 +91,10 @@ impl LayoutContainer {
         direction: LayoutDir,
         alignment: Alignment,
         gap: f32,
-        padding_top: f32, padding_bottom: f32,
-        padding_left: f32, padding_right: f32,
+        padding_top: f32,
+        padding_bottom: f32,
+        padding_left: f32,
+        padding_right: f32,
         min_width: f32,
         min_height: f32,
     ) -> Self {
@@ -85,28 +107,45 @@ impl LayoutContainer {
                 rotation: 0.0,
                 scale: Vec2::ONE,
                 layout_container: None,
+                world_uniform: None,
             },
             background_uuid,
             child_uuids,
             direction,
             alignment,
             gap,
-            padding_top, padding_bottom, padding_left, padding_right,
-            min_width, min_height,
+            padding_top,
+            padding_bottom,
+            padding_left,
+            padding_right,
+            min_width,
+            min_height,
         }
     }
 }
 
 impl AnimObjectTrait for LayoutContainer {
-    fn transform(&self) -> &Transform { &self.transform }
-    fn transform_mut(&mut self) -> &mut Transform { &mut self.transform }
+    fn transform(&self) -> &Transform {
+        &self.transform
+    }
+    fn transform_mut(&mut self) -> &mut Transform {
+        &mut self.transform
+    }
     fn generate_mesh(&mut self, _mgr: &mut TextManager) -> MeshResult {
         (vec![], vec![], PipelineKind::Shape)
     }
-    fn bind_group_loader(&self) -> Option<BindGroupLoader> { None }
-    fn clone_box(&self) -> Box<dyn AnimObjectTrait> { Box::new(self.clone()) }
-    fn as_any(&self) -> &dyn std::any::Any { self }
-    fn as_any_mut(&mut self) -> &mut dyn std::any::Any { self }
+    fn bind_group_loader(&self) -> Option<BindGroupLoader> {
+        None
+    }
+    fn clone_box(&self) -> Box<dyn AnimObjectTrait> {
+        Box::new(self.clone())
+    }
+    fn as_any(&self) -> &dyn std::any::Any {
+        self
+    }
+    fn as_any_mut(&mut self) -> &mut dyn std::any::Any {
+        self
+    }
 }
 
 #[derive(Clone, Debug)]
@@ -114,26 +153,39 @@ pub struct LayoutResult {
     pub background: AnimObj,
     pub container: AnimObj,
     pub items: Vec<AnimObj>,
+    pub nested: Vec<LayoutResult>,
     nested_ops: Vec<AnimOP>,
 }
 
 impl LayoutResult {
     pub fn instantiate(&self) -> AnimOP {
-        let mut ops = Vec::with_capacity(2 + self.items.len() + self.nested_ops.len());
+        let mut ops = Vec::new();
         ops.push(self.background.clone().instantiate());
         ops.push(self.container.clone().instantiate());
         for item in &self.items {
             ops.push(item.clone().instantiate());
+        }
+        for nested in &self.nested {
+            ops.extend(nested.nested_ops.iter().cloned());
+            for item in &nested.items {
+                ops.push(item.clone().instantiate());
+            }
         }
         ops.extend(self.nested_ops.iter().cloned());
         AnimOP::All(ops)
     }
 
     pub fn instantiate_children(&self) -> AnimOP {
-        let mut ops = Vec::with_capacity(1 + self.items.len() + self.nested_ops.len());
+        let mut ops = Vec::new();
         ops.push(self.container.clone().instantiate());
         for item in &self.items {
             ops.push(item.clone().instantiate());
+        }
+        for nested in &self.nested {
+            ops.extend(nested.nested_ops.iter().cloned());
+            for item in &nested.items {
+                ops.push(item.clone().instantiate());
+            }
         }
         ops.extend(self.nested_ops.iter().cloned());
         AnimOP::All(ops)
@@ -143,13 +195,13 @@ impl LayoutResult {
 fn compute_bg_center(position: Vec3, w: f32, h: f32, pin: PinPoint) -> Vec3 {
     let (hw, hh) = (w / 2.0, h / 2.0);
     match pin {
-        PinPoint::TL => position + vec3( hw,  hh, 0.0),
-        PinPoint::TC => position + vec3(0.0,  hh, 0.0),
-        PinPoint::TR => position + vec3(-hw,  hh, 0.0),
-        PinPoint::LC => position + vec3( hw, 0.0, 0.0),
-        PinPoint::C  => position,
+        PinPoint::TL => position + vec3(hw, hh, 0.0),
+        PinPoint::TC => position + vec3(0.0, hh, 0.0),
+        PinPoint::TR => position + vec3(-hw, hh, 0.0),
+        PinPoint::LC => position + vec3(hw, 0.0, 0.0),
+        PinPoint::C => position,
         PinPoint::RC => position + vec3(-hw, 0.0, 0.0),
-        PinPoint::BL => position + vec3( hw, -hh, 0.0),
+        PinPoint::BL => position + vec3(hw, -hh, 0.0),
         PinPoint::BC => position + vec3(0.0, -hh, 0.0),
         PinPoint::BR => position + vec3(-hw, -hh, 0.0),
     }
@@ -200,8 +252,10 @@ pub fn layout(
     layout_dir: LayoutDir,
     alignment: Alignment,
     gap: f32,
-    padding_top: f32, padding_bottom: f32,
-    padding_left: f32, padding_right: f32,
+    padding_top: f32,
+    padding_bottom: f32,
+    padding_left: f32,
+    padding_right: f32,
     min_width: f32,
     min_height: f32,
 ) -> LayoutResult {
@@ -236,9 +290,17 @@ pub fn layout(
 
     let child_uuids: Vec<Uuid> = anim_items.iter().map(|item| item.uuid()).collect();
     let container_inner = LayoutContainer::new(
-        bg_uuid, child_uuids, layout_dir, alignment, gap,
-        padding_top, padding_bottom, padding_left, padding_right,
-        min_width, min_height,
+        bg_uuid,
+        child_uuids,
+        layout_dir,
+        alignment,
+        gap,
+        padding_top,
+        padding_bottom,
+        padding_left,
+        padding_right,
+        min_width,
+        min_height,
     );
     let container_uuid = container_inner.id;
     let container_obj = AnimObj(Box::new(container_inner));
@@ -254,13 +316,20 @@ pub fn layout(
     // Relayout nested containers whose background was stretched
     for nested in &mut nested_layouts {
         let bg_size = {
-            let bg = anim_items.iter().find(|a| a.uuid() == nested.background.uuid());
+            let bg = anim_items
+                .iter()
+                .find(|a| a.uuid() == nested.background.uuid());
             match bg.and_then(|b| b.as_any().downcast_ref::<Rectangle>()) {
                 Some(r) => r.size,
                 None => continue,
             }
         };
-        let container = nested.container.as_any().downcast_ref::<LayoutContainer>().unwrap().clone();
+        let container = nested
+            .container
+            .as_any()
+            .downcast_ref::<LayoutContainer>()
+            .unwrap()
+            .clone();
         relayout_nested_children(bg_size, &container, &mut nested.items);
     }
 
@@ -285,8 +354,23 @@ pub fn layout(
                     }
                 };
                 item.transform_mut().position = vec3(x, y + s.y / 2.0, 0.0);
-                item.transform_mut().parent = Some(bg_uuid);
+                item.transform_mut().set_parent(Some(bg_uuid));
                 item.transform_mut().layout_container = Some(container_uuid);
+                {
+                    let t = item.transform();
+                    let local = glam::Mat4::from_scale_rotation_translation(
+                        Vec3::new(t.scale.x, t.scale.y, 1.0),
+                        glam::Quat::from_rotation_z(t.rotation.to_radians()),
+                        Vec3::new(t.position.x, t.position.y, t.position.z),
+                    );
+                    let parent_local = bg.transform().get_local_matrix();
+                    let (scale, rot, trans) = (local * parent_local).to_scale_rotation_translation();
+                    item.transform_mut().world_uniform = Some(TransformUniform {
+                        scale: scale.truncate(),
+                        position: trans,
+                        rotation: rot.to_euler(glam::EulerRot::ZYX).0.to_degrees(),
+                    });
+                }
                 y += s.y + gap;
             }
         }
@@ -305,18 +389,37 @@ pub fn layout(
                     }
                 };
                 item.transform_mut().position = vec3(x + s.x / 2.0, y, 0.0);
-                item.transform_mut().parent = Some(bg_uuid);
+                item.transform_mut().set_parent(Some(bg_uuid));
                 item.transform_mut().layout_container = Some(container_uuid);
+                {
+                    let t = item.transform();
+                    let local = glam::Mat4::from_scale_rotation_translation(
+                        Vec3::new(t.scale.x, t.scale.y, 1.0),
+                        glam::Quat::from_rotation_z(t.rotation.to_radians()),
+                        Vec3::new(t.position.x, t.position.y, t.position.z),
+                    );
+                    let parent_local = bg.transform().get_local_matrix();
+                    let (scale, rot, trans) = (local * parent_local).to_scale_rotation_translation();
+                    item.transform_mut().world_uniform = Some(TransformUniform {
+                        scale: scale.truncate(),
+                        position: trans,
+                        rotation: rot.to_euler(glam::EulerRot::ZYX).0.to_degrees(),
+                    });
+                }
                 x += s.x + gap;
             }
         }
     }
 
-    let nested_ops: Vec<AnimOP> = nested_layouts.iter().map(|n| n.instantiate_children()).collect();
+    let nested_ops: Vec<AnimOP> = nested_layouts
+        .iter()
+        .map(|n| n.instantiate_children())
+        .collect();
     LayoutResult {
         background: bg,
         container: container_obj,
         items: anim_items,
+        nested: nested_layouts,
         nested_ops,
     }
 }

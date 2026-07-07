@@ -1,4 +1,4 @@
-use glam::{vec3, Vec2};
+use glam::{vec2, vec3, Vec2};
 use uuid::Uuid;
 
 use crate::anim_op::{Animation, AnimationCurve};
