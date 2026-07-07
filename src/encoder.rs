@@ -6,6 +6,7 @@ use log::{debug, info};
 use tokio::sync::mpsc::{Receiver, Sender};
 
 use crate::renderer::RenderingSettings;
+use crate::sfx::{self, AudioEngine};
 
 pub(crate) struct Encoder {
     output: ffmpeg::format::context::Output,
@@ -25,6 +26,10 @@ pub(crate) struct Encoder {
     timing_convert: std::time::Duration,
     timing_nvenc: std::time::Duration,
     frame_count: u64,
+
+    audio_engine: Option<AudioEngine>,
+    audio_stream_index: Option<usize>,
+    audio_encoder: Option<ffmpeg::encoder::Audio>,
 }
 
 impl Encoder {
@@ -34,6 +39,7 @@ impl Encoder {
         width: u32,
         height: u32,
         fps: u32,
+        audio_engine: Option<AudioEngine>,
     ) -> Result<Self> {
         ffmpeg::init()?;
 
@@ -102,6 +108,8 @@ impl Encoder {
 
         let stream_index = stream.index();
 
+        let (audio_stream_index, audio_encoder) = setup_audio_stream(&mut output, &audio_engine)?;
+
         output.write_header()?;
 
         Ok(Self {
@@ -120,6 +128,9 @@ impl Encoder {
             timing_convert: std::time::Duration::ZERO,
             timing_nvenc: std::time::Duration::ZERO,
             frame_count: 0,
+            audio_engine,
+            audio_stream_index,
+            audio_encoder,
         })
     }
 
@@ -217,8 +228,92 @@ impl Encoder {
 
         Ok(())
     }
+    fn write_audio(&mut self) -> Result<()> {
+        let Some(ref engine) = self.audio_engine else {
+            return Ok(());
+        };
+        let Some(audio_encoder) = self.audio_encoder.as_mut() else {
+            return Ok(());
+        };
+        let Some(audio_stream_index) = self.audio_stream_index else {
+            return Ok(());
+        };
+        if engine.is_empty() {
+            return Ok(());
+        }
+
+        let pcm = engine.mix()?;
+        if pcm.is_empty() {
+            return Ok(());
+        }
+
+        let total_samples = pcm.len() / 2;
+
+        let frame_size = 1024usize;
+        let mut offset = 0usize;
+        let mut pts: i64 = 0;
+
+        while offset < total_samples {
+            let remaining = total_samples - offset;
+            let samples_this_frame = remaining.min(frame_size);
+            let mut frame = ffmpeg::frame::Audio::new(
+                ffmpeg::format::Sample::F32(ffmpeg::format::sample::Type::Planar),
+                samples_this_frame,
+                ffmpeg::ChannelLayout::STEREO,
+            );
+            frame.set_pts(Some(pts));
+
+            for ch in 0..2 {
+                let plane = frame.plane_mut::<f32>(ch);
+                for i in 0..samples_this_frame {
+                    plane[i] = pcm[(offset + i) * 2 + ch];
+                }
+            }
+
+            audio_encoder.send_frame(&frame)?;
+
+            let mut packet = ffmpeg::Packet::empty();
+            while audio_encoder.receive_packet(&mut packet).is_ok() {
+                packet.set_stream(audio_stream_index);
+                packet.rescale_ts(
+                    audio_encoder.time_base(),
+                    self.output.stream(audio_stream_index).unwrap().time_base(),
+                );
+                packet.write_interleaved(&mut self.output)?;
+            }
+
+            offset += samples_this_frame;
+            pts += samples_this_frame as i64;
+        }
+
+        audio_encoder.send_eof()?;
+        let mut packet = ffmpeg::Packet::empty();
+        while audio_encoder.receive_packet(&mut packet).is_ok() {
+            packet.set_stream(audio_stream_index);
+            packet.rescale_ts(
+                audio_encoder.time_base(),
+                self.output.stream(audio_stream_index).unwrap().time_base(),
+            );
+            packet.write_interleaved(&mut self.output)?;
+        }
+
+        debug!("audio encoding done, {} samples", total_samples);
+        Ok(())
+    }
+
     fn finish(&mut self) -> Result<()> {
+        self.write_audio()?;
+
         self.encoder.send_eof()?;
+        let mut packet = ffmpeg::Packet::empty();
+        while self.encoder.receive_packet(&mut packet).is_ok() {
+            packet.set_stream(self.stream_index);
+            packet.rescale_ts(
+                self.encoder.time_base(),
+                self.output.stream(self.stream_index).unwrap().time_base(),
+            );
+            packet.write_interleaved(&mut self.output)?;
+        }
         self.output.write_trailer()?;
 
         let fc = self.frame_count as f64;
@@ -271,12 +366,38 @@ impl Encoder {
         self.finish().expect("while finishing");
     }
 }
+fn setup_audio_stream(
+    output: &mut ffmpeg::format::context::Output,
+    audio_engine: &Option<AudioEngine>,
+) -> Result<(Option<usize>, Option<ffmpeg::encoder::Audio>)> {
+    let has_audio = audio_engine.as_ref().is_some_and(|e| !e.is_empty());
+    if !has_audio {
+        return Ok((None, None));
+    }
+
+    let mut audio_stream = output.add_stream("aac")?;
+
+    let mut audio_ctx = ffmpeg::codec::context::Context::new().encoder().audio()?;
+    audio_ctx.set_rate(sfx::OUTPUT_SAMPLE_RATE as i32);
+    audio_ctx.set_format(ffmpeg::format::Sample::F32(ffmpeg::format::sample::Type::Planar));
+    audio_ctx.set_channel_layout(ffmpeg::ChannelLayout::default(2));
+    audio_ctx.set_time_base((1, sfx::OUTPUT_SAMPLE_RATE as i32));
+
+    let encoder = audio_ctx.open_as("aac")?;
+    let stream_index = audio_stream.index();
+    audio_stream.set_parameters(&encoder);
+    audio_stream.set_time_base((1, sfx::OUTPUT_SAMPLE_RATE as i32));
+
+    Ok((Some(stream_index), Some(encoder)))
+}
+
 pub fn start_encoding_task(
     encoding_settings: EncodingSettings,
     tokio_handle: &tokio::runtime::Handle,
     rendering_settings: RenderingSettings,
     mut encoder_rec: Receiver<EncoderComunication>,
     renderer_send: Sender<usize>,
+    audio_engine: Option<AudioEngine>,
 ) -> Result<()> {
     tokio_handle.spawn_blocking(move || {
         let output =
@@ -288,6 +409,7 @@ pub fn start_encoding_task(
             rendering_settings.width,
             rendering_settings.height,
             rendering_settings.fps,
+            audio_engine,
         )
         .unwrap();
 

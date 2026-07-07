@@ -9,9 +9,7 @@ use uuid::Uuid;
 use crate::anim_object::object_trait::AnimObj;
 use crate::anim_object::TransformUniform;
 use crate::animator::Animator;
-use crate::types::*;
-
-use std::sync::Arc;
+use crate::types::{Seconds, Sfx};
 
 #[derive(Clone)]
 pub struct CurrentClosure(pub std::sync::Arc<dyn Fn(AnimObj) -> AnimOP + Send + Sync>);
@@ -36,6 +34,7 @@ pub enum AnimOP {
     Current { uuid: Uuid, closure: CurrentClosure },
     All(Vec<AnimOP>),
     Wait(Seconds),
+    PlaySound(Sfx),
 }
 impl TryInto<Animation> for AnimOP {
     fn try_into(self) -> Result<Animation> {
@@ -116,10 +115,17 @@ impl TryInto<Animation> for AnimOP {
                 Box::new(|_, _| Ok(())),
                 Some(Box::new(|_, _, _| Ok(()))),
             ),
+            AnimOP::PlaySound(_) => Animation::instant(Box::new(|_, _| Ok(()))),
         })
     }
 
     type Error = anyhow::Error;
+}
+pub fn play(sfx: Sfx, time_offset: Seconds) -> AnimOP {
+    AnimOP::PlaySound(Sfx {
+        time_offset: sfx.time_offset + time_offset,
+        ..sfx
+    })
 }
 pub fn all(ops: Vec<AnimOP>) -> AnimOP {
     AnimOP::All(ops)

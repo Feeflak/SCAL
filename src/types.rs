@@ -89,3 +89,13 @@ impl Into<wgpu::Color> for Color {
 }
 
 pub type Seconds = f32;
+
+#[derive(Clone, Debug)]
+pub struct Sfx {
+    pub path: String,
+    pub volume: f32,
+    pub pitch: f32,
+    pub time_offset: Seconds,
+    pub duration: Seconds,
+    pub pitch_variation: f32,
+}

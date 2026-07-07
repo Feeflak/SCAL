@@ -1,6 +1,7 @@
 use crate::anim_op::AnimOP;
 use crate::encoder::{CodecType, EncodingSettings};
 use crate::renderer::RenderingSettings;
+use crate::sfx::{AudioEngine, ScheduledSound};
 use anyhow::{Context, Result, bail};
 use log::info;
 
@@ -14,6 +15,7 @@ pub mod prelude;
 pub mod projection;
 mod readback;
 pub mod renderer;
+pub mod sfx;
 pub mod types;
 
 const BYTES_PER_PIXEL: u32 = 4; //RGBA
@@ -23,6 +25,41 @@ pub async fn run_loop(
     rendering_settings: RenderingSettings,
     mut animations: Vec<AnimOP>,
 ) -> Result<()> {
+    let mut sfx_sounds = vec![];
+    animations.retain(|op| match op {
+        AnimOP::PlaySound(sfx) => {
+            sfx_sounds.push(sfx.clone());
+            false
+        }
+        _ => true,
+    });
+
+    let scheduled: Vec<ScheduledSound> = sfx_sounds
+        .into_iter()
+        .map(|s| {
+            let pitch_var = if s.pitch_variation > 0.0 {
+                use rand::Rng;
+                let mut rng = rand::thread_rng();
+                let variation = rng.gen_range(-s.pitch_variation..s.pitch_variation);
+                s.pitch * (1.0 + variation)
+            } else {
+                s.pitch
+            };
+            ScheduledSound {
+                path: s.path,
+                volume: s.volume,
+                pitch: pitch_var,
+                start_time: s.time_offset,
+                duration: s.duration,
+            }
+        })
+        .collect();
+    let audio_engine = if scheduled.is_empty() {
+        None
+    } else {
+        Some(AudioEngine::new(scheduled))
+    };
+
     animations.reverse();
     info!("Starting rendering loop...");
     if (rendering_settings.width * 4) % 256 != 0 {
@@ -65,6 +102,7 @@ pub async fn run_loop(
         rendering_settings,
         encoder_rec,
         renderer_send,
+        audio_engine,
     )
     .context("while initializing the encoder")?;
     anim_render::render_animations(
