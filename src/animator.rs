@@ -224,7 +224,7 @@ impl Animator {
                 Some(parent_id) => {
                     let mut parent_matrix = self.get_object_world_matrix(&parent_id)?;
                     parent_matrix.w_axis.z += Z_CHILD_CHANGE;
-                    Ok(local * parent_matrix)
+                    Ok(parent_matrix * local)
                 }
                 None => Ok(local),
             }

@@ -2050,6 +2050,7 @@ dependencies = [
  "glam",
  "image 0.25.10",
  "log",
+ "regex",
  "resvg",
  "swash",
  "tiny-skia",
