@@ -30,6 +30,7 @@ rand = "0.8"
 
 [workspace]
 members = [
+        "./examples/audio",
         "./examples/code",
         "./examples/code_window",
         "./examples/image",
