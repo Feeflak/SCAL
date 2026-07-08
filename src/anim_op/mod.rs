@@ -35,7 +35,7 @@ pub enum AnimOP {
     All(Vec<AnimOP>),
     Sequence(Vec<AnimOP>),
     Wait(Seconds),
-    PlaySound(Sfx),
+    PlaySound(Sfx, Seconds),
 }
 impl TryInto<Animation> for AnimOP {
     fn try_into(self) -> Result<Animation> {
@@ -117,17 +117,14 @@ impl TryInto<Animation> for AnimOP {
                 Box::new(|_, _| Ok(())),
                 Some(Box::new(|_, _, _| Ok(()))),
             ),
-            AnimOP::PlaySound(_) => Animation::instant(Box::new(|_, _| Ok(()))),
+            AnimOP::PlaySound(_, _) => Animation::instant(Box::new(|_, _| Ok(()))),
         })
     }
 
     type Error = anyhow::Error;
 }
-pub fn play(sfx: Sfx, time_offset: Seconds) -> AnimOP {
-    AnimOP::PlaySound(Sfx {
-        time_offset: sfx.time_offset + time_offset,
-        ..sfx
-    })
+pub fn play(sfx: Sfx, video_delay: Seconds) -> AnimOP {
+    AnimOP::PlaySound(sfx, video_delay)
 }
 pub fn sequence(ops: Vec<AnimOP>) -> AnimOP {
     AnimOP::Sequence(ops)

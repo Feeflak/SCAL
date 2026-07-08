@@ -2,7 +2,7 @@ use crate::anim_op::AnimOP;
 use crate::encoder::{CodecType, EncodingSettings};
 use crate::renderer::RenderingSettings;
 use crate::sfx::{AudioEngine, ScheduledSound};
-use crate::types::Sfx;
+use crate::types::{Seconds, Sfx};
 use anyhow::{Context, Result, bail};
 use log::{debug, info};
 
@@ -26,28 +26,54 @@ pub async fn run_loop(
     rendering_settings: RenderingSettings,
     mut animations: Vec<AnimOP>,
 ) -> Result<()> {
-    fn collect_sounds(ops: &[AnimOP], out: &mut Vec<Sfx>) {
-        for op in ops {
-            match op {
-                AnimOP::PlaySound(sfx) => {
-                    debug!("collect_sounds found PlaySound: path={}, time_offset={}, duration={}", sfx.path, sfx.time_offset, sfx.duration);
-                    out.push(sfx.clone());
-                }
-                AnimOP::All(children) | AnimOP::Sequence(children) => {
-                    collect_sounds(children, out);
-                }
-                _ => {}
+    fn op_end_time(op: &AnimOP, start_time: Seconds, out: &mut Vec<(Sfx, Seconds)>) -> Seconds {
+        match op {
+            AnimOP::PlaySound(sfx, video_delay) => {
+                let abs_time = start_time + video_delay;
+                debug!("audio: {} at abs_time={}, seek={}", sfx.path, abs_time, sfx.time_offset);
+                out.push((sfx.clone(), abs_time));
+                start_time
             }
+            AnimOP::All(children) => {
+                let mut max_end = start_time;
+                for child in children {
+                    let end = op_end_time(child, start_time, out);
+                    if end > max_end {
+                        max_end = end;
+                    }
+                }
+                max_end
+            }
+            AnimOP::Sequence(children) => {
+                let mut t = start_time;
+                for child in children {
+                    t = op_end_time(child, t, out);
+                }
+                t
+            }
+            AnimOP::Wait(dur) => start_time + dur,
+            AnimOP::CodeAddLines(_, _, _, dur, _, _)
+            | AnimOP::CodeModifyLine(_, _, _, dur, _, _)
+            | AnimOP::CodeRemoveLines(_, _, dur, _, _) => start_time + dur,
+            AnimOP::CodeHighlight(_, action) => start_time + action.duration_and_curve().0,
+            AnimOP::TransformMovePos(_, _, dur, _)
+            | AnimOP::TransformMoveToObj(_, _, _, dur, _)
+            | AnimOP::TransformRotate(_, _, dur, _)
+            | AnimOP::TransformScale(_, _, dur, _) => start_time + dur,
+            AnimOP::Instantiate(_) | AnimOP::Current { .. } => start_time,
         }
     }
 
-    let mut sfx_sounds = vec![];
-    collect_sounds(&animations, &mut sfx_sounds);
-    debug!("collect_sounds total: {}", sfx_sounds.len());
+    let mut sfx_sounds: Vec<(Sfx, Seconds)> = vec![];
+    let mut time = 0.0;
+    for op in &animations {
+        time = op_end_time(op, time, &mut sfx_sounds);
+    }
+    debug!("collect_sounds total: {}, total_dur={}", sfx_sounds.len(), time);
 
     let scheduled: Vec<ScheduledSound> = sfx_sounds
         .into_iter()
-        .map(|s| {
+        .map(|(s, abs_start_time)| {
             let pitch_var = if s.pitch_variation > 0.0 {
                 use rand::Rng;
                 let mut rng = rand::thread_rng();
@@ -60,10 +86,11 @@ pub async fn run_loop(
                 path: s.path,
                 volume: s.volume,
                 pitch: pitch_var,
-                start_time: s.time_offset,
+                start_time: abs_start_time,
+                seek_offset: s.time_offset,
                 duration: s.duration,
             };
-            debug!("ScheduledSound: path={}, start_time={}, duration={}, pitch={}", ss.path, ss.start_time, ss.duration, ss.pitch);
+            debug!("ScheduledSound: path={}, start_time={}, seek={}, duration={}, pitch={}", ss.path, ss.start_time, ss.seek_offset, ss.duration, ss.pitch);
             ss
         })
         .collect();

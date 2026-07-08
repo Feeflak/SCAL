@@ -12,6 +12,7 @@ pub struct ScheduledSound {
     pub volume: f32,
     pub pitch: f32,
     pub start_time: Seconds,
+    pub seek_offset: Seconds,
     pub duration: Seconds,
 }
 
@@ -44,7 +45,6 @@ impl AudioEngine {
                 continue;
             }
             let actual_duration = (samples.len() / 2) as Seconds / OUTPUT_SAMPLE_RATE as Seconds;
-            debug!("  -> decoded {} samples ({}s), start_sample={}", samples.len(), actual_duration, (sound.start_time.max(0.0) * OUTPUT_SAMPLE_RATE as f32) as usize);
             let end = sound.start_time + actual_duration;
             if end > total_duration {
                 total_duration = end;
@@ -60,13 +60,14 @@ impl AudioEngine {
         let mut mix_buffer = vec![0.0_f32; total_samples * 2];
 
         for (samples, start_time) in &decoded_sounds {
-            let start_sample = (start_time * OUTPUT_SAMPLE_RATE as f32) as usize;
-            if start_sample >= total_samples {
+            let start_frame = (start_time * OUTPUT_SAMPLE_RATE as f32) as usize;
+            if start_frame >= total_samples {
                 continue;
             }
+            let start_sample = start_frame * 2;
             for (i, &sample) in samples.iter().enumerate() {
                 let mix_idx = start_sample + i;
-                if mix_idx >= total_samples {
+                if mix_idx >= total_samples * 2 {
                     break;
                 }
                 mix_buffer[mix_idx] = (mix_buffer[mix_idx] + sample).clamp(-1.0, 1.0);
@@ -160,7 +161,23 @@ impl AudioEngine {
             return Ok(vec![]);
         }
 
-            let mut pcm_stereo =
+        let total_frames = pcm_stereo.len() / 2;
+        if sound.seek_offset > 0.0 {
+            let seek_frames = (sound.seek_offset * OUTPUT_SAMPLE_RATE as f32) as usize;
+            if seek_frames >= total_frames {
+                return Ok(vec![]);
+            }
+            if sound.duration > 0.0 {
+                let dur_frames = (sound.duration * OUTPUT_SAMPLE_RATE as f32) as usize;
+                if seek_frames + dur_frames > total_frames {
+                    return Ok(vec![]);
+                }
+            }
+            let skip = seek_frames * 2;
+            pcm_stereo.drain(0..skip);
+        }
+
+        let mut pcm_stereo =
             apply_pitch_and_volume(pcm_stereo, sound.pitch, sound.volume);
 
         if sound.duration > 0.0 {

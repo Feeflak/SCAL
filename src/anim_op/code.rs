@@ -3,7 +3,9 @@ use std::ops::Range;
 use log::info;
 use uuid::Uuid;
 
-use crate::anim_object::text::code::{Code, CodeAnimationStyle, CodeHighlight, CodeHighlightAction, CodeHighlightKind};
+use crate::anim_object::text::code::{
+    Code, CodeAnimationStyle, CodeHighlight, CodeHighlightAction, CodeHighlightKind,
+};
 use crate::anim_op::{Animation, AnimationCurve};
 use crate::types::*;
 
@@ -18,7 +20,6 @@ fn insert_lines(source: &mut String, text: &str, from_line: usize) -> usize {
     for (i, line) in text.lines().enumerate() {
         lines.insert(insert_pos + i, line);
     }
-    info!("lines: {lines:?}");
     *source = lines.join("\n");
     text.lines().count()
 }
@@ -93,7 +94,7 @@ pub fn add_lines(
                     code.anim_spacing = 1.0;
                     code.anim_reveal = (t - 0.3) / 0.7;
                 }
-                log::debug!(
+                log::trace!(
                     "TypeWriter add_lines t={:.4} reveal={:.4}->{:.4} spacing={:.4}->{:.4}",
                     t,
                     prev_reveal,
@@ -113,7 +114,7 @@ pub fn add_lines(
                 let prev_spacing = code.anim_spacing;
                 code.anim_reveal = t;
                 code.anim_spacing = t;
-                log::debug!(
+                log::trace!(
                     "Fold add_lines t={:.4} reveal={:.4}->{:.4} spacing={:.4}->{:.4}",
                     t,
                     prev_reveal,
@@ -267,12 +268,16 @@ pub fn highlight_fade_in(
                 let highlight = match &action {
                     CodeHighlightAction::Lines { ranges, color, .. } => CodeHighlight {
                         color: *color,
-                        kind: CodeHighlightKind::Lines { ranges: ranges.clone() },
+                        kind: CodeHighlightKind::Lines {
+                            ranges: ranges.clone(),
+                        },
                         progress: 0.0,
                     },
                     CodeHighlightAction::Pattern { regex, color, .. } => CodeHighlight {
                         color: *color,
-                        kind: CodeHighlightKind::Pattern { regex: regex.clone() },
+                        kind: CodeHighlightKind::Pattern {
+                            regex: regex.clone(),
+                        },
                         progress: 0.0,
                     },
                 };
