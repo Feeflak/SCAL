@@ -166,6 +166,7 @@ pub struct Code {
 #[derive(Clone, Debug)]
 pub enum CodeAnimationStyle {
     TypeWriter,
+    TypeWriterInstantResize,
     Fold,
 }
 

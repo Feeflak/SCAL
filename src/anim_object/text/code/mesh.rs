@@ -58,7 +58,7 @@ pub fn generate_code_mesh(
         offsets
     };
 
-    let total_animated_glyphs = if matches!(code.anim_style, CodeAnimationStyle::TypeWriter) {
+    let total_animated_glyphs = if matches!(code.anim_style, CodeAnimationStyle::TypeWriter | CodeAnimationStyle::TypeWriterInstantResize) {
         let mut gl = 0usize;
         let mut li = 0usize;
         let mut ply: Option<f32> = None;
@@ -112,7 +112,7 @@ pub fn generate_code_mesh(
         let line_vis = if in_animated {
             let line_index = li - line_start;
             match code.anim_style {
-                CodeAnimationStyle::TypeWriter => true,
+                CodeAnimationStyle::TypeWriter | CodeAnimationStyle::TypeWriterInstantResize => true,
                 CodeAnimationStyle::Fold => {
                     let line_threshold = reveal * num_animated_lines as f32;
                     (line_index as f32) < line_threshold
@@ -140,7 +140,7 @@ pub fn generate_code_mesh(
 
         for glyph in run.glyphs {
             if in_animated
-                && matches!(code.anim_style, CodeAnimationStyle::TypeWriter)
+                && matches!(code.anim_style, CodeAnimationStyle::TypeWriter | CodeAnimationStyle::TypeWriterInstantResize)
             {
                 let threshold = total_animated_glyphs as f32 * reveal;
                 if animated_glyphs_emitted as f32 >= threshold {
