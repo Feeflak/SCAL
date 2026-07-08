@@ -282,7 +282,10 @@ impl Encoder {
             }
 
             debug!("write_audio: sending frame pts={} offset={} samples={}", pts, offset, samples_this_frame);
-            audio_encoder.send_frame(&frame)?;
+            if let Err(e) = audio_encoder.send_frame(&frame) {
+                debug!("audio_encoder.send_frame failed at offset={}: {:?}", offset, e);
+                return Err(e.into());
+            }
 
             let mut packet = ffmpeg::Packet::empty();
             while audio_encoder.receive_packet(&mut packet).is_ok() {
