@@ -321,6 +321,16 @@ pub struct Animation {
     pub start: StartAnimationFunction,
     pub update: Option<UpdateAnimationFunction>,
 }
+pub fn convert_curve(ease: scal_core::Ease) -> AnimationCurve {
+    match ease {
+        scal_core::Ease::Linear => AnimationCurve::Linear,
+        scal_core::Ease::OutCubic => AnimationCurve::EaseOutCubic,
+        scal_core::Ease::InOutCubic => AnimationCurve::EaseInOutCubic,
+        scal_core::Ease::InOutBack => AnimationCurve::EaseInOutBack,
+        scal_core::Ease::OutBack => AnimationCurve::EaseOutBack,
+        scal_core::Ease::InBack => AnimationCurve::EaseInBack,
+    }
+}
 impl Animation {
     pub fn new(
         total_duration: f32,

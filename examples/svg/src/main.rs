@@ -1,5 +1,4 @@
 use anyhow::Result;
-
 use glam::{Vec2, vec2, vec3};
 use log::{LevelFilter, info};
 use scal::{
@@ -11,6 +10,7 @@ use tokio::runtime::Handle;
 
 const LEVEL_FILTER: LevelFilter = LevelFilter::Info;
 pub const CANVAS_SIZE: Vec2 = vec2(1920., 1080.);
+
 #[tokio::main]
 async fn main() -> Result<()> {
     let mut builder = colog::default_builder();
@@ -34,7 +34,7 @@ async fn main() -> Result<()> {
 
     let svg = svg(
         Transform::new(None, vec3(400., 250., 1.), 0., Vec2::ONE),
-        "test.svg".to_string(),
+        "test.svg",
         vec2(800., 500.),
         Color::WHITE,
         Some(Color::GREEN),
@@ -43,13 +43,10 @@ async fn main() -> Result<()> {
         scal::anim_object::image::StretchMode::Fill,
     );
 
-    scal::run_loop(
-        &handle,
-        encoding_settings,
-        rendering_settings,
-        vec![svg.instantiate(), wait(1.)],
-    )
-    .await?;
+    scal::run_loop(&handle, encoding_settings, rendering_settings, vec![
+        svg.instantiate(),
+        wait(1.0),
+    ]).await?;
     info!("Hello, world!");
     Ok(())
 }

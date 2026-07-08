@@ -1,7 +1,6 @@
 use std::sync::LazyLock;
 
 use anyhow::Result;
-
 use glam::{Vec2, vec2, vec3};
 use log::{LevelFilter, info};
 use scal::{
@@ -18,26 +17,15 @@ const LEVEL_FILTER: LevelFilter = LevelFilter::Info;
 const THEME: LazyLock<Theme> = LazyLock::new(|| {
     Theme::from_base16(Base16 {
         colors: [
-            0x11121d.into(),
-            0x1A1B2A.into(),
-            0x212234.into(),
-            0x282c34.into(),
-            0x4a5057.into(),
-            0xa0a8cd.into(),
-            0xa0a8cd.into(),
-            0xa0a8cd.into(),
-            0xee6d85.into(),
-            0xf6955b.into(),
-            0xd7a65f.into(),
-            0x95c561.into(),
-            0x38a89d.into(),
-            0x7199ee.into(),
-            0xa485dd.into(),
-            0x773440.into(),
+            0x11121d.into(), 0x1A1B2A.into(), 0x212234.into(), 0x282c34.into(),
+            0x4a5057.into(), 0xa0a8cd.into(), 0xa0a8cd.into(), 0xa0a8cd.into(),
+            0xee6d85.into(), 0xf6955b.into(), 0xd7a65f.into(), 0x95c561.into(),
+            0x38a89d.into(), 0x7199ee.into(), 0xa485dd.into(), 0x773440.into(),
         ],
     })
 });
 pub const CANVAS_SIZE: Vec2 = vec2(1920., 1080.);
+
 #[tokio::main]
 async fn main() -> Result<()> {
     let mut builder = colog::default_builder();
@@ -70,8 +58,7 @@ const THEME: LazyLock<Theme> = LazyLock::new(|| {
         ],
     })
 });
-        "#
-        .to_string(),
+        "#.to_string(),
         THEME.to_owned(),
         "SF Pro Display Bold".to_string(),
         scal::anim_object::text::Align::Center,
@@ -80,14 +67,10 @@ const THEME: LazyLock<Theme> = LazyLock::new(|| {
         vec![],
         0.0,
     );
-    scal::run_loop(
-        &handle,
-        encoding_settings,
-        rendering_settings,
-        vec![
-            code.instantiate(),
-            code.add_lines(
-                r#"
+    scal::run_loop(&handle, encoding_settings, rendering_settings, vec![
+        code.instantiate(),
+        code.add_lines(
+            r#"
 fn copy_texture_to_buffer(
     encoder_send: Sender<encoder::EncoderComunication>,
     queue: &wgpu::Queue,
@@ -116,44 +99,17 @@ fn copy_texture_to_buffer(
     );
     Ok(())
 }
-                "#
-                .into(),
-                1,
-                curve.clone(),
-                5.0,
-                CodeAnimationStyle::TypeWriter,
-            ),
-            wait(0.5),
-            code.add_lines(
-                "let x = 1;".into(),
-                1,
-                curve.clone(),
-                1.0,
-                CodeAnimationStyle::TypeWriter,
-            ),
-            // code.add_lines(
-            //     "let x = 1;".into(),
-            //     1,
-            //     curve.clone(),
-            //     1.0,
-            //     CodeAnimationStyle::TypeWriter,
-            // ),
-            // wait(1.5),
-            // code.modify_line(
-            //     2,
-            //     "new line text".into(),
-            //     curve.clone(),
-            //     0.5,
-            //     CodeAnimationStyle::TypeWriter,
-            // ),
-            // wait(1.5),
-            // code.remove_lines(1..4, curve.clone(), 0.8, CodeAnimationStyle::Fold),
-            // wait(1.5),
-            // code.transform
-            //     .position_to(Vec2::ZERO, 1., AnimationCurve::Linear),
-        ],
-    )
-    .await?;
+                "#.into(),
+            1,
+            curve.clone(),
+            5.s(),
+            CodeAnimationStyle::TypeWriter,
+        ),
+        wait(500.ms()),
+        code.add_lines(
+            "let x = 1;".into(), 1, curve.clone(), 1.s(), CodeAnimationStyle::TypeWriter,
+        ),
+    ]).await?;
     info!("Hello, world!");
     Ok(())
 }

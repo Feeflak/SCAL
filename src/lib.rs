@@ -6,6 +6,8 @@ use crate::types::{Seconds, Sfx};
 use anyhow::{Context, Result, bail};
 use log::{debug, info};
 
+pub use scal_core::{self, Color, Ease, Seconds as CoreSeconds};
+
 pub mod anim_object;
 pub mod anim_op;
 mod anim_render;
@@ -158,4 +160,229 @@ pub async fn run_loop(
     .context("while rendering the animation")?;
 
     Ok(())
+}
+
+pub async fn render_project(
+    tokio_handle: &tokio::runtime::Handle,
+    core_encoding: scal_core::EncodingSettings,
+    core_rendering: scal_core::RenderingSettings,
+    core_project: scal_core::Project,
+) -> Result<()> {
+    let encoding = EncodingSettings {
+        output_path: core_encoding.output_path,
+        codec_type: match core_encoding.codec_type {
+            scal_core::CodecType::H264 => CodecType::H264,
+            scal_core::CodecType::H264Nvenc => CodecType::H264Nvenc,
+            scal_core::CodecType::PRORES => CodecType::PRORES,
+        },
+    };
+
+    let camera = crate::projection::Camera::new(
+        core_project.scene_settings.camera.virtual_size,
+        core_project.scene_settings.camera.position,
+        core_project.scene_settings.camera.zoom,
+    );
+
+    let rendering = RenderingSettings {
+        camera,
+        background_color: crate::types::Color::new(
+            core_project.scene_settings.background_color.r,
+            core_project.scene_settings.background_color.g,
+            core_project.scene_settings.background_color.b,
+            core_project.scene_settings.background_color.a,
+        ),
+        width: core_rendering.width,
+        height: core_rendering.height,
+        fps: core_rendering.fps,
+        buffer_count: core_rendering.buffer_count,
+        text_resolution_multiplier: core_rendering.text_resolution_multiplier,
+    };
+
+    let animations = convert_anim_ops(core_project.timeline)?;
+
+    run_loop(tokio_handle, encoding, rendering, animations).await
+}
+
+fn convert_anim_ops(ops: Vec<scal_core::AnimOP>) -> Result<Vec<AnimOP>> {
+    let mut result = Vec::with_capacity(ops.len());
+    for op in ops {
+        result.push(convert_anim_op(op)?);
+    }
+    Ok(result)
+}
+
+fn convert_anim_op(op: scal_core::AnimOP) -> Result<AnimOP> {
+    Ok(match op {
+        scal_core::AnimOP::Wait(dur) => AnimOP::Wait(dur),
+        scal_core::AnimOP::All(children) => AnimOP::All(convert_anim_ops(children)?),
+        scal_core::AnimOP::Sequence(children) => AnimOP::Sequence(convert_anim_ops(children)?),
+        scal_core::AnimOP::PlaySound(sfx, delay) => AnimOP::PlaySound(
+            crate::types::Sfx {
+                path: sfx.path,
+                volume: sfx.volume,
+                pitch: sfx.pitch,
+                time_offset: sfx.time_offset,
+                duration: sfx.duration,
+                pitch_variation: sfx.pitch_variation,
+            },
+            delay,
+        ),
+        scal_core::AnimOP::Instantiate(core_obj) => {
+            let render_obj = convert_core_anim_obj(core_obj)?;
+            AnimOP::Instantiate(render_obj)
+        }
+        scal_core::AnimOP::TransformMovePos(u, v, d, e) => {
+            AnimOP::TransformMovePos(u, v, d, anim_op::convert_curve(e))
+        }
+        scal_core::AnimOP::TransformMoveToObj(u, t, o, d, e) => {
+            AnimOP::TransformMoveToObj(u, t, o, d, anim_op::convert_curve(e))
+        }
+        scal_core::AnimOP::TransformRotate(u, r, d, e) => {
+            AnimOP::TransformRotate(u, r, d, anim_op::convert_curve(e))
+        }
+        scal_core::AnimOP::TransformScale(u, v, d, e) => {
+            AnimOP::TransformScale(u, v, d, anim_op::convert_curve(e))
+        }
+        scal_core::AnimOP::CodeAddLines(u, t, f, d, e, s) => {
+            AnimOP::CodeAddLines(u, t, f, d, anim_op::convert_curve(e), convert_style(s))
+        }
+        scal_core::AnimOP::CodeModifyLine(u, l, t, d, e, s) => {
+            AnimOP::CodeModifyLine(u, l, t, d, anim_op::convert_curve(e), convert_style(s))
+        }
+        scal_core::AnimOP::CodeRemoveLines(u, r, d, e, s) => {
+            AnimOP::CodeRemoveLines(u, r, d, anim_op::convert_curve(e), convert_style(s))
+        }
+        scal_core::AnimOP::CodeHighlight(_, _) => {
+            bail!("CodeHighlight conversion not yet implemented")
+        }
+    })
+}
+
+fn convert_style(s: scal_core::anim_op::CodeAnimationStyle) -> crate::anim_object::text::code::CodeAnimationStyle {
+    match s {
+        scal_core::anim_op::CodeAnimationStyle::TypeWriter => crate::anim_object::text::code::CodeAnimationStyle::TypeWriter,
+        scal_core::anim_op::CodeAnimationStyle::TypeWriterInstantResize => crate::anim_object::text::code::CodeAnimationStyle::TypeWriterInstantResize,
+        scal_core::anim_op::CodeAnimationStyle::Fold => crate::anim_object::text::code::CodeAnimationStyle::Fold,
+    }
+}
+
+fn make_transform(obj: &scal_core::AnimObj) -> crate::anim_object::Transform {
+    crate::anim_object::Transform {
+        scale: obj.transform.scale,
+        uuid: obj.id,
+        parent: obj.transform.parent,
+        position: obj.transform.position,
+        rotation: obj.transform.rotation,
+        layout_container: None,
+        world_uniform: None,
+    }
+}
+
+fn c(color: scal_core::Color) -> crate::types::Color {
+    crate::types::Color::new(color.r, color.g, color.b, color.a)
+}
+
+fn convert_core_anim_obj(obj: scal_core::AnimObj) -> Result<crate::anim_object::object_trait::AnimObj> {
+    use crate::anim_object::object_trait::AnimObj as RenderObj;
+    let transform = make_transform(&obj);
+    match obj.kind {
+        scal_core::anim_obj::AnimObjKind::Rectangle { size, corner_radius, color } => {
+            Ok(RenderObj(Box::new(crate::anim_object::primitive_shapes::Rectangle {
+                size, corner_radius,
+                color: c(color),
+                transform,
+            })))
+        }
+        scal_core::anim_obj::AnimObjKind::Circle { radius, color } => {
+            Ok(RenderObj(Box::new(crate::anim_object::primitive_shapes::Circle {
+                radius,
+                color: c(color),
+                transform,
+            })))
+        }
+        scal_core::anim_obj::AnimObjKind::Polygon { radius, sides, color } => {
+            Ok(RenderObj(Box::new(crate::anim_object::primitive_shapes::Polygon {
+                radius, sides,
+                color: c(color),
+                transform,
+            })))
+        }
+        scal_core::anim_obj::AnimObjKind::Text { value, font_family, alignment, color, font_size } => {
+            let align = match alignment {
+                scal_core::anim_obj::TextAlign::Center => crate::anim_object::text::Align::Center,
+                scal_core::anim_obj::TextAlign::Left => crate::anim_object::text::Align::Left,
+                scal_core::anim_obj::TextAlign::Right => crate::anim_object::text::Align::Right,
+            };
+            Ok(RenderObj(Box::new(crate::anim_object::text::Text {
+                id: obj.id, value, font_family, alignment: align,
+                color: c(color), font_size,
+                transform,
+                cached_size: None,
+            })))
+        }
+        scal_core::anim_obj::AnimObjKind::Svg { path, size, tint, fill, stroke, stroke_width, stretch } => {
+            let st = match stretch {
+                scal_core::anim_obj::StretchMode::Fit => crate::anim_object::image::StretchMode::Fit,
+                scal_core::anim_obj::StretchMode::Fill => crate::anim_object::image::StretchMode::Fill,
+            };
+            Ok(RenderObj(Box::new(crate::anim_object::svg::Svg {
+                path, size, tint: c(tint),
+                fill: fill.map(c), stroke: stroke.map(c),
+                stroke_width,
+                stretch: st,
+                transform,
+            })))
+        }
+        scal_core::anim_obj::AnimObjKind::Image { path, size, color, stretch } => {
+            let st = match stretch {
+                scal_core::anim_obj::StretchMode::Fit => crate::anim_object::image::StretchMode::Fit,
+                scal_core::anim_obj::StretchMode::Fill => crate::anim_object::image::StretchMode::Fill,
+            };
+            Ok(RenderObj(Box::new(crate::anim_object::image::Image {
+                path, size, color: c(color), stretch: st,
+                transform,
+            })))
+        }
+        scal_core::anim_obj::AnimObjKind::Code { source_code, font_family, font_size, syntax, theme, padding, show_line_numbers, line_number_color } => {
+            let syn = match syntax {
+                scal_core::anim_obj::Syntax::Rust => crate::anim_object::text::code::Syntax::Rust,
+                scal_core::anim_obj::Syntax::Nix => crate::anim_object::text::code::Syntax::Nix,
+                scal_core::anim_obj::Syntax::Python => crate::anim_object::text::code::Syntax::Python,
+                scal_core::anim_obj::Syntax::JS => crate::anim_object::text::code::Syntax::JS,
+                scal_core::anim_obj::Syntax::Zig => crate::anim_object::text::code::Syntax::Zig,
+            };
+            let mut base_colors = [crate::types::Color::BLACK; 16];
+            for (i, &hex) in theme.iter().take(16).enumerate() {
+                base_colors[i] = hex.into();
+            }
+            let th = crate::anim_object::text::code::theme::Theme::from_base16(
+                crate::anim_object::text::code::theme::Base16 { colors: base_colors }
+            );
+            Ok(RenderObj(Box::new(crate::anim_object::text::code::Code {
+                id: obj.id,
+                source_code,
+                theme: th,
+                font_family, font_size,
+                syntax: syn,
+                padding,
+                show_line_numbers,
+                line_number_color: c(line_number_color),
+                transform,
+                alignment: crate::anim_object::text::Align::Left,
+                lines: vec![],
+                dirty: true,
+                anim_reveal: 1.0,
+                anim_spacing: 0.0,
+                anim_line_start: 0,
+                anim_line_end: 0,
+                anim_style: crate::anim_object::text::code::CodeAnimationStyle::TypeWriter,
+                anim_spacing_accum: 0.0,
+                cached_size: None,
+                highlights: vec![],
+            })))
+        }
+        scal_core::anim_obj::AnimObjKind::Group { .. } => {
+            bail!("Group object conversion not yet implemented")
+        }
+    }
 }
