@@ -23,7 +23,10 @@ async fn golden_code_window() {
         .pos(glam::vec2(200., 120.))
         .build();
 
-    let svg_path = project_root().join("examples").join("code_window").join("pointer-tool.svg");
+    let svg_path = project_root()
+        .join("examples")
+        .join("code_window")
+        .join("pointer-tool.svg");
     let pointer = svg()
         .path(svg_path.to_string_lossy().to_string())
         .size(glam::Vec2::ONE * 24.)

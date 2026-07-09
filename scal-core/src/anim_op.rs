@@ -7,8 +7,8 @@ use uuid::Uuid;
 use crate::anim_obj::AnimObj;
 use crate::color::Color;
 use crate::ease::Ease;
-use crate::sfx::Sfx;
 use crate::seconds::Seconds;
+use crate::sfx::Sfx;
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct SourceLoc {
@@ -24,9 +24,32 @@ pub enum AnimOP {
     TransformMoveToObj(Uuid, Uuid, Vec2, Seconds, Ease, Option<SourceLoc>),
     TransformRotate(Uuid, f32, Seconds, Ease, Option<SourceLoc>),
     TransformScale(Uuid, Vec2, Seconds, Ease, Option<SourceLoc>),
-    CodeAddLines(Uuid, String, usize, Seconds, Ease, CodeAnimationStyle, Option<SourceLoc>),
-    CodeModifyLine(Uuid, u32, String, Seconds, Ease, CodeAnimationStyle, Option<SourceLoc>),
-    CodeRemoveLines(Uuid, Range<u32>, Seconds, Ease, CodeAnimationStyle, Option<SourceLoc>),
+    CodeAddLines(
+        Uuid,
+        String,
+        usize,
+        Seconds,
+        Ease,
+        CodeAnimationStyle,
+        Option<SourceLoc>,
+    ),
+    CodeModifyLine(
+        Uuid,
+        u32,
+        String,
+        Seconds,
+        Ease,
+        CodeAnimationStyle,
+        Option<SourceLoc>,
+    ),
+    CodeRemoveLines(
+        Uuid,
+        Range<u32>,
+        Seconds,
+        Ease,
+        CodeAnimationStyle,
+        Option<SourceLoc>,
+    ),
     CodeHighlight(Uuid, CodeHighlightAction, Option<SourceLoc>),
     All(Vec<AnimOP>, Option<SourceLoc>),
     Sequence(Vec<AnimOP>, Option<SourceLoc>),
@@ -63,8 +86,18 @@ pub enum CodeAnimationStyle {
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub enum CodeHighlightAction {
-    Lines { ranges: Vec<Range<usize>>, color: Color, duration: Seconds, curve: Ease },
-    Pattern { regex: String, color: Color, duration: Seconds, curve: Ease },
+    Lines {
+        ranges: Vec<Range<usize>>,
+        color: Color,
+        duration: Seconds,
+        curve: Ease,
+    },
+    Pattern {
+        regex: String,
+        color: Color,
+        duration: Seconds,
+        curve: Ease,
+    },
 }
 
 pub trait IntoAnimOp {
@@ -72,11 +105,15 @@ pub trait IntoAnimOp {
 }
 
 impl IntoAnimOp for AnimOP {
-    fn into_anim_op(self) -> AnimOP { self }
+    fn into_anim_op(self) -> AnimOP {
+        self
+    }
 }
 
 impl IntoAnimOp for PlaySoundBuilder {
-    fn into_anim_op(self) -> AnimOP { self.into() }
+    fn into_anim_op(self) -> AnimOP {
+        self.into()
+    }
 }
 
 impl AnimOP {

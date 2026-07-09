@@ -2,17 +2,17 @@ use std::collections::HashMap;
 
 use anyhow::{Context, Result};
 use glam::{Mat4, Vec2, Vec3, vec2, vec3};
-use uuid::Uuid;
 use log::debug;
+use uuid::Uuid;
 use wgpu::TextureFormat;
 
 use crate::{
     anim_object::{
-        object_trait::AnimObj,
         compose::{Alignment, LayoutContainer, LayoutDir},
         image::create_image_pipeline,
-        primitive_shapes::{create_shape_pipeline, Rectangle},
-        text::{pipeline::create_text_pipeline},
+        object_trait::AnimObj,
+        primitive_shapes::{Rectangle, create_shape_pipeline},
+        text::pipeline::create_text_pipeline,
     },
     animator::{Animator, Object},
     renderer::Vertex,
@@ -28,7 +28,8 @@ impl Animator {
         let id = anim_data.uuid();
 
         if let Some(container) = anim_data.as_any().downcast_ref::<LayoutContainer>() {
-            self.layout_containers.insert(container.id, container.clone());
+            self.layout_containers
+                .insert(container.id, container.clone());
         }
 
         if let Some(parent_uuid) = anim_data.transform().parent {
@@ -36,8 +37,7 @@ impl Animator {
         }
 
         let (render_data, mut indices) = {
-            let (vertives, indices, pipeline) =
-                anim_data.generate_mesh(&mut self.text_manager);
+            let (vertives, indices, pipeline) = anim_data.generate_mesh(&mut self.text_manager);
 
             let vertex_base = self.vertices.len();
             let index_base = self.indices.len();
@@ -94,8 +94,10 @@ impl Animator {
         let new_idx_count = new_indices.len();
         let idx_diff = new_idx_count as isize - old_idx_count as isize;
 
-        self.vertices
-            .splice(old_vert_start..old_vert_start + old_vert_count, new_vertices_data.clone());
+        self.vertices.splice(
+            old_vert_start..old_vert_start + old_vert_count,
+            new_vertices_data.clone(),
+        );
         self.indices
             .splice(old_idx_start..old_idx_start + old_idx_count, new_indices);
 
@@ -154,9 +156,12 @@ impl Animator {
             }
         }
 
-        let sizes: Vec<Vec2> = match container.child_uuids.iter()
+        let sizes: Vec<Vec2> = match container
+            .child_uuids
+            .iter()
             .map(|id| self.get_object(id).map(|o| o.anim_data.size()))
-            .collect::<Result<Vec<_>>>() {
+            .collect::<Result<Vec<_>>>()
+        {
             Ok(s) => s,
             Err(_) => return Ok(()),
         };
@@ -164,8 +169,10 @@ impl Animator {
         let total_h: f32 = sizes.iter().map(|s| s.y).sum();
 
         let gaps = container.gap * (container.child_uuids.len() as f32 - 1.0).max(0.0);
-        let new_w = (max_w + container.padding_left + container.padding_right).max(container.min_width);
-        let new_h = (total_h + container.padding_top + container.padding_bottom + gaps).max(container.min_height);
+        let new_w =
+            (max_w + container.padding_left + container.padding_right).max(container.min_width);
+        let new_h = (total_h + container.padding_top + container.padding_bottom + gaps)
+            .max(container.min_height);
 
         let old_bg_size: Vec2;
         let old_bg_pos: Vec3;
@@ -226,11 +233,7 @@ impl Animator {
             };
             let obj = self.get_object_mut(child_id)?;
             let is_stretched = obj.anim_data.as_any().downcast_ref::<Rectangle>().is_some();
-            obj.anim_data.transform_mut().position.x = if is_stretched {
-                0.0
-            } else {
-                child_x
-            };
+            obj.anim_data.transform_mut().position.x = if is_stretched { 0.0 } else { child_x };
             obj.anim_data.transform_mut().position.y = child_y;
 
             let mut regen = false;
@@ -242,8 +245,11 @@ impl Animator {
                 drop(obj);
                 self.regenerate_object_mesh(child_id)?;
                 // If this Rectangle is the background of a nested layout, relayout its children
-                if let Some(nested) = self.layout_containers.values()
-                    .find(|c| c.background_uuid == *child_id).cloned()
+                if let Some(nested) = self
+                    .layout_containers
+                    .values()
+                    .find(|c| c.background_uuid == *child_id)
+                    .cloned()
                 {
                     self.relayout_container_children(&nested)?;
                 }
@@ -265,9 +271,12 @@ impl Animator {
             bg_size = rect.size;
         }
 
-        let sizes: Vec<Vec2> = match container.child_uuids.iter()
+        let sizes: Vec<Vec2> = match container
+            .child_uuids
+            .iter()
             .map(|id| self.get_object(id).map(|o| o.anim_data.size()))
-            .collect::<Result<Vec<_>>>() {
+            .collect::<Result<Vec<_>>>()
+        {
             Ok(s) => s,
             Err(_) => return Ok(()),
         };

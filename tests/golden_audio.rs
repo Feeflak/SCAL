@@ -23,7 +23,10 @@ async fn golden_audio() {
         .pos(glam::vec2(200., 120.))
         .build();
 
-    let ptr_path = project_root().join("examples").join("audio").join("pointer-tool.svg");
+    let ptr_path = project_root()
+        .join("examples")
+        .join("audio")
+        .join("pointer-tool.svg");
     let pointer = svg()
         .path(ptr_path.to_string_lossy().to_string())
         .size(glam::Vec2::ONE * 24.)
@@ -34,7 +37,14 @@ async fn golden_audio() {
         .build();
 
     let typing = sfx()
-        .path(project_root().join("examples").join("audio").join("keeb.wav").to_string_lossy().to_string())
+        .path(
+            project_root()
+                .join("examples")
+                .join("audio")
+                .join("keeb.wav")
+                .to_string_lossy()
+                .to_string(),
+        )
         .volume(5.)
         .pitch(1.)
         .skip_time(0.)

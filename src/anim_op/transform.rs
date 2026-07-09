@@ -1,16 +1,11 @@
-use glam::{vec2, vec3, Vec2};
+use glam::{Vec2, vec2, vec3};
 use uuid::Uuid;
 
 use crate::anim_op::{Animation, AnimationCurve};
 use crate::animator::Animator;
 use crate::types::*;
 
-pub fn move_pos(
-    uuid: Uuid,
-    target: Vec2,
-    duration: Seconds,
-    curve: AnimationCurve,
-) -> Animation {
+pub fn move_pos(uuid: Uuid, target: Vec2, duration: Seconds, curve: AnimationCurve) -> Animation {
     Animation::new(
         duration,
         curve,
@@ -33,12 +28,7 @@ pub fn move_pos(
     )
 }
 
-pub fn rotate_to(
-    uuid: Uuid,
-    target: f32,
-    duration: Seconds,
-    curve: AnimationCurve,
-) -> Animation {
+pub fn rotate_to(uuid: Uuid, target: f32, duration: Seconds, curve: AnimationCurve) -> Animation {
     Animation::new(
         duration,
         curve,
@@ -55,12 +45,7 @@ pub fn rotate_to(
     )
 }
 
-pub fn scale_to(
-    uuid: Uuid,
-    target: Vec2,
-    duration: Seconds,
-    curve: AnimationCurve,
-) -> Animation {
+pub fn scale_to(uuid: Uuid, target: Vec2, duration: Seconds, curve: AnimationCurve) -> Animation {
     Animation::new(
         duration,
         curve,

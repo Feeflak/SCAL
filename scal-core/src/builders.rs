@@ -1,7 +1,9 @@
 use glam::{Vec2, Vec3};
 use uuid::Uuid;
 
-use crate::anim_obj::{AnimObj, AnimObjKind, CodeHandle, CodeWindowHandle, StretchMode, Syntax, TextAlign};
+use crate::anim_obj::{
+    AnimObj, AnimObjKind, CodeHandle, CodeWindowHandle, StretchMode, Syntax, TextAlign,
+};
 use crate::color::Color;
 use crate::theme::Theme;
 use crate::transform::Transform;

@@ -56,8 +56,13 @@ fn main() -> Project {
             wait(1.s()),
             cw.add_lines().str(NEW_LINES).from_line(4).over(5.s()),
             wait(1.s()),
-            pointer.transform.position().object(cw.close_button()).to(Vec2::new(15., 15.)).over(0.5.s()).ease(Ease::InOutCubic),
+            pointer
+                .transform
+                .position()
+                .object(cw.close_button())
+                .to(Vec2::new(15., 15.))
+                .over(0.5.s())
+                .ease(Ease::InOutCubic),
         ],
     }
 }
-

@@ -19,17 +19,21 @@ async fn golden_code() {
         .pos(glam::vec2(40., 200.))
         .build();
 
-    run_compare("code", Project {
-        scene_settings: test_scene_settings(),
-        timeline: timeline![
-            c.instantiate(),
-            wait(0.3),
-            c.add_lines()
-                .str("let x = 1;\nlet y = 2;\n")
-                .from_line(3)
-                .over(0.8)
-                .style(CodeAnimationStyle::TypeWriter),
-            wait(0.3),
-        ],
-    }).await;
+    run_compare(
+        "code",
+        Project {
+            scene_settings: test_scene_settings(),
+            timeline: timeline![
+                c.instantiate(),
+                wait(0.3),
+                c.add_lines()
+                    .str("let x = 1;\nlet y = 2;\n")
+                    .from_line(3)
+                    .over(0.8)
+                    .style(CodeAnimationStyle::TypeWriter),
+                wait(0.3),
+            ],
+        },
+    )
+    .await;
 }

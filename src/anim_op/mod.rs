@@ -6,8 +6,8 @@ use glam::{Vec2, Vec4Swizzles, vec3};
 use log::debug;
 use uuid::Uuid;
 
-use crate::anim_object::object_trait::AnimObj;
 use crate::anim_object::TransformUniform;
+use crate::anim_object::object_trait::AnimObj;
 use crate::animator::Animator;
 use crate::types::{Seconds, Sfx};
 
@@ -27,11 +27,34 @@ pub enum AnimOP {
     TransformRotate(Uuid, f32, Seconds, AnimationCurve),
     TransformScale(Uuid, Vec2, Seconds, AnimationCurve),
 
-    CodeAddLines(Uuid, String, usize, Seconds, AnimationCurve, crate::anim_object::text::code::CodeAnimationStyle),
-    CodeModifyLine(Uuid, u32, String, Seconds, AnimationCurve, crate::anim_object::text::code::CodeAnimationStyle),
-    CodeRemoveLines(Uuid, std::ops::Range<u32>, Seconds, AnimationCurve, crate::anim_object::text::code::CodeAnimationStyle),
+    CodeAddLines(
+        Uuid,
+        String,
+        usize,
+        Seconds,
+        AnimationCurve,
+        crate::anim_object::text::code::CodeAnimationStyle,
+    ),
+    CodeModifyLine(
+        Uuid,
+        u32,
+        String,
+        Seconds,
+        AnimationCurve,
+        crate::anim_object::text::code::CodeAnimationStyle,
+    ),
+    CodeRemoveLines(
+        Uuid,
+        std::ops::Range<u32>,
+        Seconds,
+        AnimationCurve,
+        crate::anim_object::text::code::CodeAnimationStyle,
+    ),
     CodeHighlight(Uuid, crate::anim_object::text::code::CodeHighlightAction),
-    Current { uuid: Uuid, closure: CurrentClosure },
+    Current {
+        uuid: Uuid,
+        closure: CurrentClosure,
+    },
     All(Vec<AnimOP>),
     Sequence(Vec<AnimOP>),
     Wait(Seconds),
@@ -104,20 +127,22 @@ impl TryInto<Animation> for AnimOP {
             }
             AnimOP::All(anim_ops) => get_all_animation(anim_ops)?,
             AnimOP::Sequence(anim_ops) => get_sequence_animation(anim_ops)?,
-            AnimOP::Current { uuid, closure } => Animation::instant(Box::new(move |animator, _| {
-                let mut snapshot = animator.get_object(&uuid)?.anim_data.clone();
-                if let Ok(world) = animator.get_object_world_matrix(&uuid) {
-                    let (scale, rot, trans) = world.to_scale_rotation_translation();
-                    snapshot.transform_mut().world_uniform = Some(TransformUniform {
-                        scale: scale.truncate(),
-                        position: trans,
-                        rotation: rot.to_euler(glam::EulerRot::ZYX).0.to_degrees(),
-                    });
-                }
-                let anim_op = (closure.0)(snapshot);
-                animator.animations_left.push(anim_op);
-                Ok(())
-            })),
+            AnimOP::Current { uuid, closure } => {
+                Animation::instant(Box::new(move |animator, _| {
+                    let mut snapshot = animator.get_object(&uuid)?.anim_data.clone();
+                    if let Ok(world) = animator.get_object_world_matrix(&uuid) {
+                        let (scale, rot, trans) = world.to_scale_rotation_translation();
+                        snapshot.transform_mut().world_uniform = Some(TransformUniform {
+                            scale: scale.truncate(),
+                            position: trans,
+                            rotation: rot.to_euler(glam::EulerRot::ZYX).0.to_degrees(),
+                        });
+                    }
+                    let anim_op = (closure.0)(snapshot);
+                    animator.animations_left.push(anim_op);
+                    Ok(())
+                }))
+            }
             AnimOP::Wait(duration) => Animation::new(
                 duration,
                 AnimationCurve::Linear,
@@ -182,7 +207,8 @@ pub fn get_sequence_animation(ops: Vec<AnimOP>) -> Result<Animation> {
                     let to_read = store[store_index] as usize;
                     let child_duration = durations[i];
 
-                    if child_duration > 0. && abs_time >= cumulative
+                    if child_duration > 0.
+                        && abs_time >= cumulative
                         && abs_time < cumulative + child_duration
                     {
                         let local_t = (abs_time - cumulative) / child_duration;
@@ -207,7 +233,12 @@ pub fn get_sequence_animation(ops: Vec<AnimOP>) -> Result<Animation> {
         None
     };
 
-    Ok(Animation::new(total_dur, AnimationCurve::Linear, start, update))
+    Ok(Animation::new(
+        total_dur,
+        AnimationCurve::Linear,
+        start,
+        update,
+    ))
 }
 pub fn get_all_animation(ops: Vec<AnimOP>) -> Result<Animation> {
     let mut dur = 0_f32;
@@ -364,7 +395,10 @@ impl Animation {
             curve,
             start,
             update,
-            location: Some(SourceLoc { file: loc.file(), line: loc.line() }),
+            location: Some(SourceLoc {
+                file: loc.file(),
+                line: loc.line(),
+            }),
         }
     }
     #[track_caller]
@@ -375,7 +409,10 @@ impl Animation {
             curve: AnimationCurve::Linear,
             start,
             update: None,
-            location: Some(SourceLoc { file: loc.file(), line: loc.line() }),
+            location: Some(SourceLoc {
+                file: loc.file(),
+                line: loc.line(),
+            }),
         }
     }
 }
@@ -415,7 +452,11 @@ mod tests {
         assert!((curve.apply(0.0) - 0.0).abs() < f32::EPSILON);
         assert!((curve.apply(1.0) - 1.0).abs() < f32::EPSILON);
         assert!((curve.apply(0.5) - 0.5).abs() < f32::EPSILON);
-        assert!(curve.apply(0.75) > 0.8, "expected easeInOutBack to overshoot forward, got {}", curve.apply(0.75));
+        assert!(
+            curve.apply(0.75) > 0.8,
+            "expected easeInOutBack to overshoot forward, got {}",
+            curve.apply(0.75)
+        );
     }
 
     #[test]

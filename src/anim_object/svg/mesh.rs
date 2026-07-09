@@ -36,10 +36,26 @@ pub fn generate_svg_mesh_data(svg: &Svg) -> (Vec<Vertex>, Vec<Index>, PipelineKi
         glam::vec2(0.0, 1.0),
     ];
     let vertices = vec![
-        Vertex { position: -half,                    color: svg.tint, uv: uvs[0] },
-        Vertex { position: glam::vec2(half.x, -half.y), color: svg.tint, uv: uvs[1] },
-        Vertex { position: half,                     color: svg.tint, uv: uvs[2] },
-        Vertex { position: glam::vec2(-half.x, half.y), color: svg.tint, uv: uvs[3] },
+        Vertex {
+            position: -half,
+            color: svg.tint,
+            uv: uvs[0],
+        },
+        Vertex {
+            position: glam::vec2(half.x, -half.y),
+            color: svg.tint,
+            uv: uvs[1],
+        },
+        Vertex {
+            position: half,
+            color: svg.tint,
+            uv: uvs[2],
+        },
+        Vertex {
+            position: glam::vec2(-half.x, half.y),
+            color: svg.tint,
+            uv: uvs[3],
+        },
     ];
     let indices = vec![0, 1, 2, 2, 3, 0];
     (vertices, indices, PipelineKind::Image)

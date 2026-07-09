@@ -4,7 +4,7 @@ use crate::{
     anim_object::{primitive_shapes::*, render::PipelineKind},
     renderer::{Index, Vertex},
 };
-use glam::{vec2, Vec2};
+use glam::{Vec2, vec2};
 
 pub fn generate_rectangle_mesh_data(
     rectangle: &Rectangle,
@@ -53,9 +53,7 @@ pub fn generate_rectangle_mesh_data(
     (vertices, indices, PipelineKind::Shape)
 }
 
-pub fn generate_circle_mesh_data(
-    circle: &Circle,
-) -> (Vec<Vertex>, Vec<Index>, PipelineKind) {
+pub fn generate_circle_mesh_data(circle: &Circle) -> (Vec<Vertex>, Vec<Index>, PipelineKind) {
     let segments: usize = 32;
     let mut vertices = Vec::with_capacity(segments + 1);
     vertices.push(Vertex {
@@ -84,9 +82,7 @@ pub fn generate_circle_mesh_data(
     (vertices, indices, PipelineKind::Shape)
 }
 
-pub fn generate_polygon_mesh_data(
-    polygon: &Polygon,
-) -> (Vec<Vertex>, Vec<Index>, PipelineKind) {
+pub fn generate_polygon_mesh_data(polygon: &Polygon) -> (Vec<Vertex>, Vec<Index>, PipelineKind) {
     let sides = polygon.sides.max(3) as usize;
     let mut vertices = Vec::with_capacity(sides + 1);
     vertices.push(Vertex {

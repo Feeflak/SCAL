@@ -11,12 +11,12 @@ use log::info;
 use wgpu::{Device, Texture};
 
 use crate::{
+    BYTES_PER_PIXEL,
     anim_op::AnimOP,
     encoder::{self, EncoderComunication},
     nv12::Nv12Converter,
     readback::{self, ReadbackRing},
     renderer::{Renderer, RenderingSettings},
-    BYTES_PER_PIXEL,
 };
 
 #[derive(Debug)]
@@ -96,7 +96,8 @@ pub async fn render_animations(
     let (pipelines, mut text_renderer) = {
         let mut pipelines = crate::anim_object::render::get_pipelines(&device, MSAA_SAMPLE_COUNT);
 
-        let text_renderer = TextRenderer::new(&device, rendering_settings.text_resolution_multiplier);
+        let text_renderer =
+            TextRenderer::new(&device, rendering_settings.text_resolution_multiplier);
         pipelines
             .get_mut(&PipelineKind::Text)
             .expect("there was no text pipeline")
@@ -188,12 +189,9 @@ pub async fn render_animations(
             queue.submit(Some(encoder.finish()));
             timing_submit += t_sub.elapsed();
 
-            nv12.as_ref().unwrap().run_and_copy(
-                &device,
-                &queue,
-                slot,
-                encoder_send.clone(),
-            );
+            nv12.as_ref()
+                .unwrap()
+                .run_and_copy(&device, &queue, slot, encoder_send.clone());
         } else {
             copy_texture_to_buffer(
                 encoder_send.clone(),
@@ -214,7 +212,8 @@ pub async fn render_animations(
         frame_count += 1;
     }
 
-    let total = timing_animation + timing_render + timing_wait_slot + timing_gpu_copy + timing_submit;
+    let total =
+        timing_animation + timing_render + timing_wait_slot + timing_gpu_copy + timing_submit;
     info!("=== Pipeline Timing ===");
     info!(
         "Total frames: {frame_count}  |  Wall time: {:.2?}",

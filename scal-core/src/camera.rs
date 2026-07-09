@@ -10,6 +10,10 @@ pub struct Camera {
 
 impl Camera {
     pub fn new(virtual_size: Vec2, position: Vec2, zoom: f32) -> Self {
-        Self { virtual_size, position, zoom }
+        Self {
+            virtual_size,
+            position,
+            zoom,
+        }
     }
 }

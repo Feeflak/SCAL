@@ -67,11 +67,12 @@ pub fn add_lines(
                 insert_lines(&mut code.source_code, &text, from_line);
                 code.dirty = true;
                 code.anim_reveal = 0.0;
-                code.anim_spacing = if matches!(anim_style, CodeAnimationStyle::TypeWriterInstantResize) {
-                    1.0
-                } else {
-                    0.0
-                };
+                code.anim_spacing =
+                    if matches!(anim_style, CodeAnimationStyle::TypeWriterInstantResize) {
+                        1.0
+                    } else {
+                        0.0
+                    };
                 code.anim_line_start = actual_insert_pos;
                 code.anim_line_end = actual_insert_pos + new_line_count;
                 code.anim_style = anim_style.clone();
@@ -111,22 +112,24 @@ pub fn add_lines(
             animator.regenerate_object_mesh(&uuid)?;
             Ok(())
         })),
-        CodeAnimationStyle::TypeWriterInstantResize => Some(Box::new(move |animator, t, _storage| {
-            let obj = animator.get_object_mut(&uuid)?;
-            if let Some(code) = code_mut(obj.anim_data.as_any_mut()) {
-                let prev_reveal = code.anim_reveal;
-                code.anim_reveal = t;
-                log::trace!(
-                    "TypeWriterInstantResize add_lines t={:.4} reveal={:.4}->{:.4} spacing=1.0",
-                    t,
-                    prev_reveal,
-                    code.anim_reveal
-                );
-            }
-            let _ = obj;
-            animator.regenerate_object_mesh(&uuid)?;
-            Ok(())
-        })),
+        CodeAnimationStyle::TypeWriterInstantResize => {
+            Some(Box::new(move |animator, t, _storage| {
+                let obj = animator.get_object_mut(&uuid)?;
+                if let Some(code) = code_mut(obj.anim_data.as_any_mut()) {
+                    let prev_reveal = code.anim_reveal;
+                    code.anim_reveal = t;
+                    log::trace!(
+                        "TypeWriterInstantResize add_lines t={:.4} reveal={:.4}->{:.4} spacing=1.0",
+                        t,
+                        prev_reveal,
+                        code.anim_reveal
+                    );
+                }
+                let _ = obj;
+                animator.regenerate_object_mesh(&uuid)?;
+                Ok(())
+            }))
+        }
         CodeAnimationStyle::Fold => Some(Box::new(move |animator, t, _storage| {
             let obj = animator.get_object_mut(&uuid)?;
             if let Some(code) = code_mut(obj.anim_data.as_any_mut()) {
@@ -192,16 +195,18 @@ pub fn modify_line(
             animator.regenerate_object_mesh(&uuid)?;
             Ok(())
         })),
-        CodeAnimationStyle::TypeWriterInstantResize => Some(Box::new(move |animator, t, _storage| {
-            let obj = animator.get_object_mut(&uuid)?;
-            if let Some(code) = code_mut(obj.anim_data.as_any_mut()) {
-                code.anim_reveal = t;
-                code.anim_spacing = 1.0;
-            }
-            let _ = obj;
-            animator.regenerate_object_mesh(&uuid)?;
-            Ok(())
-        })),
+        CodeAnimationStyle::TypeWriterInstantResize => {
+            Some(Box::new(move |animator, t, _storage| {
+                let obj = animator.get_object_mut(&uuid)?;
+                if let Some(code) = code_mut(obj.anim_data.as_any_mut()) {
+                    code.anim_reveal = t;
+                    code.anim_spacing = 1.0;
+                }
+                let _ = obj;
+                animator.regenerate_object_mesh(&uuid)?;
+                Ok(())
+            }))
+        }
         CodeAnimationStyle::Fold => Some(Box::new(move |animator, t, _storage| {
             let obj = animator.get_object_mut(&uuid)?;
             if let Some(code) = code_mut(obj.anim_data.as_any_mut()) {
@@ -270,16 +275,18 @@ pub fn remove_lines(
             animator.regenerate_object_mesh(&uuid)?;
             Ok(())
         })),
-        CodeAnimationStyle::TypeWriterInstantResize => Some(Box::new(move |animator, t, _storage| {
-            let obj = animator.get_object_mut(&uuid)?;
-            if let Some(code) = code_mut(obj.anim_data.as_any_mut()) {
-                code.anim_reveal = 1.0 - t;
-                code.anim_spacing = 1.0;
-            }
-            let _ = obj;
-            animator.regenerate_object_mesh(&uuid)?;
-            Ok(())
-        })),
+        CodeAnimationStyle::TypeWriterInstantResize => {
+            Some(Box::new(move |animator, t, _storage| {
+                let obj = animator.get_object_mut(&uuid)?;
+                if let Some(code) = code_mut(obj.anim_data.as_any_mut()) {
+                    code.anim_reveal = 1.0 - t;
+                    code.anim_spacing = 1.0;
+                }
+                let _ = obj;
+                animator.regenerate_object_mesh(&uuid)?;
+                Ok(())
+            }))
+        }
         CodeAnimationStyle::Fold => Some(Box::new(move |animator, t, _storage| {
             let obj = animator.get_object_mut(&uuid)?;
             if let Some(code) = code_mut(obj.anim_data.as_any_mut()) {

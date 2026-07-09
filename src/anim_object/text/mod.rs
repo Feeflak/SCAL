@@ -7,9 +7,9 @@ pub(crate) mod render;
 use std::collections::HashMap;
 
 use crate::{
+    anim_object::Transform,
     anim_object::object_trait::{AnimObjectTrait, BindGroupLoader, MeshResult},
     anim_object::text::code::{Code, highliter::CodeHighlighter},
-    anim_object::Transform,
     types::*,
 };
 use cosmic_text::{Attrs, Buffer, Family, FontSystem, Metrics, Shaping};

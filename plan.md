@@ -7,7 +7,7 @@ code.add_lines()
 .over(2.5.s())
 .ease(...)
 .style(...)
-make the defualt ease linear and style type writer
+make the defualt ease linear and style type writer.
 
 # Implement these for all the creators
 instead of:

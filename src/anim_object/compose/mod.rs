@@ -98,7 +98,20 @@ impl LayoutContainer {
         min_width: f32,
         min_height: f32,
     ) -> Self {
-        Self::with_uuid(Uuid::new_v4(), background_uuid, child_uuids, direction, alignment, gap, padding_top, padding_bottom, padding_left, padding_right, min_width, min_height)
+        Self::with_uuid(
+            Uuid::new_v4(),
+            background_uuid,
+            child_uuids,
+            direction,
+            alignment,
+            gap,
+            padding_top,
+            padding_bottom,
+            padding_left,
+            padding_right,
+            min_width,
+            min_height,
+        )
     }
 
     fn with_uuid(
@@ -276,7 +289,23 @@ pub fn layout(
     min_width: f32,
     min_height: f32,
 ) -> LayoutResult {
-    layout_with_ids(position, pin_point, items, background, layout_dir, alignment, gap, padding_top, padding_bottom, padding_left, padding_right, min_width, min_height, None, None)
+    layout_with_ids(
+        position,
+        pin_point,
+        items,
+        background,
+        layout_dir,
+        alignment,
+        gap,
+        padding_top,
+        padding_bottom,
+        padding_left,
+        padding_right,
+        min_width,
+        min_height,
+        None,
+        None,
+    )
 }
 
 pub fn layout_with_ids(
@@ -335,8 +364,33 @@ pub fn layout_with_ids(
 
     let child_uuids: Vec<Uuid> = anim_items.iter().map(|item| item.uuid()).collect();
     let container_inner = match container_uuid_override {
-        Some(u) => LayoutContainer::with_uuid(u, bg_uuid, child_uuids, layout_dir, alignment, gap, padding_top, padding_bottom, padding_left, padding_right, min_width, min_height),
-        None => LayoutContainer::new(bg_uuid, child_uuids, layout_dir, alignment, gap, padding_top, padding_bottom, padding_left, padding_right, min_width, min_height),
+        Some(u) => LayoutContainer::with_uuid(
+            u,
+            bg_uuid,
+            child_uuids,
+            layout_dir,
+            alignment,
+            gap,
+            padding_top,
+            padding_bottom,
+            padding_left,
+            padding_right,
+            min_width,
+            min_height,
+        ),
+        None => LayoutContainer::new(
+            bg_uuid,
+            child_uuids,
+            layout_dir,
+            alignment,
+            gap,
+            padding_top,
+            padding_bottom,
+            padding_left,
+            padding_right,
+            min_width,
+            min_height,
+        ),
     };
     let container_uuid = container_inner.id;
     let container_obj = AnimObj(Box::new(container_inner));
@@ -400,7 +454,8 @@ pub fn layout_with_ids(
                         Vec3::new(t.position.x, t.position.y, t.position.z),
                     );
                     let parent_local = bg.transform().get_local_matrix();
-                    let (scale, rot, trans) = (local * parent_local).to_scale_rotation_translation();
+                    let (scale, rot, trans) =
+                        (local * parent_local).to_scale_rotation_translation();
                     item.transform_mut().world_uniform = Some(TransformUniform {
                         scale: scale.truncate(),
                         position: trans,
@@ -435,7 +490,8 @@ pub fn layout_with_ids(
                         Vec3::new(t.position.x, t.position.y, t.position.z),
                     );
                     let parent_local = bg.transform().get_local_matrix();
-                    let (scale, rot, trans) = (local * parent_local).to_scale_rotation_translation();
+                    let (scale, rot, trans) =
+                        (local * parent_local).to_scale_rotation_translation();
                     item.transform_mut().world_uniform = Some(TransformUniform {
                         scale: scale.truncate(),
                         position: trans,

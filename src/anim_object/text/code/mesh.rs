@@ -4,8 +4,8 @@ use uuid::Uuid;
 use crate::{
     anim_object::{
         render::PipelineKind,
-        text::code::{Code, CodeAnimationStyle, CodeHighlightKind},
         text::TextManager,
+        text::code::{Code, CodeAnimationStyle, CodeHighlightKind},
     },
     renderer::Vertex,
     types::Color,
@@ -58,7 +58,10 @@ pub fn generate_code_mesh(
         offsets
     };
 
-    let total_animated_glyphs = if matches!(code.anim_style, CodeAnimationStyle::TypeWriter | CodeAnimationStyle::TypeWriterInstantResize) {
+    let total_animated_glyphs = if matches!(
+        code.anim_style,
+        CodeAnimationStyle::TypeWriter | CodeAnimationStyle::TypeWriterInstantResize
+    ) {
         let mut gl = 0usize;
         let mut li = 0usize;
         let mut ply: Option<f32> = None;
@@ -112,7 +115,9 @@ pub fn generate_code_mesh(
         let line_vis = if in_animated {
             let line_index = li - line_start;
             match code.anim_style {
-                CodeAnimationStyle::TypeWriter | CodeAnimationStyle::TypeWriterInstantResize => true,
+                CodeAnimationStyle::TypeWriter | CodeAnimationStyle::TypeWriterInstantResize => {
+                    true
+                }
                 CodeAnimationStyle::Fold => {
                     let line_threshold = reveal * num_animated_lines as f32;
                     (line_index as f32) < line_threshold
@@ -140,7 +145,10 @@ pub fn generate_code_mesh(
 
         for glyph in run.glyphs {
             if in_animated
-                && matches!(code.anim_style, CodeAnimationStyle::TypeWriter | CodeAnimationStyle::TypeWriterInstantResize)
+                && matches!(
+                    code.anim_style,
+                    CodeAnimationStyle::TypeWriter | CodeAnimationStyle::TypeWriterInstantResize
+                )
             {
                 let threshold = total_animated_glyphs as f32 * reveal;
                 if animated_glyphs_emitted as f32 >= threshold {
@@ -330,9 +338,16 @@ pub fn generate_code_mesh(
     let run_count = buffer.layout_runs().count();
     log::debug!(
         "generate_code_mesh style={:?} reveal={:.4} spacing={:.4} line=[{}, {}) animated_glyphs={} emitted={} verts={} indices={} runs={}",
-        code.anim_style, reveal, spacing, line_start, line_end,
-        total_animated_glyphs, animated_glyphs_emitted,
-        vertices.len(), indices.len(), run_count
+        code.anim_style,
+        reveal,
+        spacing,
+        line_start,
+        line_end,
+        total_animated_glyphs,
+        animated_glyphs_emitted,
+        vertices.len(),
+        indices.len(),
+        run_count
     );
 
     (vertices, indices, PipelineKind::Text)
@@ -350,10 +365,26 @@ fn emit_quad(
     let base = vertices.len() as u32;
     let sentinel_uv = glam::vec2(-1.0, -1.0);
     vertices.extend([
-        Vertex { position: vec2(x1, y1), color, uv: sentinel_uv },
-        Vertex { position: vec2(x2, y1), color, uv: sentinel_uv },
-        Vertex { position: vec2(x2, y2), color, uv: sentinel_uv },
-        Vertex { position: vec2(x1, y2), color, uv: sentinel_uv },
+        Vertex {
+            position: vec2(x1, y1),
+            color,
+            uv: sentinel_uv,
+        },
+        Vertex {
+            position: vec2(x2, y1),
+            color,
+            uv: sentinel_uv,
+        },
+        Vertex {
+            position: vec2(x2, y2),
+            color,
+            uv: sentinel_uv,
+        },
+        Vertex {
+            position: vec2(x1, y2),
+            color,
+            uv: sentinel_uv,
+        },
     ]);
     indices.extend([base, base + 1, base + 2, base + 2, base + 3, base]);
 }

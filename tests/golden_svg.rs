@@ -18,11 +18,12 @@ async fn golden_svg() {
         .z(1.)
         .build();
 
-    run_compare("svg", Project {
-        scene_settings: test_scene_settings(),
-        timeline: timeline![
-            s.instantiate(),
-            wait(0.5),
-        ],
-    }).await;
+    run_compare(
+        "svg",
+        Project {
+            scene_settings: test_scene_settings(),
+            timeline: timeline![s.instantiate(), wait(0.5),],
+        },
+    )
+    .await;
 }

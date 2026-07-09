@@ -38,7 +38,9 @@ fn test_rendering() -> scal_core::RenderingSettings {
 }
 
 pub fn golden_dir() -> PathBuf {
-    Path::new(env!("CARGO_MANIFEST_DIR")).join("tests").join("golden")
+    Path::new(env!("CARGO_MANIFEST_DIR"))
+        .join("tests")
+        .join("golden")
 }
 
 pub fn golden_path(name: &str) -> PathBuf {
@@ -60,10 +62,14 @@ fn ffmpeg_available() -> bool {
 fn ffmpeg_psnr(test: &Path, golden: &Path) -> Result<f64, String> {
     let output = Command::new("ffmpeg")
         .args([
-            "-i", &test.to_string_lossy(),
-            "-i", &golden.to_string_lossy(),
-            "-lavfi", "psnr",
-            "-f", "null",
+            "-i",
+            &test.to_string_lossy(),
+            "-i",
+            &golden.to_string_lossy(),
+            "-lavfi",
+            "psnr",
+            "-f",
+            "null",
             "-",
         ])
         .output()
@@ -92,9 +98,14 @@ pub async fn run_compare(name: &str, project: Project) {
 
     std::fs::create_dir_all(golden_dir()).unwrap();
 
-    scal::render_project(&handle, test_encoding(&out.to_string_lossy()), test_rendering(), project)
-        .await
-        .expect("render_project failed");
+    scal::render_project(
+        &handle,
+        test_encoding(&out.to_string_lossy()),
+        test_rendering(),
+        project,
+    )
+    .await
+    .expect("render_project failed");
 
     if !golden.exists() {
         std::fs::copy(&out, &golden).expect("failed to create golden");
@@ -123,6 +134,8 @@ pub async fn run_compare(name: &str, project: Project) {
     assert!(
         psnr > PSNR_THRESHOLD || psnr.is_infinite(),
         "PSNR {:.2} dB is below threshold {} dB for {}",
-        psnr, PSNR_THRESHOLD, name
+        psnr,
+        PSNR_THRESHOLD,
+        name
     );
 }

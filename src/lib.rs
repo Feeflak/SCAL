@@ -1,10 +1,14 @@
+#![warn(clippy::pedantic)]
+#![warn(clippy::nursery)]
+#![warn(clippy::cargo)]
+
+use crate::anim_object::code_window::code_window;
+use crate::anim_object::text::Align;
 use crate::anim_op::AnimOP;
 use crate::encoder::{CodecType, EncodingSettings};
 use crate::renderer::RenderingSettings;
 use crate::sfx::{AudioEngine, ScheduledSound};
 use crate::types::{Seconds, Sfx};
-use crate::anim_object::code_window::code_window;
-use crate::anim_object::text::Align;
 use anyhow::{Context, Result, bail};
 use log::{debug, info};
 
@@ -34,7 +38,10 @@ async fn run_loop(
         match op {
             AnimOP::PlaySound(sfx, video_delay) => {
                 let abs_time = start_time + video_delay;
-                debug!("audio: {} at abs_time={}, seek={}", sfx.path, abs_time, sfx.time_offset);
+                debug!(
+                    "audio: {} at abs_time={}, seek={}",
+                    sfx.path, abs_time, sfx.time_offset
+                );
                 out.push((sfx.clone(), abs_time));
                 start_time
             }
@@ -73,7 +80,11 @@ async fn run_loop(
     for op in &animations {
         time = op_end_time(op, time, &mut sfx_sounds);
     }
-    debug!("collect_sounds total: {}, total_dur={}", sfx_sounds.len(), time);
+    debug!(
+        "collect_sounds total: {}, total_dur={}",
+        sfx_sounds.len(),
+        time
+    );
 
     let scheduled: Vec<ScheduledSound> = sfx_sounds
         .into_iter()
@@ -94,7 +105,10 @@ async fn run_loop(
                 seek_offset: s.time_offset,
                 duration: s.duration,
             };
-            debug!("ScheduledSound: path={}, start_time={}, seek={}, duration={}, pitch={}", ss.path, ss.start_time, ss.seek_offset, ss.duration, ss.pitch);
+            debug!(
+                "ScheduledSound: path={}, start_time={}, seek={}, duration={}, pitch={}",
+                ss.path, ss.start_time, ss.seek_offset, ss.duration, ss.pitch
+            );
             ss
         })
         .collect();
@@ -127,12 +141,8 @@ async fn run_loop(
         .request_device(&wgpu::DeviceDescriptor::default())
         .await
         .unwrap();
-    readback::init_buffers(
-        rendering_settings.buffer_count,
-        pixel_buffer_size,
-        &device,
-    )
-    .context("while initializing buffers")?;
+    readback::init_buffers(rendering_settings.buffer_count, pixel_buffer_size, &device)
+        .context("while initializing buffers")?;
     let (renderer_send, renderer_rec) =
         tokio::sync::mpsc::channel(rendering_settings.buffer_count as usize);
     for i in 0..rendering_settings.buffer_count as usize {
@@ -206,7 +216,10 @@ pub async fn render_project(
     run_loop(tokio_handle, encoding, rendering, animations).await
 }
 
-fn convert_anim_ops(ops: Vec<scal_core::AnimOP>, default_theme: &scal_core::Theme) -> Result<Vec<AnimOP>> {
+fn convert_anim_ops(
+    ops: Vec<scal_core::AnimOP>,
+    default_theme: &scal_core::Theme,
+) -> Result<Vec<AnimOP>> {
     let mut result = Vec::with_capacity(ops.len());
     for op in ops {
         result.push(convert_anim_op(op, default_theme)?);
@@ -217,8 +230,12 @@ fn convert_anim_ops(ops: Vec<scal_core::AnimOP>, default_theme: &scal_core::Them
 fn convert_anim_op(op: scal_core::AnimOP, default_theme: &scal_core::Theme) -> Result<AnimOP> {
     Ok(match op {
         scal_core::AnimOP::Wait(dur, _loc) => AnimOP::Wait(dur),
-        scal_core::AnimOP::All(children, _loc) => AnimOP::All(convert_anim_ops(children, default_theme)?),
-        scal_core::AnimOP::Sequence(children, _loc) => AnimOP::Sequence(convert_anim_ops(children, default_theme)?),
+        scal_core::AnimOP::All(children, _loc) => {
+            AnimOP::All(convert_anim_ops(children, default_theme)?)
+        }
+        scal_core::AnimOP::Sequence(children, _loc) => {
+            AnimOP::Sequence(convert_anim_ops(children, default_theme)?)
+        }
         scal_core::AnimOP::PlaySound(sfx, delay, _loc) => AnimOP::PlaySound(
             crate::types::Sfx {
                 path: sfx.path,
@@ -230,17 +247,15 @@ fn convert_anim_op(op: scal_core::AnimOP, default_theme: &scal_core::Theme) -> R
             },
             delay,
         ),
-        scal_core::AnimOP::Instantiate(core_obj, _loc) => {
-            match &core_obj.kind {
-                scal_core::anim_obj::AnimObjKind::CodeWindow { .. } => {
-                    build_code_window_op(core_obj, default_theme)?
-                }
-                _ => {
-                    let render_obj = convert_core_anim_obj(core_obj, default_theme)?;
-                    AnimOP::Instantiate(render_obj)
-                }
+        scal_core::AnimOP::Instantiate(core_obj, _loc) => match &core_obj.kind {
+            scal_core::anim_obj::AnimObjKind::CodeWindow { .. } => {
+                build_code_window_op(core_obj, default_theme)?
             }
-        }
+            _ => {
+                let render_obj = convert_core_anim_obj(core_obj, default_theme)?;
+                AnimOP::Instantiate(render_obj)
+            }
+        },
         scal_core::AnimOP::TransformMovePos(u, v, d, e, _loc) => {
             AnimOP::TransformMovePos(u, v, d, anim_op::convert_curve(e))
         }
@@ -268,11 +283,19 @@ fn convert_anim_op(op: scal_core::AnimOP, default_theme: &scal_core::Theme) -> R
     })
 }
 
-fn convert_style(s: scal_core::anim_op::CodeAnimationStyle) -> crate::anim_object::text::code::CodeAnimationStyle {
+fn convert_style(
+    s: scal_core::anim_op::CodeAnimationStyle,
+) -> crate::anim_object::text::code::CodeAnimationStyle {
     match s {
-        scal_core::anim_op::CodeAnimationStyle::TypeWriter => crate::anim_object::text::code::CodeAnimationStyle::TypeWriter,
-        scal_core::anim_op::CodeAnimationStyle::TypeWriterInstantResize => crate::anim_object::text::code::CodeAnimationStyle::TypeWriterInstantResize,
-        scal_core::anim_op::CodeAnimationStyle::Fold => crate::anim_object::text::code::CodeAnimationStyle::Fold,
+        scal_core::anim_op::CodeAnimationStyle::TypeWriter => {
+            crate::anim_object::text::code::CodeAnimationStyle::TypeWriter
+        }
+        scal_core::anim_op::CodeAnimationStyle::TypeWriterInstantResize => {
+            crate::anim_object::text::code::CodeAnimationStyle::TypeWriterInstantResize
+        }
+        scal_core::anim_op::CodeAnimationStyle::Fold => {
+            crate::anim_object::text::code::CodeAnimationStyle::Fold
+        }
     }
 }
 
@@ -300,16 +323,34 @@ fn convert_base16(b: &scal_core::Base16) -> crate::anim_object::text::code::them
     crate::anim_object::text::code::theme::Base16 { colors }
 }
 
-fn build_code_window_op(obj: scal_core::AnimObj, default_theme: &scal_core::Theme) -> Result<AnimOP> {
+fn build_code_window_op(
+    obj: scal_core::AnimObj,
+    default_theme: &scal_core::Theme,
+) -> Result<AnimOP> {
     use scal_core::anim_obj::{AnimObjKind, Syntax};
     if let AnimObjKind::CodeWindow {
-        source_code, font_family, font_size, syntax, theme, title,
-        title_font_size, width, height, background_color, code_id,
-        close_btn_id, minimize_btn_id, maximize_btn_id, title_id,
-        container_id, title_bar_bg_id,
-        show_line_numbers, line_number_color,
+        source_code,
+        font_family,
+        font_size,
+        syntax,
+        theme,
+        title,
+        title_font_size,
+        width,
+        height,
+        background_color,
+        code_id,
+        close_btn_id,
+        minimize_btn_id,
+        maximize_btn_id,
+        title_id,
+        container_id,
+        title_bar_bg_id,
+        show_line_numbers,
+        line_number_color,
         ..
-    } = obj.kind {
+    } = obj.kind
+    {
         let syn = match syntax {
             Syntax::Rust => crate::anim_object::text::code::Syntax::Rust,
             Syntax::Nix => crate::anim_object::text::code::Syntax::Nix,
@@ -350,72 +391,133 @@ fn build_code_window_op(obj: scal_core::AnimObj, default_theme: &scal_core::Them
     }
 }
 
-fn convert_core_anim_obj(obj: scal_core::AnimObj, default_theme: &scal_core::Theme) -> Result<crate::anim_object::object_trait::AnimObj> {
+fn convert_core_anim_obj(
+    obj: scal_core::AnimObj,
+    default_theme: &scal_core::Theme,
+) -> Result<crate::anim_object::object_trait::AnimObj> {
     use crate::anim_object::object_trait::AnimObj as RenderObj;
     let transform = make_transform(&obj);
     match obj.kind {
-        scal_core::anim_obj::AnimObjKind::Rectangle { size, corner_radius, color } => {
-            Ok(RenderObj(Box::new(crate::anim_object::primitive_shapes::Rectangle {
-                size, corner_radius,
+        scal_core::anim_obj::AnimObjKind::Rectangle {
+            size,
+            corner_radius,
+            color,
+        } => Ok(RenderObj(Box::new(
+            crate::anim_object::primitive_shapes::Rectangle {
+                size,
+                corner_radius,
                 color: c(color),
                 transform,
-            })))
-        }
-        scal_core::anim_obj::AnimObjKind::Circle { radius, color } => {
-            Ok(RenderObj(Box::new(crate::anim_object::primitive_shapes::Circle {
+            },
+        ))),
+        scal_core::anim_obj::AnimObjKind::Circle { radius, color } => Ok(RenderObj(Box::new(
+            crate::anim_object::primitive_shapes::Circle {
                 radius,
                 color: c(color),
                 transform,
-            })))
-        }
-        scal_core::anim_obj::AnimObjKind::Polygon { radius, sides, color } => {
-            Ok(RenderObj(Box::new(crate::anim_object::primitive_shapes::Polygon {
-                radius, sides,
+            },
+        ))),
+        scal_core::anim_obj::AnimObjKind::Polygon {
+            radius,
+            sides,
+            color,
+        } => Ok(RenderObj(Box::new(
+            crate::anim_object::primitive_shapes::Polygon {
+                radius,
+                sides,
                 color: c(color),
                 transform,
-            })))
-        }
-        scal_core::anim_obj::AnimObjKind::Text { value, font_family, alignment, color, font_size } => {
+            },
+        ))),
+        scal_core::anim_obj::AnimObjKind::Text {
+            value,
+            font_family,
+            alignment,
+            color,
+            font_size,
+        } => {
             let align = match alignment {
                 scal_core::anim_obj::TextAlign::Center => crate::anim_object::text::Align::Center,
                 scal_core::anim_obj::TextAlign::Left => crate::anim_object::text::Align::Left,
                 scal_core::anim_obj::TextAlign::Right => crate::anim_object::text::Align::Right,
             };
             Ok(RenderObj(Box::new(crate::anim_object::text::Text {
-                id: obj.id, value, font_family, alignment: align,
-                color: c(color), font_size,
+                id: obj.id,
+                value,
+                font_family,
+                alignment: align,
+                color: c(color),
+                font_size,
                 transform,
                 cached_size: None,
             })))
         }
-        scal_core::anim_obj::AnimObjKind::Svg { path, size, tint, fill, stroke, stroke_width, stretch } => {
+        scal_core::anim_obj::AnimObjKind::Svg {
+            path,
+            size,
+            tint,
+            fill,
+            stroke,
+            stroke_width,
+            stretch,
+        } => {
             let st = match stretch {
-                scal_core::anim_obj::StretchMode::Fit => crate::anim_object::image::StretchMode::Fit,
-                scal_core::anim_obj::StretchMode::Fill => crate::anim_object::image::StretchMode::Fill,
+                scal_core::anim_obj::StretchMode::Fit => {
+                    crate::anim_object::image::StretchMode::Fit
+                }
+                scal_core::anim_obj::StretchMode::Fill => {
+                    crate::anim_object::image::StretchMode::Fill
+                }
             };
             Ok(RenderObj(Box::new(crate::anim_object::svg::Svg {
-                path, size, tint: c(tint),
-                fill: fill.map(c), stroke: stroke.map(c),
+                path,
+                size,
+                tint: c(tint),
+                fill: fill.map(c),
+                stroke: stroke.map(c),
                 stroke_width,
                 stretch: st,
                 transform,
             })))
         }
-        scal_core::anim_obj::AnimObjKind::Image { path, size, color, stretch } => {
+        scal_core::anim_obj::AnimObjKind::Image {
+            path,
+            size,
+            color,
+            stretch,
+        } => {
             let st = match stretch {
-                scal_core::anim_obj::StretchMode::Fit => crate::anim_object::image::StretchMode::Fit,
-                scal_core::anim_obj::StretchMode::Fill => crate::anim_object::image::StretchMode::Fill,
+                scal_core::anim_obj::StretchMode::Fit => {
+                    crate::anim_object::image::StretchMode::Fit
+                }
+                scal_core::anim_obj::StretchMode::Fill => {
+                    crate::anim_object::image::StretchMode::Fill
+                }
             };
             Ok(RenderObj(Box::new(crate::anim_object::image::Image {
-                path, size, color: c(color), stretch: st,
+                path,
+                size,
+                color: c(color),
+                stretch: st,
                 transform,
             })))
         }
-        scal_core::anim_obj::AnimObjKind::Code { source_code, font_family, font_size, syntax, theme, padding, show_line_numbers, line_number_color } => {
+        scal_core::anim_obj::AnimObjKind::Code {
+            source_code,
+            font_family,
+            font_size,
+            syntax,
+            theme,
+            padding,
+            show_line_numbers,
+            line_number_color,
+        } => {
             let syn = match syntax {
                 scal_core::anim_obj::Syntax::Rust => crate::anim_object::text::code::Syntax::Rust,
                 scal_core::anim_obj::Syntax::Nix => crate::anim_object::text::code::Syntax::Nix,
-                scal_core::anim_obj::Syntax::Python => crate::anim_object::text::code::Syntax::Python,
+                scal_core::anim_obj::Syntax::Python => {
+                    crate::anim_object::text::code::Syntax::Python
+                }
                 scal_core::anim_obj::Syntax::JS => crate::anim_object::text::code::Syntax::JS,
                 scal_core::anim_obj::Syntax::Zig => crate::anim_object::text::code::Syntax::Zig,
             };
@@ -426,7 +528,8 @@ fn convert_core_anim_obj(obj: scal_core::AnimObj, default_theme: &scal_core::The
                 id: obj.id,
                 source_code,
                 theme: th,
-                font_family, font_size,
+                font_family,
+                font_size,
                 syntax: syn,
                 padding,
                 show_line_numbers,

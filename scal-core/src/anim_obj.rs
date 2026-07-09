@@ -58,12 +58,22 @@ impl CodeAddLinesBuilder {
 
 impl From<CodeAddLinesBuilder> for AnimOP {
     fn from(b: CodeAddLinesBuilder) -> AnimOP {
-        AnimOP::CodeAddLines(b.uuid, b.text, b.from_line, b.duration, b.ease, b.style, None)
+        AnimOP::CodeAddLines(
+            b.uuid,
+            b.text,
+            b.from_line,
+            b.duration,
+            b.ease,
+            b.style,
+            None,
+        )
     }
 }
 
 impl IntoAnimOp for CodeAddLinesBuilder {
-    fn into_anim_op(self) -> AnimOP { self.into() }
+    fn into_anim_op(self) -> AnimOP {
+        self.into()
+    }
 }
 
 pub struct CodeModifyLineBuilder {
@@ -101,7 +111,9 @@ impl From<CodeModifyLineBuilder> for AnimOP {
 }
 
 impl IntoAnimOp for CodeModifyLineBuilder {
-    fn into_anim_op(self) -> AnimOP { self.into() }
+    fn into_anim_op(self) -> AnimOP {
+        self.into()
+    }
 }
 
 pub struct CodeRemoveLinesBuilder {
@@ -134,7 +146,9 @@ impl From<CodeRemoveLinesBuilder> for AnimOP {
 }
 
 impl IntoAnimOp for CodeRemoveLinesBuilder {
-    fn into_anim_op(self) -> AnimOP { self.into() }
+    fn into_anim_op(self) -> AnimOP {
+        self.into()
+    }
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -238,7 +252,9 @@ pub struct CodeHandle(pub AnimObj);
 
 impl std::ops::Deref for CodeHandle {
     type Target = AnimObj;
-    fn deref(&self) -> &AnimObj { &self.0 }
+    fn deref(&self) -> &AnimObj {
+        &self.0
+    }
 }
 
 impl CodeHandle {
@@ -280,7 +296,9 @@ pub struct CodeWindowHandle(pub AnimObj);
 
 impl std::ops::Deref for CodeWindowHandle {
     type Target = AnimObj;
-    fn deref(&self) -> &AnimObj { &self.0 }
+    fn deref(&self) -> &AnimObj {
+        &self.0
+    }
 }
 
 impl CodeWindowHandle {
@@ -344,14 +362,20 @@ impl CodeWindowHandle {
         }
     }
     pub fn minimize_button(&self) -> SubObjectHandle {
-        if let AnimObjKind::CodeWindow { minimize_btn_id, .. } = &self.0.kind {
+        if let AnimObjKind::CodeWindow {
+            minimize_btn_id, ..
+        } = &self.0.kind
+        {
             self.sub_handle(*minimize_btn_id)
         } else {
             SubObjectHandle(self.0.id)
         }
     }
     pub fn maximize_button(&self) -> SubObjectHandle {
-        if let AnimObjKind::CodeWindow { maximize_btn_id, .. } = &self.0.kind {
+        if let AnimObjKind::CodeWindow {
+            maximize_btn_id, ..
+        } = &self.0.kind
+        {
             self.sub_handle(*maximize_btn_id)
         } else {
             SubObjectHandle(self.0.id)
@@ -375,7 +399,10 @@ impl CodeWindowHandle {
         }
     }
     pub fn title_bar_background(&self) -> SubObjectHandle {
-        if let AnimObjKind::CodeWindow { title_bar_bg_id, .. } = &self.0.kind {
+        if let AnimObjKind::CodeWindow {
+            title_bar_bg_id, ..
+        } = &self.0.kind
+        {
             self.sub_handle(*title_bar_bg_id)
         } else {
             SubObjectHandle(self.0.id)
@@ -386,7 +413,9 @@ impl CodeWindowHandle {
 pub struct SubObjectHandle(pub Uuid);
 
 impl From<SubObjectHandle> for Uuid {
-    fn from(h: SubObjectHandle) -> Uuid { h.0 }
+    fn from(h: SubObjectHandle) -> Uuid {
+        h.0
+    }
 }
 
 impl SubObjectHandle {

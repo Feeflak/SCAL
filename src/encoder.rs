@@ -252,7 +252,11 @@ impl Encoder {
             return Ok(());
         }
 
-        debug!("writing {} audio samples ({} frames)", pcm.len() / 2, pcm.len() / 2 / 1024 + 1);
+        debug!(
+            "writing {} audio samples ({} frames)",
+            pcm.len() / 2,
+            pcm.len() / 2 / 1024 + 1
+        );
 
         let total_samples = pcm.len() / 2;
 
@@ -260,7 +264,15 @@ impl Encoder {
         let mut offset = 0usize;
         let mut pts: i64 = 0;
 
-        debug!("write_audio: total_samples={}, st={}", total_samples, pcm.iter().take(10).map(|s| format!("{:.4}", s)).collect::<Vec<_>>().join(","));
+        debug!(
+            "write_audio: total_samples={}, st={}",
+            total_samples,
+            pcm.iter()
+                .take(10)
+                .map(|s| format!("{:.4}", s))
+                .collect::<Vec<_>>()
+                .join(",")
+        );
         let max_sample = pcm.iter().map(|s| s.abs()).fold(0.0_f32, f32::max);
         debug!("write_audio: max sample magnitude = {}", max_sample);
 
@@ -281,9 +293,15 @@ impl Encoder {
                 }
             }
 
-            debug!("write_audio: sending frame pts={} offset={} samples={}", pts, offset, samples_this_frame);
+            debug!(
+                "write_audio: sending frame pts={} offset={} samples={}",
+                pts, offset, samples_this_frame
+            );
             if let Err(e) = audio_encoder.send_frame(&frame) {
-                debug!("audio_encoder.send_frame failed at offset={}: {:?}", offset, e);
+                debug!(
+                    "audio_encoder.send_frame failed at offset={}: {:?}",
+                    offset, e
+                );
                 return Err(e.into());
             }
 
@@ -394,7 +412,9 @@ fn setup_audio_stream(
 
     let mut audio_ctx = ffmpeg::codec::context::Context::new().encoder().audio()?;
     audio_ctx.set_rate(sfx::OUTPUT_SAMPLE_RATE as i32);
-    audio_ctx.set_format(ffmpeg::format::Sample::F32(ffmpeg::format::sample::Type::Planar));
+    audio_ctx.set_format(ffmpeg::format::Sample::F32(
+        ffmpeg::format::sample::Type::Planar,
+    ));
     audio_ctx.set_channel_layout(ffmpeg::ChannelLayout::default(2));
     audio_ctx.set_time_base((1, sfx::OUTPUT_SAMPLE_RATE as i32));
 

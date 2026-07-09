@@ -17,7 +17,11 @@ impl Ease {
             Ease::Linear => t,
             Ease::OutCubic => 1.0 - (1.0 - t).powi(3),
             Ease::InOutCubic => {
-                if t < 0.5 { 4.0 * t * t * t } else { 1.0 - (-2.0 * t + 2.0).powi(3) / 2.0 }
+                if t < 0.5 {
+                    4.0 * t * t * t
+                } else {
+                    1.0 - (-2.0 * t + 2.0).powi(3) / 2.0
+                }
             }
             Ease::InOutBack => {
                 const C1: f32 = 1.70158;

@@ -102,7 +102,9 @@ impl From<PositionBuilder> for AnimOP {
 }
 
 impl IntoAnimOp for PositionBuilder {
-    fn into_anim_op(self) -> AnimOP { self.into() }
+    fn into_anim_op(self) -> AnimOP {
+        self.into()
+    }
 }
 
 pub struct ScaleBuilder {
@@ -137,12 +139,20 @@ impl ScaleBuilder {
 
 impl From<ScaleBuilder> for AnimOP {
     fn from(b: ScaleBuilder) -> AnimOP {
-        AnimOP::TransformScale(b.uuid, b.target.unwrap_or(Vec2::ONE), b.duration, b.ease, None)
+        AnimOP::TransformScale(
+            b.uuid,
+            b.target.unwrap_or(Vec2::ONE),
+            b.duration,
+            b.ease,
+            None,
+        )
     }
 }
 
 impl IntoAnimOp for ScaleBuilder {
-    fn into_anim_op(self) -> AnimOP { self.into() }
+    fn into_anim_op(self) -> AnimOP {
+        self.into()
+    }
 }
 
 pub struct RotateBuilder {
@@ -176,5 +186,7 @@ impl From<RotateBuilder> for AnimOP {
 }
 
 impl IntoAnimOp for RotateBuilder {
-    fn into_anim_op(self) -> AnimOP { self.into() }
+    fn into_anim_op(self) -> AnimOP {
+        self.into()
+    }
 }

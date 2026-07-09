@@ -24,4 +24,3 @@ fn main() -> Project {
         timeline: timeline![svg.instantiate(), wait(1.s()),],
     }
 }
-

@@ -52,7 +52,11 @@ impl AudioEngine {
                 total_duration = end;
             }
             decoded_sounds.push((samples, sound.start_time.max(0.0), sound.volume));
-            debug!("  scheduled at t={} with volume={}", sound.start_time.max(0.0), sound.volume);
+            debug!(
+                "  scheduled at t={} with volume={}",
+                sound.start_time.max(0.0),
+                sound.volume
+            );
         }
 
         if total_duration <= 0.0 {
@@ -91,7 +95,10 @@ impl AudioEngine {
 
         let input_stream_index = input_stream.index();
         let codec = ffmpeg::codec::context::Context::from_parameters(input_stream.parameters())?;
-        let mut decoder = codec.decoder().audio().context("failed to create audio decoder")?;
+        let mut decoder = codec
+            .decoder()
+            .audio()
+            .context("failed to create audio decoder")?;
 
         let mut resampler: Option<ffmpeg::software::resampling::Context> = None;
         let mut pcm_stereo: Vec<f32> = vec![];
@@ -130,7 +137,9 @@ impl AudioEngine {
                                     decoded.format(),
                                     input_ch_layout,
                                     decoded.rate(),
-                                    ffmpeg::format::Sample::F32(ffmpeg::format::sample::Type::Packed),
+                                    ffmpeg::format::Sample::F32(
+                                        ffmpeg::format::sample::Type::Packed,
+                                    ),
                                     ffmpeg::ChannelLayout::default(2),
                                     OUTPUT_SAMPLE_RATE,
                                 )?);
@@ -145,14 +154,18 @@ impl AudioEngine {
                                     } else {
                                         decoded.channel_layout()
                                     };
-                                    if let Ok(new_rsmpl) = ffmpeg::software::resampling::Context::get(
-                                        decoded.format(),
-                                        input_ch_layout,
-                                        decoded.rate(),
-                                        ffmpeg::format::Sample::F32(ffmpeg::format::sample::Type::Packed),
-                                        ffmpeg::ChannelLayout::default(2),
-                                        OUTPUT_SAMPLE_RATE,
-                                    ) {
+                                    if let Ok(new_rsmpl) =
+                                        ffmpeg::software::resampling::Context::get(
+                                            decoded.format(),
+                                            input_ch_layout,
+                                            decoded.rate(),
+                                            ffmpeg::format::Sample::F32(
+                                                ffmpeg::format::sample::Type::Packed,
+                                            ),
+                                            ffmpeg::ChannelLayout::default(2),
+                                            OUTPUT_SAMPLE_RATE,
+                                        )
+                                    {
                                         *rsmpl = new_rsmpl;
                                         rsmpl.run(&decoded, &mut converted).is_ok()
                                     } else {
@@ -166,10 +179,7 @@ impl AudioEngine {
                                 let n = converted.samples();
                                 let data = converted.data(0);
                                 let float_data = unsafe {
-                                    std::slice::from_raw_parts(
-                                        data.as_ptr() as *const f32,
-                                        n * 2,
-                                    )
+                                    std::slice::from_raw_parts(data.as_ptr() as *const f32, n * 2)
                                 };
                                 pcm_stereo.extend_from_slice(float_data);
                             }
@@ -212,7 +222,9 @@ impl AudioEngine {
                                     remaining.format(),
                                     input_ch_layout,
                                     remaining.rate(),
-                                    ffmpeg::format::Sample::F32(ffmpeg::format::sample::Type::Packed),
+                                    ffmpeg::format::Sample::F32(
+                                        ffmpeg::format::sample::Type::Packed,
+                                    ),
                                     ffmpeg::ChannelLayout::default(2),
                                     OUTPUT_SAMPLE_RATE,
                                 ) {
@@ -229,10 +241,7 @@ impl AudioEngine {
                             let n = converted.samples();
                             let data = converted.data(0);
                             let float_data = unsafe {
-                                std::slice::from_raw_parts(
-                                    data.as_ptr() as *const f32,
-                                    n * 2,
-                                )
+                                std::slice::from_raw_parts(data.as_ptr() as *const f32, n * 2)
                             };
                             pcm_stereo.extend_from_slice(float_data);
                         }
@@ -263,8 +272,7 @@ impl AudioEngine {
             pcm_stereo.drain(0..skip);
         }
 
-        let mut pcm_stereo =
-            apply_pitch_and_volume(pcm_stereo, sound.pitch, 1.0);
+        let mut pcm_stereo = apply_pitch_and_volume(pcm_stereo, sound.pitch, 1.0);
 
         if sound.duration > 0.0 {
             let target_samples = (sound.duration * OUTPUT_SAMPLE_RATE as f32) as usize * 2;
@@ -315,7 +323,12 @@ mod tests {
     fn pitch_half_speed_interpolates() {
         let samples = vec![1.0, 0.0, 0.0, 1.0, 0.5, 0.5];
         let result = apply_pitch_and_volume(samples, 0.5, 1.0);
-        assert_eq!(result.len(), 8, "expected 4 stereo frames, got {}", result.len());
+        assert_eq!(
+            result.len(),
+            8,
+            "expected 4 stereo frames, got {}",
+            result.len()
+        );
         assert!((result[0] - 1.0).abs() < f32::EPSILON);
         assert!((result[1] - 0.0).abs() < f32::EPSILON);
         assert!((result[2] - 0.5).abs() < f32::EPSILON);
@@ -342,11 +355,7 @@ mod tests {
     }
 }
 
-fn apply_pitch_and_volume(
-    samples: Vec<f32>,
-    pitch: f32,
-    volume: f32,
-) -> Vec<f32> {
+fn apply_pitch_and_volume(samples: Vec<f32>, pitch: f32, volume: f32) -> Vec<f32> {
     if (pitch - 1.0).abs() < f32::EPSILON && (volume - 1.0).abs() < f32::EPSILON {
         return samples;
     }

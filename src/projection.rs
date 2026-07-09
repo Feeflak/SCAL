@@ -92,8 +92,18 @@ mod tests {
         let origin = mat * vec3(0.0, 0.0, 0.0).extend(1.0);
         let expected_x = 2.0 * (-100.0) / 1920.0 - 1.0;
         let expected_y = 1.0 - 2.0 * (-200.0) / 1080.0;
-        assert!((origin.x - expected_x).abs() < 0.001, "origin.x={}, expected={}", origin.x, expected_x);
-        assert!((origin.y - expected_y).abs() < 0.001, "origin.y={}, expected={}", origin.y, expected_y);
+        assert!(
+            (origin.x - expected_x).abs() < 0.001,
+            "origin.x={}, expected={}",
+            origin.x,
+            expected_x
+        );
+        assert!(
+            (origin.y - expected_y).abs() < 0.001,
+            "origin.y={}, expected={}",
+            origin.y,
+            expected_y
+        );
     }
 
     #[test]
@@ -103,8 +113,18 @@ mod tests {
         let center = mat * vec3(960.0, 540.0, 0.0).extend(1.0);
         let expected_x = 2.0 * (2.0 * 960.0) / 1920.0 - 1.0;
         let expected_y = 1.0 - 2.0 * (2.0 * 540.0) / 1080.0;
-        assert!((center.x - expected_x).abs() < 0.001, "center.x={}, expected={}", center.x, expected_x);
-        assert!((center.y - expected_y).abs() < 0.001, "center.y={}, expected={}", center.y, expected_y);
+        assert!(
+            (center.x - expected_x).abs() < 0.001,
+            "center.x={}, expected={}",
+            center.x,
+            expected_x
+        );
+        assert!(
+            (center.y - expected_y).abs() < 0.001,
+            "center.y={}, expected={}",
+            center.y,
+            expected_y
+        );
     }
 
     #[test]

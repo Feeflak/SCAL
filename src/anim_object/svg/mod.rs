@@ -3,10 +3,10 @@ pub mod mesh;
 use anyhow::Context;
 use glam::Vec2;
 
+use crate::anim_object::Transform;
 use crate::anim_object::image::StretchMode;
 use crate::anim_object::object_trait::{AnimObjectTrait, BindGroupLoader, MeshResult};
 use crate::anim_object::svg::mesh::generate_svg_mesh_data;
-use crate::anim_object::Transform;
 use crate::types::*;
 
 #[derive(Clone, Debug)]
@@ -36,15 +36,17 @@ impl AnimObjectTrait for Svg {
     }
     fn bind_group_loader(&self) -> Option<BindGroupLoader> {
         let svg = self.clone();
-        Some(Box::new(move |device, queue| {
-            match crate::anim_object::svg::load_svg_bind_group(device, queue, &svg) {
+        Some(Box::new(
+            move |device, queue| match crate::anim_object::svg::load_svg_bind_group(
+                device, queue, &svg,
+            ) {
                 Ok(bg) => vec![bg],
                 Err(e) => {
                     log::error!("Failed to load SVG bind group: {:?}", e);
                     vec![]
                 }
-            }
-        }))
+            },
+        ))
     }
     fn clone_box(&self) -> Box<dyn AnimObjectTrait> {
         Box::new(self.clone())
@@ -67,10 +69,14 @@ fn color_to_hex(c: Color) -> String {
 }
 
 fn insert_after_svg_opening(svg: &str, fragment: &str) -> String {
-    let insert_at = svg.find("<svg").or_else(|| svg.find("<SVG")).map(|start| {
-        let after_tag = &svg[start..];
-        after_tag.find('>').map(|gt| start + gt + 1).unwrap_or(0)
-    }).unwrap_or(0);
+    let insert_at = svg
+        .find("<svg")
+        .or_else(|| svg.find("<SVG"))
+        .map(|start| {
+            let after_tag = &svg[start..];
+            after_tag.find('>').map(|gt| start + gt + 1).unwrap_or(0)
+        })
+        .unwrap_or(0);
     let mut result = String::with_capacity(svg.len() + fragment.len());
     result.push_str(&svg[..insert_at]);
     result.push_str(fragment);

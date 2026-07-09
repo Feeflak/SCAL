@@ -32,8 +32,12 @@ struct RenderingConfig {
     text_resolution_multiplier: f32,
 }
 
-fn default_buffer_count() -> u32 { 3 }
-fn default_text_resolution_multiplier() -> f32 { 1.0 }
+fn default_buffer_count() -> u32 {
+    3
+}
+fn default_text_resolution_multiplier() -> f32 {
+    1.0
+}
 
 #[derive(serde::Deserialize)]
 struct EncodingConfig {
@@ -67,10 +71,8 @@ async fn run_render() -> Result<()> {
     if !config_path.exists() {
         bail!("Config.toml not found in current directory");
     }
-    let content = std::fs::read_to_string(&config_path)
-        .context("Failed to read Config.toml")?;
-    let config: Config = toml::from_str(&content)
-        .context("Failed to parse Config.toml")?;
+    let content = std::fs::read_to_string(&config_path).context("Failed to read Config.toml")?;
+    let config: Config = toml::from_str(&content).context("Failed to parse Config.toml")?;
 
     let codec_type = match config.encoding.codec_type.to_uppercase().as_str() {
         "H264" => scal_core::CodecType::H264,
@@ -92,7 +94,10 @@ async fn run_render() -> Result<()> {
         codec_type,
     };
 
-    log::info!("Scal Render - spawning animation binary: {}", config.animation.binary);
+    log::info!(
+        "Scal Render - spawning animation binary: {}",
+        config.animation.binary
+    );
 
     let child = std::process::Command::new("sh")
         .arg("-c")
@@ -102,7 +107,8 @@ async fn run_render() -> Result<()> {
         .spawn()
         .context("Failed to spawn animation binary")?;
 
-    let output = child.wait_with_output()
+    let output = child
+        .wait_with_output()
         .context("Failed to wait for animation binary")?;
 
     if !output.status.success() {
@@ -123,8 +129,8 @@ async fn run_render() -> Result<()> {
         bail!("Incomplete project data received");
     }
 
-    let project: scal_core::Project = bincode::deserialize(&rest[..len])
-        .context("Failed to deserialize project")?;
+    let project: scal_core::Project =
+        bincode::deserialize(&rest[..len]).context("Failed to deserialize project")?;
 
     log::info!(
         "Received project with {} timeline operations",

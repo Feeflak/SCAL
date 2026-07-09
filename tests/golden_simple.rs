@@ -24,15 +24,23 @@ async fn golden_simple() {
         .pos(glam::vec2(160., 80.))
         .build();
 
-    run_compare("simple", Project {
-        scene_settings: test_scene_settings(),
-        timeline: timeline![
-            rect.instantiate(),
-            circ.instantiate(),
-            poly.instantiate(),
-            wait(0.3),
-            rect.transform.position().to(glam::vec2(200., 120.)).over(0.8).ease(Ease::OutBack),
-            wait(0.3),
-        ],
-    }).await;
+    run_compare(
+        "simple",
+        Project {
+            scene_settings: test_scene_settings(),
+            timeline: timeline![
+                rect.instantiate(),
+                circ.instantiate(),
+                poly.instantiate(),
+                wait(0.3),
+                rect.transform
+                    .position()
+                    .to(glam::vec2(200., 120.))
+                    .over(0.8)
+                    .ease(Ease::OutBack),
+                wait(0.3),
+            ],
+        },
+    )
+    .await;
 }

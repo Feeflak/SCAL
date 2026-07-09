@@ -18,6 +18,7 @@
           packages = with pkgs; [
             rust-analyzer
             rustfmt
+            clippy
             cargo
             rustc
             pkg-config

@@ -26,12 +26,33 @@ pub fn generate_image_mesh_data(image: &Image) -> (Vec<Vertex>, Vec<Index>, Pipe
         }
     };
     let half = quad_size * 0.5;
-    let uvs = [vec2(0.0, 0.0), vec2(1.0, 0.0), vec2(1.0, 1.0), vec2(0.0, 1.0)];
+    let uvs = [
+        vec2(0.0, 0.0),
+        vec2(1.0, 0.0),
+        vec2(1.0, 1.0),
+        vec2(0.0, 1.0),
+    ];
     let vertices = vec![
-        Vertex { position: -half,             color: image.color, uv: uvs[0] },
-        Vertex { position: vec2(half.x, -half.y), color: image.color, uv: uvs[1] },
-        Vertex { position: half,              color: image.color, uv: uvs[2] },
-        Vertex { position: vec2(-half.x, half.y), color: image.color, uv: uvs[3] },
+        Vertex {
+            position: -half,
+            color: image.color,
+            uv: uvs[0],
+        },
+        Vertex {
+            position: vec2(half.x, -half.y),
+            color: image.color,
+            uv: uvs[1],
+        },
+        Vertex {
+            position: half,
+            color: image.color,
+            uv: uvs[2],
+        },
+        Vertex {
+            position: vec2(-half.x, half.y),
+            color: image.color,
+            uv: uvs[3],
+        },
     ];
     let indices = vec![0, 1, 2, 2, 3, 0];
     (vertices, indices, PipelineKind::Image)
