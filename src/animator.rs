@@ -100,8 +100,9 @@ impl Animator {
             let mut storage = self.anim_state.storage.clone();
 
             if self.anim_state.time == 0. {
+                let loc_str = animation.location.as_ref().map(|l| l.to_string()).unwrap_or_default();
                 (*animation.start)(self, &mut storage)
-                    .context("while running the start function of an animation")?;
+                    .context(format!("while running the start function of an animation {loc_str}"))?;
             }
             if let Some(update) = animation.update
                 && self.anim_state.time < animation.total_duration
@@ -111,8 +112,9 @@ impl Animator {
                 } else {
                     self.anim_state.time / animation.total_duration
                 };
+                let loc_str = animation.location.as_ref().map(|l| l.to_string()).unwrap_or_default();
                 (*update)(self, animation.curve.apply(t), &mut storage)
-                    .context("while running the update function of an animation")?;
+                    .context(format!("while running the update function of an animation {loc_str}"))?;
                 self.anim_state.time += 1. / self.fps as f32;
 
                 self.anim_state.storage = storage;
@@ -196,17 +198,17 @@ impl Animator {
         let index = self
             .objects_lookup
             .get(uuid)
-            .context("there was no object with that uuid")?;
+            .with_context(|| format!("there was no object with uuid {uuid}"))?;
 
         self.objects
             .get(*index)
-            .context("index from the object lookup was out of bounds ")
+            .context("index from the object lookup was out of bounds")
     }
     pub(crate) fn get_object_mut(&mut self, uuid: &Uuid) -> Result<&mut Object> {
         let index = self
             .objects_lookup
             .get(uuid)
-            .context("there was no object with that uuid")?;
+            .with_context(|| format!("there was no object with uuid {uuid}"))?;
         self.objects
             .get_mut(*index)
             .context("index from the object lookup was out of bounds ")

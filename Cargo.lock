@@ -157,12 +157,9 @@ dependencies = [
 name = "audio"
 version = "0.1.0"
 dependencies = [
- "anyhow",
- "colog",
  "glam",
- "log",
- "scal",
- "tokio",
+ "scal-core",
+ "scal-ipc",
 ]
 
 [[package]]
@@ -219,6 +216,15 @@ name = "base64"
 version = "0.22.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "72b3254f16251a8381aa12e40e3c4d2f0199f8c6508fbecb9d91f575e0fbb8c6"
+
+[[package]]
+name = "bincode"
+version = "1.3.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b1f45e9417d87227c7a56d22e471c6206462cba514c7590c09aff4cf6d1ddcad"
+dependencies = [
+ "serde",
+]
 
 [[package]]
 name = "bindgen"
@@ -381,24 +387,18 @@ dependencies = [
 name = "code"
 version = "0.1.0"
 dependencies = [
- "anyhow",
- "colog",
  "glam",
- "log",
- "scal",
- "tokio",
+ "scal-core",
+ "scal-ipc",
 ]
 
 [[package]]
 name = "code_window"
 version = "0.1.0"
 dependencies = [
- "anyhow",
- "colog",
  "glam",
- "log",
- "scal",
- "tokio",
+ "scal-core",
+ "scal-ipc",
 ]
 
 [[package]]
@@ -876,6 +876,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7f22fb22f065b308be0d8724e3706c7fa3fc2a6c7d6899df4cad7860e7a75436"
 dependencies = [
  "bytemuck",
+ "serde_core",
 ]
 
 [[package]]
@@ -1018,13 +1019,9 @@ checksum = "3d3067d79b975e8844ca9eb072e16b31c3c1c36928edf9c6789548c524d0d954"
 name = "image"
 version = "0.1.0"
 dependencies = [
- "anyhow",
- "colog",
  "glam",
- "image 0.25.10",
- "log",
- "scal",
- "tokio",
+ "scal-core",
+ "scal-ipc",
 ]
 
 [[package]]
@@ -2106,6 +2103,7 @@ dependencies = [
  "rand 0.8.6",
  "regex",
  "resvg",
+ "scal-core",
  "swash",
  "tiny-skia",
  "tokio",
@@ -2119,6 +2117,50 @@ dependencies = [
  "usvg",
  "uuid",
  "wgpu",
+]
+
+[[package]]
+name = "scal-core"
+version = "0.1.0"
+dependencies = [
+ "bincode",
+ "glam",
+ "serde",
+ "uuid",
+]
+
+[[package]]
+name = "scal-ipc"
+version = "0.1.0"
+dependencies = [
+ "bincode",
+ "scal-core",
+ "scal-ipc-macros",
+]
+
+[[package]]
+name = "scal-ipc-macros"
+version = "0.1.0"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn",
+]
+
+[[package]]
+name = "scal-runtime"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "bincode",
+ "colog",
+ "glam",
+ "log",
+ "scal",
+ "scal-core",
+ "serde",
+ "tokio",
+ "toml",
 ]
 
 [[package]]
@@ -2184,6 +2226,21 @@ dependencies = [
 ]
 
 [[package]]
+name = "serde_spanned"
+version = "0.6.9"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "bf41e0cfaf7226dca15e8197172c295a782857fcb97fad1808a166870dee75a3"
+dependencies = [
+ "serde",
+]
+
+[[package]]
+name = "sha1_smol"
+version = "1.0.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "bbfa15b3dddfee50a0fff136974b3e1bde555604ba463834a7eb7deb6417705d"
+
+[[package]]
 name = "shlex"
 version = "1.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2224,13 +2281,9 @@ dependencies = [
 name = "simple"
 version = "0.1.0"
 dependencies = [
- "anyhow",
- "colog",
  "glam",
- "image 0.25.10",
- "log",
- "scal",
- "tokio",
+ "scal-core",
+ "scal-ipc",
 ]
 
 [[package]]
@@ -2345,13 +2398,9 @@ dependencies = [
 name = "svg"
 version = "0.1.0"
 dependencies = [
- "anyhow",
- "colog",
  "glam",
- "image 0.25.10",
- "log",
- "scal",
- "tokio",
+ "scal-core",
+ "scal-ipc",
 ]
 
 [[package]]
@@ -2506,6 +2555,47 @@ dependencies = [
  "quote",
  "syn",
 ]
+
+[[package]]
+name = "toml"
+version = "0.8.23"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "dc1beb996b9d83529a9e75c17a1686767d148d70663143c7854d8b4a09ced362"
+dependencies = [
+ "serde",
+ "serde_spanned",
+ "toml_datetime",
+ "toml_edit",
+]
+
+[[package]]
+name = "toml_datetime"
+version = "0.6.11"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "22cddaf88f4fbc13c51aebbf5f8eceb5c7c5a9da2ac40a13519eb5b0a0e8f11c"
+dependencies = [
+ "serde",
+]
+
+[[package]]
+name = "toml_edit"
+version = "0.22.27"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "41fe8c660ae4257887cf66394862d21dbca4a6ddd26f04a3560410406a2f819a"
+dependencies = [
+ "indexmap",
+ "serde",
+ "serde_spanned",
+ "toml_datetime",
+ "toml_write",
+ "winnow",
+]
+
+[[package]]
+name = "toml_write"
+version = "0.1.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "5d99f8c9a7727884afe522e9bd5edbfc91a3312b36a77b5fb8926e4c31a41801"
 
 [[package]]
 name = "tree-sitter"
@@ -2705,6 +2795,8 @@ checksum = "bf80a72845275afea99e7f2b434723d3bc7e38470fcd1c7ed39a599c73319a53"
 dependencies = [
  "getrandom 0.4.2",
  "js-sys",
+ "serde_core",
+ "sha1_smol",
  "wasm-bindgen",
 ]
 
@@ -3166,6 +3258,15 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "3949bd5b99cafdf1c7ca86b43ca564028dfe27d66958f2470940f73d86d75b37"
 dependencies = [
  "windows-link",
+]
+
+[[package]]
+name = "winnow"
+version = "0.7.15"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "df79d97927682d2fd8adb29682d1140b343be4ac0f08fd68b7765d9c059d3945"
+dependencies = [
+ "memchr",
 ]
 
 [[package]]

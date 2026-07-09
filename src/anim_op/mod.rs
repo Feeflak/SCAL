@@ -42,14 +42,16 @@ impl TryInto<Animation> for AnimOP {
         // let skip = Box::new(|_, _| Ok(()));
         Ok(match self {
             AnimOP::Instantiate(anim_obj) => Animation::instant(Box::new(move |animator, _| {
-                debug!("Instantiate");
+                debug!("Instantiate uuid={}", anim_obj.uuid());
                 animator.add_anim_object(anim_obj.clone())?;
                 Ok(())
             })),
             AnimOP::TransformMovePos(uuid, pos, duration, curve) => {
+                debug!("TransformMovePos uuid={uuid}");
                 transform::move_pos(uuid, pos, duration, curve)
             }
             AnimOP::TransformMoveToObj(moving_uuid, target_uuid, offset, duration, curve) => {
+                debug!("TransformMoveToObj moving={moving_uuid} target={target_uuid}");
                 Animation::new(
                     duration,
                     curve,
@@ -76,19 +78,24 @@ impl TryInto<Animation> for AnimOP {
                 )
             }
             AnimOP::TransformRotate(uuid, target, duration, curve) => {
+                debug!("TransformRotate uuid={uuid}");
                 transform::rotate_to(uuid, target, duration, curve)
             }
             AnimOP::TransformScale(uuid, target, duration, curve) => {
+                debug!("TransformScale uuid={uuid}");
                 transform::scale_to(uuid, target, duration, curve)
             }
 
             AnimOP::CodeAddLines(uuid, text, from_line, duration, curve, style) => {
+                debug!("CodeAddLines uuid={uuid}");
                 code::add_lines(uuid, text, from_line, duration, curve, style)
             }
             AnimOP::CodeModifyLine(uuid, line, new_text, duration, curve, style) => {
+                debug!("CodeModifyLine uuid={uuid}");
                 code::modify_line(uuid, line, new_text, duration, curve, style)
             }
             AnimOP::CodeRemoveLines(uuid, lines, duration, curve, style) => {
+                debug!("CodeRemoveLines uuid={uuid}");
                 code::remove_lines(uuid, lines, duration, curve, style)
             }
             AnimOP::CodeHighlight(uuid, action) => {
@@ -315,32 +322,60 @@ type StartAnimationFunction = Box<dyn Fn(&mut Animator, &mut Vec<f32>) -> Result
 
 type UpdateAnimationFunction = Box<dyn Fn(&mut Animator, f32, &mut Vec<f32>) -> Result<()>>;
 
+pub struct SourceLoc {
+    pub file: &'static str,
+    pub line: u32,
+}
+
+impl std::fmt::Display for SourceLoc {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "at {}:{}", self.file, self.line)
+    }
+}
+
 pub struct Animation {
     pub total_duration: f32,
     pub curve: AnimationCurve,
     pub start: StartAnimationFunction,
     pub update: Option<UpdateAnimationFunction>,
+    pub location: Option<SourceLoc>,
+}
+pub fn convert_curve(ease: scal_core::Ease) -> AnimationCurve {
+    match ease {
+        scal_core::Ease::Linear => AnimationCurve::Linear,
+        scal_core::Ease::OutCubic => AnimationCurve::EaseOutCubic,
+        scal_core::Ease::InOutCubic => AnimationCurve::EaseInOutCubic,
+        scal_core::Ease::InOutBack => AnimationCurve::EaseInOutBack,
+        scal_core::Ease::OutBack => AnimationCurve::EaseOutBack,
+        scal_core::Ease::InBack => AnimationCurve::EaseInBack,
+    }
 }
 impl Animation {
+    #[track_caller]
     pub fn new(
         total_duration: f32,
         curve: AnimationCurve,
         start: StartAnimationFunction,
         update: Option<UpdateAnimationFunction>,
     ) -> Self {
+        let loc = std::panic::Location::caller();
         Animation {
             total_duration,
             curve,
             start,
             update,
+            location: Some(SourceLoc { file: loc.file(), line: loc.line() }),
         }
     }
+    #[track_caller]
     pub fn instant(start: StartAnimationFunction) -> Self {
+        let loc = std::panic::Location::caller();
         Animation {
             total_duration: 0.0,
             curve: AnimationCurve::Linear,
             start,
             update: None,
+            location: Some(SourceLoc { file: loc.file(), line: loc.line() }),
         }
     }
 }

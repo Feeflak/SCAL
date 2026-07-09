@@ -1,10 +1,11 @@
 use glam::{Vec2, Vec3, vec2, vec3};
+use uuid::Uuid;
 
 use crate::anim_object::{
     Transform, circle,
     compose::{
         Alignment as LayoutAlignment, LayoutBackground, LayoutDir, LayoutItem, LayoutResult,
-        PinPoint, layout,
+        PinPoint, layout_with_ids,
     },
     object_trait::AnimObj,
     text,
@@ -130,26 +131,37 @@ pub fn code_window(
     width: f32,
     height: f32,
     title_font_size: f32,
+    background_color: Color,
+    code_id: Uuid,
+    close_btn_id: Uuid,
+    minimize_btn_id: Uuid,
+    maximize_btn_id: Uuid,
+    title_id: Uuid,
+    bg_id: Uuid,
+    container_id: Uuid,
+    title_bar_bg_id: Uuid,
+    show_line_numbers: bool,
+    line_number_color: Color,
 ) -> CodeWindow {
     let circle_r = 12.0;
 
     let close_btn = circle(
-        Transform::new(None, Vec3::ZERO, 0., Vec2::ONE),
+        Transform::with_uuid(close_btn_id, Vec3::ZERO),
         circle_r,
         Color::new(1.0, 0.373, 0.341, 1.0),
     );
     let minimize_btn = circle(
-        Transform::new(None, Vec3::ZERO, 0., Vec2::ONE),
+        Transform::with_uuid(minimize_btn_id, Vec3::ZERO),
         circle_r,
         Color::new(1.0, 0.741, 0.180, 1.0),
     );
     let maximize_btn = circle(
-        Transform::new(None, Vec3::ZERO, 0., Vec2::ONE),
+        Transform::with_uuid(maximize_btn_id, Vec3::ZERO),
         circle_r,
         Color::new(0.337, 1.0, 0.337, 1.0),
     );
     let title_text = text(
-        Transform::new(None, Vec3::ZERO, 0., Vec2::ONE),
+        Transform::with_uuid(title_id, Vec3::ZERO),
         title,
         font_family.clone(),
         Align::Left,
@@ -157,18 +169,20 @@ pub fn code_window(
         title_font_size,
     );
 
-    let code = Code::new(
+    let mut code = Code::new(
         source_code,
         syntax,
         theme,
         font_family,
         alignment,
         font_size,
-        Transform::new(None, Vec3::ZERO, 0., Vec2::ONE),
+        Transform::with_uuid(code_id, Vec3::ZERO),
         25.0,
     );
+    code.show_line_numbers = show_line_numbers;
+    code.line_number_color = line_number_color;
 
-    let title_layout = layout(
+    let title_layout = layout_with_ids(
         Vec3::ZERO,
         PinPoint::C,
         vec![
@@ -184,15 +198,17 @@ pub fn code_window(
         LayoutDir::Row,
         LayoutAlignment::Center,
         8.0,
-        -45.0,
-        -45.0,
+        -35.0,
+        -35.0,
         25.0,
         25.0,
         0.0,
         0.0,
+        Some(title_bar_bg_id),
+        None,
     );
 
-    let layout_result = layout(
+    let layout_result = layout_with_ids(
         position,
         PinPoint::C,
         vec![
@@ -200,7 +216,7 @@ pub fn code_window(
             LayoutItem::Object(AnimObj(Box::new(code.clone()))),
         ],
         LayoutBackground {
-            color: Color::new(0.176, 0.176, 0.176, 1.0),
+            color: background_color,
             corner_radius: 5.,
         },
         LayoutDir::Column,
@@ -212,6 +228,8 @@ pub fn code_window(
         0.0,
         width,
         height,
+        Some(bg_id),
+        Some(container_id),
     );
 
     CodeWindow {

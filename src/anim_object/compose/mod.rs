@@ -98,10 +98,27 @@ impl LayoutContainer {
         min_width: f32,
         min_height: f32,
     ) -> Self {
+        Self::with_uuid(Uuid::new_v4(), background_uuid, child_uuids, direction, alignment, gap, padding_top, padding_bottom, padding_left, padding_right, min_width, min_height)
+    }
+
+    fn with_uuid(
+        id: Uuid,
+        background_uuid: Uuid,
+        child_uuids: Vec<Uuid>,
+        direction: LayoutDir,
+        alignment: Alignment,
+        gap: f32,
+        padding_top: f32,
+        padding_bottom: f32,
+        padding_left: f32,
+        padding_right: f32,
+        min_width: f32,
+        min_height: f32,
+    ) -> Self {
         Self {
-            id: Uuid::new_v4(),
+            id,
             transform: Transform {
-                uuid: Uuid::new_v4(),
+                uuid: id,
                 parent: None,
                 position: Vec3::ZERO,
                 rotation: 0.0,
@@ -259,6 +276,26 @@ pub fn layout(
     min_width: f32,
     min_height: f32,
 ) -> LayoutResult {
+    layout_with_ids(position, pin_point, items, background, layout_dir, alignment, gap, padding_top, padding_bottom, padding_left, padding_right, min_width, min_height, None, None)
+}
+
+pub fn layout_with_ids(
+    position: Vec3,
+    pin_point: PinPoint,
+    items: Vec<LayoutItem>,
+    background: LayoutBackground,
+    layout_dir: LayoutDir,
+    alignment: Alignment,
+    gap: f32,
+    padding_top: f32,
+    padding_bottom: f32,
+    padding_left: f32,
+    padding_right: f32,
+    min_width: f32,
+    min_height: f32,
+    bg_uuid_override: Option<Uuid>,
+    container_uuid_override: Option<Uuid>,
+) -> LayoutResult {
     let mut anim_items = Vec::with_capacity(items.len());
     let mut nested_layouts: Vec<LayoutResult> = Vec::new();
     for item in items {
@@ -279,29 +316,28 @@ pub fn layout(
     let total_w = (max_w + padding_left + padding_right).max(min_width);
     let total_h = (content_h + padding_top + padding_bottom + gaps).max(min_height);
 
-    let mut bg = crate::anim_object::rectangle(
-        Transform::new(None, Vec3::ZERO, 0.0, Vec2::ONE),
-        vec2(total_w, total_h),
-        background.corner_radius,
-        background.color,
-    );
+    let mut bg = match bg_uuid_override {
+        Some(u) => crate::anim_object::rectangle(
+            Transform::with_uuid(u, Vec3::ZERO),
+            vec2(total_w, total_h),
+            background.corner_radius,
+            background.color,
+        ),
+        None => crate::anim_object::rectangle(
+            Transform::new(None, Vec3::ZERO, 0.0, Vec2::ONE),
+            vec2(total_w, total_h),
+            background.corner_radius,
+            background.color,
+        ),
+    };
     bg.transform_mut().position = compute_bg_center(position, total_w, total_h, pin_point);
     let bg_uuid = bg.uuid();
 
     let child_uuids: Vec<Uuid> = anim_items.iter().map(|item| item.uuid()).collect();
-    let container_inner = LayoutContainer::new(
-        bg_uuid,
-        child_uuids,
-        layout_dir,
-        alignment,
-        gap,
-        padding_top,
-        padding_bottom,
-        padding_left,
-        padding_right,
-        min_width,
-        min_height,
-    );
+    let container_inner = match container_uuid_override {
+        Some(u) => LayoutContainer::with_uuid(u, bg_uuid, child_uuids, layout_dir, alignment, gap, padding_top, padding_bottom, padding_left, padding_right, min_width, min_height),
+        None => LayoutContainer::new(bg_uuid, child_uuids, layout_dir, alignment, gap, padding_top, padding_bottom, padding_left, padding_right, min_width, min_height),
+    };
     let container_uuid = container_inner.id;
     let container_obj = AnimObj(Box::new(container_inner));
 
