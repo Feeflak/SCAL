@@ -9,6 +9,7 @@ pub struct Camera {
 }
 
 impl Camera {
+    #[must_use]
     pub fn new(virtual_size: Vec2, position: Vec2, zoom: f32) -> Self {
         Self {
             virtual_size,

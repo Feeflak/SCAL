@@ -2,6 +2,7 @@ use std::io::Write;
 
 pub use scal_ipc_macros::main;
 
+#[allow(clippy::missing_panics_doc)]
 pub fn run_main(user_main: impl FnOnce() -> scal_core::Project) {
     let project = user_main();
     let encoded = bincode::serialize(&project).expect("failed to serialize project");

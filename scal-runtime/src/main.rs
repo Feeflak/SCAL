@@ -60,7 +60,7 @@ async fn main() -> Result<()> {
     match mode.as_str() {
         "render" => run_render().await?,
         "preview" => bail!("Preview mode not yet implemented"),
-        _ => bail!("Unknown mode: {}. Use 'render' or 'preview'.", mode),
+        _ => bail!("Unknown mode: {mode}. Use 'render' or 'preview'."),
     }
 
     Ok(())
@@ -78,7 +78,7 @@ async fn run_render() -> Result<()> {
         "H264" => scal_core::CodecType::H264,
         "H264NVENC" => scal_core::CodecType::H264Nvenc,
         "PRORES" => scal_core::CodecType::PRORES,
-        other => bail!("Unknown codec type: {}", other),
+        other => bail!("Unknown codec type: {other}"),
     };
 
     let rendering = RenderingSettings {
@@ -123,7 +123,7 @@ async fn run_render() -> Result<()> {
     }
 
     let (len_bytes, rest) = encoded.split_at(8);
-    let len = u64::from_le_bytes(len_bytes.try_into()?) as usize;
+    let len = usize::try_from(u64::from_le_bytes(len_bytes.try_into()?))?;
 
     if rest.len() < len {
         bail!("Incomplete project data received");

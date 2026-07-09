@@ -2,6 +2,7 @@ use std::path::{Path, PathBuf};
 use std::process::Command;
 
 use scal_core::prelude::*;
+use log::warn;
 
 pub const TEST_W: u32 = 320;
 pub const TEST_H: u32 = 240;
@@ -12,6 +13,7 @@ pub fn test_scene_settings() -> SceneSettings {
     SceneSettings {
         background_color: Color::new(0.8, 0.8, 0.8, 0.0),
         camera: Camera::new(
+            #[allow(clippy::cast_precision_loss)]
             glam::vec2(TEST_W as f32, TEST_H as f32),
             glam::Vec2::ZERO,
             1.0,
@@ -44,13 +46,14 @@ pub fn golden_dir() -> PathBuf {
 }
 
 pub fn golden_path(name: &str) -> PathBuf {
-    golden_dir().join(format!("{}.mov", name))
+    golden_dir().join(format!("{name}.mov"))
 }
 
 pub fn output_path(name: &str) -> PathBuf {
-    golden_dir().join(format!("_out_{}.mov", name))
+    golden_dir().join(format!("_out_{name}.mov"))
 }
 
+#[allow(dead_code)]
 pub fn project_root() -> &'static Path {
     Path::new(env!("CARGO_MANIFEST_DIR"))
 }
@@ -73,7 +76,7 @@ fn ffmpeg_psnr(test: &Path, golden: &Path) -> Result<f64, String> {
             "-",
         ])
         .output()
-        .map_err(|e| format!("ffmpeg execution failed: {}", e))?;
+        .map_err(|e| format!("ffmpeg execution failed: {e}"))?;
 
     let stderr = String::from_utf8_lossy(&output.stderr);
     for line in stderr.lines() {
@@ -88,7 +91,7 @@ fn ffmpeg_psnr(test: &Path, golden: &Path) -> Result<f64, String> {
             }
         }
     }
-    Err(format!("Could not parse PSNR. stderr:\n{}", stderr))
+    Err(format!("Could not parse PSNR. stderr:\n{stderr}"))
 }
 
 pub async fn run_compare(name: &str, project: Project) {
@@ -109,13 +112,13 @@ pub async fn run_compare(name: &str, project: Project) {
 
     if !golden.exists() {
         std::fs::copy(&out, &golden).expect("failed to create golden");
-        eprintln!("Generated golden: {:?}", golden);
+        warn!("Generated golden: {golden:?}");
         let _ = std::fs::remove_file(&out);
         return;
     }
 
     if !ffmpeg_available() {
-        eprintln!("ffmpeg not found, skipping PSNR comparison");
+        warn!("ffmpeg not found, skipping PSNR comparison");
         let _ = std::fs::remove_file(&out);
         return;
     }
@@ -123,7 +126,7 @@ pub async fn run_compare(name: &str, project: Project) {
     let psnr = match ffmpeg_psnr(&out, &golden) {
         Ok(v) => v,
         Err(e) => {
-            eprintln!("PSNR comparison error ({}), skipping assertion", e);
+            warn!("PSNR comparison error ({e}), skipping assertion");
             let _ = std::fs::remove_file(&out);
             return;
         }
@@ -133,9 +136,6 @@ pub async fn run_compare(name: &str, project: Project) {
 
     assert!(
         psnr > PSNR_THRESHOLD || psnr.is_infinite(),
-        "PSNR {:.2} dB is below threshold {} dB for {}",
-        psnr,
-        PSNR_THRESHOLD,
-        name
+        "PSNR {psnr:.2} dB is below threshold {PSNR_THRESHOLD} dB for {name}"
     );
 }

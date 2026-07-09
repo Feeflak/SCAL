@@ -274,7 +274,7 @@ pub fn get_all_animation(ops: Vec<AnimOP>) -> Result<Animation> {
                         // +1 to skip the to_read;
                         let mut temp_store =
                             store[store_index + 1..store_index + 1 + to_read].to_vec();
-                        (*update)(animator, t, &mut temp_store);
+                        let _ = (*update)(animator, t, &mut temp_store);
                         store_index += to_read + 1;
                         updated_store.push(temp_store.len() as f32);
                         updated_store.append(&mut temp_store);
@@ -350,7 +350,6 @@ impl AnimationCurve {
 }
 type StartAnimationFunction = Box<dyn Fn(&mut Animator, &mut Vec<f32>) -> Result<()>>;
 /// Animator + percentage of the animation
-
 type UpdateAnimationFunction = Box<dyn Fn(&mut Animator, f32, &mut Vec<f32>) -> Result<()>>;
 
 pub struct SourceLoc {

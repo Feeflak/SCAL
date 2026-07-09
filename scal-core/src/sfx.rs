@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
 
-use crate::anim_op::{AnimOP, IntoAnimOp, PlaySoundBuilder};
+use crate::anim_op::PlaySoundBuilder;
 use crate::seconds::Seconds;
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -13,6 +13,7 @@ pub struct Sfx {
     pub pitch_variation: f32,
 }
 
+#[must_use]
 pub fn sfx() -> SfxBuilder {
     SfxBuilder::default()
 }
@@ -40,30 +41,37 @@ impl Default for SfxBuilder {
 }
 
 impl SfxBuilder {
+    #[must_use]
     pub fn path(mut self, path: impl Into<String>) -> Self {
         self.path = path.into();
         self
     }
+    #[must_use]
     pub fn volume(mut self, volume: f32) -> Self {
         self.volume = volume;
         self
     }
+    #[must_use]
     pub fn pitch(mut self, pitch: f32) -> Self {
         self.pitch = pitch;
         self
     }
+    #[must_use]
     pub fn skip_time(mut self, t: Seconds) -> Self {
         self.time_offset = t;
         self
     }
+    #[must_use]
     pub fn duration(mut self, dur: Seconds) -> Self {
         self.duration = dur;
         self
     }
+    #[must_use]
     pub fn pitch_variation(mut self, var: f32) -> Self {
         self.pitch_variation = var;
         self
     }
+    #[must_use]
     pub fn play(self) -> PlaySoundBuilder {
         PlaySoundBuilder {
             sfx: Sfx {

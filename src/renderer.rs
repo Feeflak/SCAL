@@ -56,7 +56,7 @@ impl Renderer {
 
         let default_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
             label: Some("Object Vertex Buffer"),
-            contents: &vec![],
+            contents: &[],
             usage: wgpu::BufferUsages::VERTEX | wgpu::BufferUsages::COPY_DST,
         });
         // Camera and transform buffers need to be already created in the right way, other ones will be recreated
@@ -67,8 +67,8 @@ impl Renderer {
             vertex_buffer_size: 0,
             index_buffer: default_buffer.clone(),
             index_buffer_size: 0,
-            camera_bind_group: camera_bind_group,
-            camera_buffer: camera_buffer,
+            camera_bind_group,
+            camera_buffer,
             object_transform_data_lookup: HashMap::new(),
             per_object_bind_groups: HashMap::new(),
         }

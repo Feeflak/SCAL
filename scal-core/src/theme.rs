@@ -8,6 +8,7 @@ pub struct Base16 {
 }
 
 impl Base16 {
+    #[must_use]
     pub fn from_hex(hex: [u32; 16]) -> Self {
         let mut colors = [Color::BLACK; 16];
         for (i, &h) in hex.iter().enumerate() {
@@ -24,6 +25,7 @@ pub struct Theme {
 }
 
 impl Theme {
+    #[must_use]
     pub fn from_base16(base: Base16) -> Self {
         Self { base }
     }

@@ -19,6 +19,7 @@ pub struct AnimObj {
 }
 
 impl AnimObj {
+    #[must_use]
     pub fn instantiate(&self) -> AnimOP {
         AnimOP::Instantiate(self.clone(), None)
     }
@@ -34,22 +35,27 @@ pub struct CodeAddLinesBuilder {
 }
 
 impl CodeAddLinesBuilder {
+    #[must_use]
     pub fn str(mut self, text: impl Into<String>) -> Self {
         self.text = text.into();
         self
     }
+    #[must_use]
     pub fn from_line(mut self, line: usize) -> Self {
         self.from_line = line;
         self
     }
+    #[must_use]
     pub fn over(mut self, duration: Seconds) -> Self {
         self.duration = duration;
         self
     }
+    #[must_use]
     pub fn ease(mut self, ease: Ease) -> Self {
         self.ease = ease;
         self
     }
+    #[must_use]
     pub fn style(mut self, style: CodeAnimationStyle) -> Self {
         self.style = style;
         self
@@ -86,18 +92,22 @@ pub struct CodeModifyLineBuilder {
 }
 
 impl CodeModifyLineBuilder {
+    #[must_use]
     pub fn str(mut self, text: impl Into<String>) -> Self {
         self.text = text.into();
         self
     }
+    #[must_use]
     pub fn over(mut self, duration: Seconds) -> Self {
         self.duration = duration;
         self
     }
+    #[must_use]
     pub fn ease(mut self, ease: Ease) -> Self {
         self.ease = ease;
         self
     }
+    #[must_use]
     pub fn style(mut self, style: CodeAnimationStyle) -> Self {
         self.style = style;
         self
@@ -125,14 +135,17 @@ pub struct CodeRemoveLinesBuilder {
 }
 
 impl CodeRemoveLinesBuilder {
+    #[must_use]
     pub fn over(mut self, duration: Seconds) -> Self {
         self.duration = duration;
         self
     }
+    #[must_use]
     pub fn ease(mut self, ease: Ease) -> Self {
         self.ease = ease;
         self
     }
+    #[must_use]
     pub fn style(mut self, style: CodeAnimationStyle) -> Self {
         self.style = style;
         self

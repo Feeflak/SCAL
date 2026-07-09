@@ -11,6 +11,7 @@ pub enum Ease {
 }
 
 impl Ease {
+    #[must_use]
     pub fn apply(&self, t: f32) -> f32 {
         let t = t.clamp(0.0, 1.0);
         match self {
@@ -31,7 +32,7 @@ impl Ease {
                     (x * x * ((C2 + 1.0) * x - C2)) / 2.0
                 } else {
                     let x = 2.0 * t - 2.0;
-                    (x * x * ((C2 + 1.0) * x + C2) + 2.0) / 2.0
+                    f32::midpoint(x * x * ((C2 + 1.0) * x + C2), 2.0)
                 }
             }
             Ease::OutBack => {

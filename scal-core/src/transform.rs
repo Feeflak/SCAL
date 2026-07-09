@@ -16,6 +16,7 @@ pub struct Transform {
 }
 
 impl Transform {
+    #[must_use]
     pub fn new(position: Vec3) -> Self {
         Self {
             uuid: Uuid::new_v4(),
@@ -26,11 +27,13 @@ impl Transform {
         }
     }
 
+    #[must_use]
     pub fn with_parent(mut self, parent: Uuid) -> Self {
         self.parent = Some(parent);
         self
     }
 
+    #[must_use]
     pub fn position(&self) -> PositionBuilder {
         PositionBuilder {
             uuid: self.uuid,
@@ -41,6 +44,7 @@ impl Transform {
         }
     }
 
+    #[must_use]
     pub fn scale(&self) -> ScaleBuilder {
         ScaleBuilder {
             uuid: self.uuid,
@@ -51,6 +55,7 @@ impl Transform {
         }
     }
 
+    #[must_use]
     pub fn rotation(&self) -> RotateBuilder {
         RotateBuilder {
             uuid: self.uuid,
@@ -69,7 +74,9 @@ pub struct PositionBuilder {
     pub(crate) ease: Ease,
 }
 
+#[allow(clippy::return_self_not_must_use)]
 impl PositionBuilder {
+    #[must_use]
     pub fn object(mut self, target: impl Into<uuid::Uuid>) -> Self {
         self.object = Some(target.into());
         self
@@ -85,6 +92,7 @@ impl PositionBuilder {
         self
     }
 
+    #[must_use]
     pub fn ease(mut self, ease: Ease) -> AnimOP {
         self.ease = ease;
         self.into()
@@ -115,22 +123,27 @@ pub struct ScaleBuilder {
     pub(crate) ease: Ease,
 }
 
+#[allow(clippy::return_self_not_must_use)]
 impl ScaleBuilder {
+    #[must_use]
     pub fn object(mut self, target: impl Into<uuid::Uuid>) -> Self {
         self.object = Some(target.into());
         self
     }
 
+    #[must_use]
     pub fn to(mut self, target: Vec2) -> Self {
         self.target = Some(target);
         self
     }
 
+    #[must_use]
     pub fn over(mut self, duration: Seconds) -> Self {
         self.duration = duration;
         self
     }
 
+    #[must_use]
     pub fn ease(mut self, ease: Ease) -> AnimOP {
         self.ease = ease;
         self.into()
@@ -162,17 +175,21 @@ pub struct RotateBuilder {
     pub(crate) ease: Ease,
 }
 
+#[allow(clippy::return_self_not_must_use)]
 impl RotateBuilder {
+    #[must_use]
     pub fn to(mut self, target: f32) -> Self {
         self.target = Some(target);
         self
     }
 
+    #[must_use]
     pub fn over(mut self, duration: Seconds) -> Self {
         self.duration = duration;
         self
     }
 
+    #[must_use]
     pub fn ease(mut self, ease: Ease) -> AnimOP {
         self.ease = ease;
         self.into()

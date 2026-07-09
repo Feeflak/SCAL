@@ -1,4 +1,4 @@
-use glam::{Vec2, Vec3, vec2, vec3};
+use glam::{Vec2, Vec3};
 use uuid::Uuid;
 
 use crate::anim_object::{

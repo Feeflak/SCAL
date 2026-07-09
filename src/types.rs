@@ -17,10 +17,10 @@ impl From<u32> for Color {
             ((value >> 24) & 0xFF) as u8
         };
         Self {
-            r: r as f32 / 255.0,
-            g: g as f32 / 255.0,
-            b: b as f32 / 255.0,
-            a: a as f32 / 255.0,
+            r: f32::from(r) / 255.0,
+            g: f32::from(g) / 255.0,
+            b: f32::from(b) / 255.0,
+            a: f32::from(a) / 255.0,
         }
     }
 }
@@ -31,11 +31,12 @@ impl From<Color> for cosmic_text::Color {
         let b = (color.b.clamp(0.0, 1.0) * 255.0) as u8;
         let a = (color.a.clamp(0.0, 1.0) * 255.0) as u8;
 
-        cosmic_text::Color::rgba(r, g, b, a)
+        Self::rgba(r, g, b, a)
     }
 }
 impl Color {
-    pub fn new(r: f32, g: f32, b: f32, a: f32) -> Self {
+    #[must_use]
+    pub const fn new(r: f32, g: f32, b: f32, a: f32) -> Self {
         Self { r, g, b, a }
     }
 
@@ -77,13 +78,13 @@ impl Color {
     };
 }
 
-impl Into<wgpu::Color> for Color {
-    fn into(self) -> wgpu::Color {
+impl From<Color> for wgpu::Color {
+    fn from(val: Color) -> Self {
         wgpu::Color {
-            r: self.r as f64,
-            g: self.g as f64,
-            b: self.b as f64,
-            a: self.a as f64,
+            r: f64::from(val.r),
+            g: f64::from(val.g),
+            b: f64::from(val.b),
+            a: f64::from(val.a),
         }
     }
 }

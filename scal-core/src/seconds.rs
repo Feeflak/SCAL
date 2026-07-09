@@ -14,6 +14,7 @@ impl DurationExt for f32 {
     }
 }
 
+#[allow(clippy::cast_precision_loss)]
 impl DurationExt for u32 {
     fn s(self) -> Seconds {
         self as f32
@@ -23,6 +24,7 @@ impl DurationExt for u32 {
     }
 }
 
+#[allow(clippy::cast_precision_loss)]
 impl DurationExt for i32 {
     fn s(self) -> Seconds {
         self as f32
@@ -32,6 +34,7 @@ impl DurationExt for i32 {
     }
 }
 
+#[allow(clippy::cast_precision_loss)]
 impl DurationExt for u64 {
     fn s(self) -> Seconds {
         self as f32

@@ -37,7 +37,7 @@ pub struct GlyphUpdateData<'a> {
     pub pixels: &'a [u8],
 }
 impl GlyphAtlas {
-    pub fn get_glyph_update_data(&mut self) -> Option<GlyphUpdateData> {
+    pub fn get_glyph_update_data(&mut self) -> Option<GlyphUpdateData<'_>> {
         if self.dirty {
             self.dirty = false;
             Some(GlyphUpdateData {

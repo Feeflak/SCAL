@@ -93,7 +93,7 @@ pub async fn render_animations(
         None
     };
 
-    let (pipelines, mut text_renderer) = {
+    let (pipelines, text_renderer) = {
         let mut pipelines = crate::anim_object::render::get_pipelines(&device, MSAA_SAMPLE_COUNT);
 
         let text_renderer =

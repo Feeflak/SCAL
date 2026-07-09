@@ -242,7 +242,7 @@ impl Animator {
                 regen = true;
             }
             if regen {
-                drop(obj);
+                let _ = obj;
                 self.regenerate_object_mesh(child_id)?;
                 // If this Rectangle is the background of a nested layout, relayout its children
                 if let Some(nested) = self
@@ -280,7 +280,7 @@ impl Animator {
             Ok(s) => s,
             Err(_) => return Ok(()),
         };
-        let max_w = bg_size.x - container.padding_left - container.padding_right;
+        let _max_w = bg_size.x - container.padding_left - container.padding_right;
 
         let content_left = -bg_size.x / 2.0 + container.padding_left;
         let content_right = bg_size.x / 2.0 - container.padding_right;

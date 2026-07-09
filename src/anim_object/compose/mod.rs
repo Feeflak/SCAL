@@ -246,7 +246,7 @@ fn relayout_nested_children(bg_size: Vec2, container: &LayoutContainer, items: &
     let mut y = content_top;
     let mut x = content_left;
 
-    for (i, child) in items.iter_mut().enumerate() {
+    for (_i, child) in items.iter_mut().enumerate() {
         let s = child.size();
         let (child_x, child_y) = match container.direction {
             LayoutDir::Column => {

@@ -47,6 +47,7 @@ impl Color {
         a: 1.0,
     };
 
+    #[must_use]
     pub fn new(r: f32, g: f32, b: f32, a: f32) -> Self {
         Self { r, g, b, a }
     }
@@ -63,10 +64,10 @@ impl From<u32> for Color {
             ((value >> 24) & 0xFF) as u8
         };
         Self {
-            r: r as f32 / 255.0,
-            g: g as f32 / 255.0,
-            b: b as f32 / 255.0,
-            a: a as f32 / 255.0,
+            r: f32::from(r) / 255.0,
+            g: f32::from(g) / 255.0,
+            b: f32::from(b) / 255.0,
+            a: f32::from(a) / 255.0,
         }
     }
 }

@@ -80,7 +80,7 @@ impl TextRenderer {
             bind_group,
         }
     }
-    pub fn update_glyphs_if_needed(&mut self, data: GlyphUpdateData, queue: &Queue) {
+    pub fn update_glyphs_if_needed(&self, data: GlyphUpdateData, queue: &Queue) {
         queue.write_texture(
             wgpu::TexelCopyTextureInfo {
                 texture: &self.texture,

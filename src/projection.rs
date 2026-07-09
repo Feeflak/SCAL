@@ -53,6 +53,16 @@ impl Camera {
     }
 }
 
+impl Transform {
+    pub fn get_local_matrix(&self) -> Mat4 {
+        Mat4::from_scale_rotation_translation(
+            Vec3::new(self.scale.x, self.scale.y, 1.0),
+            Quat::from_rotation_z(self.rotation.to_radians()),
+            Vec3::new(self.position.x, self.position.y, self.position.z),
+        )
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -171,15 +181,5 @@ mod tests {
         let p = mat * vec3(10.0, 20.0, 0.0).extend(1.0);
         assert!((p.x - 70.0).abs() < 0.001);
         assert!((p.y - (-20.0)).abs() < 0.001);
-    }
-}
-
-impl Transform {
-    pub fn get_local_matrix(&self) -> Mat4 {
-        Mat4::from_scale_rotation_translation(
-            Vec3::new(self.scale.x, self.scale.y, 1.0),
-            Quat::from_rotation_z(self.rotation.to_radians()),
-            Vec3::new(self.position.x, self.position.y, self.position.z),
-        )
     }
 }

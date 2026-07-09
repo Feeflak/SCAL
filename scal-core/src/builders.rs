@@ -10,19 +10,24 @@ use crate::transform::Transform;
 
 macro_rules! impl_transform_methods {
     ($builder:ty) => {
+        #[allow(clippy::return_self_not_must_use)]
         impl $builder {
+            #[must_use]
             pub fn pos(mut self, position: Vec2) -> Self {
                 self.transform.position = position.extend(self.transform.position.z);
                 self
             }
+            #[must_use]
             pub fn z(mut self, z: f32) -> Self {
                 self.transform.position.z = z;
                 self
             }
+            #[must_use]
             pub fn scale(mut self, scale: Vec2) -> Self {
                 self.transform.scale = scale;
                 self
             }
+            #[must_use]
             pub fn rot(mut self, rotation: f32) -> Self {
                 self.transform.rotation = rotation;
                 self
@@ -31,10 +36,12 @@ macro_rules! impl_transform_methods {
     };
 }
 
+#[must_use]
 pub fn svg() -> SvgBuilder {
     SvgBuilder::default()
 }
 
+#[must_use]
 pub struct SvgBuilder {
     path: String,
     size: Vec2,
@@ -61,6 +68,7 @@ impl Default for SvgBuilder {
     }
 }
 
+#[allow(clippy::return_self_not_must_use)]
 impl SvgBuilder {
     pub fn path(mut self, path: impl Into<String>) -> Self {
         self.path = path.into();
@@ -90,6 +98,7 @@ impl SvgBuilder {
         self.stretch = stretch;
         self
     }
+    #[must_use]
     pub fn build(self) -> AnimObj {
         let id = self.transform.uuid;
         AnimObj {
@@ -110,10 +119,12 @@ impl SvgBuilder {
 
 impl_transform_methods!(SvgBuilder);
 
+#[must_use]
 pub fn rectangle() -> RectangleBuilder {
     RectangleBuilder::default()
 }
 
+#[must_use]
 pub struct RectangleBuilder {
     size: Vec2,
     corner_radius: f32,
@@ -132,6 +143,7 @@ impl Default for RectangleBuilder {
     }
 }
 
+#[allow(clippy::return_self_not_must_use)]
 impl RectangleBuilder {
     pub fn size(mut self, size: Vec2) -> Self {
         self.size = size;
@@ -145,6 +157,7 @@ impl RectangleBuilder {
         self.color = color;
         self
     }
+    #[must_use]
     pub fn build(self) -> AnimObj {
         let id = self.transform.uuid;
         AnimObj {
@@ -161,10 +174,12 @@ impl RectangleBuilder {
 
 impl_transform_methods!(RectangleBuilder);
 
+#[must_use]
 pub fn circle() -> CircleBuilder {
     CircleBuilder::default()
 }
 
+#[must_use]
 pub struct CircleBuilder {
     radius: f32,
     color: Color,
@@ -181,6 +196,7 @@ impl Default for CircleBuilder {
     }
 }
 
+#[allow(clippy::return_self_not_must_use)]
 impl CircleBuilder {
     pub fn radius(mut self, radius: f32) -> Self {
         self.radius = radius;
@@ -190,6 +206,7 @@ impl CircleBuilder {
         self.color = color;
         self
     }
+    #[must_use]
     pub fn build(self) -> AnimObj {
         let id = self.transform.uuid;
         AnimObj {
@@ -205,10 +222,12 @@ impl CircleBuilder {
 
 impl_transform_methods!(CircleBuilder);
 
+#[must_use]
 pub fn code() -> CodeBuilder {
     CodeBuilder::default()
 }
 
+#[must_use]
 pub struct CodeBuilder {
     source_code: String,
     font_family: String,
@@ -237,6 +256,7 @@ impl Default for CodeBuilder {
     }
 }
 
+#[allow(clippy::return_self_not_must_use)]
 impl CodeBuilder {
     pub fn source(mut self, code: impl Into<String>) -> Self {
         self.source_code = code.into();
@@ -266,6 +286,7 @@ impl CodeBuilder {
         self.show_line_numbers = show;
         self
     }
+    #[must_use]
     pub fn build(self) -> CodeHandle {
         let id = self.transform.uuid;
         CodeHandle(AnimObj {
@@ -287,10 +308,12 @@ impl CodeBuilder {
 
 impl_transform_methods!(CodeBuilder);
 
+#[must_use]
 pub fn polygon() -> PolygonBuilder {
     PolygonBuilder::default()
 }
 
+#[must_use]
 pub struct PolygonBuilder {
     radius: f32,
     sides: u32,
@@ -309,6 +332,7 @@ impl Default for PolygonBuilder {
     }
 }
 
+#[allow(clippy::return_self_not_must_use)]
 impl PolygonBuilder {
     pub fn radius(mut self, radius: f32) -> Self {
         self.radius = radius;
@@ -322,6 +346,7 @@ impl PolygonBuilder {
         self.color = color;
         self
     }
+    #[must_use]
     pub fn build(self) -> AnimObj {
         let id = self.transform.uuid;
         AnimObj {
@@ -338,10 +363,12 @@ impl PolygonBuilder {
 
 impl_transform_methods!(PolygonBuilder);
 
+#[must_use]
 pub fn image() -> ImageBuilder {
     ImageBuilder::default()
 }
 
+#[must_use]
 pub struct ImageBuilder {
     path: String,
     size: Vec2,
@@ -362,6 +389,7 @@ impl Default for ImageBuilder {
     }
 }
 
+#[allow(clippy::return_self_not_must_use)]
 impl ImageBuilder {
     pub fn path(mut self, path: impl Into<String>) -> Self {
         self.path = path.into();
@@ -379,6 +407,7 @@ impl ImageBuilder {
         self.stretch = stretch;
         self
     }
+    #[must_use]
     pub fn build(self) -> AnimObj {
         let id = self.transform.uuid;
         AnimObj {
@@ -396,10 +425,12 @@ impl ImageBuilder {
 
 impl_transform_methods!(ImageBuilder);
 
+#[must_use]
 pub fn text() -> TextBuilder {
     TextBuilder::default()
 }
 
+#[must_use]
 pub struct TextBuilder {
     value: String,
     font_family: String,
@@ -422,6 +453,7 @@ impl Default for TextBuilder {
     }
 }
 
+#[allow(clippy::return_self_not_must_use)]
 impl TextBuilder {
     pub fn value(mut self, value: impl Into<String>) -> Self {
         self.value = value.into();
@@ -443,6 +475,7 @@ impl TextBuilder {
         self.font_size = size;
         self
     }
+    #[must_use]
     pub fn build(self) -> AnimObj {
         let id = self.transform.uuid;
         AnimObj {
@@ -461,10 +494,12 @@ impl TextBuilder {
 
 impl_transform_methods!(TextBuilder);
 
+#[must_use]
 pub fn code_window() -> CodeWindowBuilder {
     CodeWindowBuilder::default()
 }
 
+#[must_use]
 pub struct CodeWindowBuilder {
     source_code: String,
     font_family: String,
@@ -501,6 +536,7 @@ impl Default for CodeWindowBuilder {
     }
 }
 
+#[allow(clippy::return_self_not_must_use)]
 impl CodeWindowBuilder {
     pub fn source(mut self, code: impl Into<String>) -> Self {
         self.source_code = code.into();
@@ -546,6 +582,7 @@ impl CodeWindowBuilder {
         self.show_line_numbers = show;
         self
     }
+    #[must_use]
     pub fn build(self) -> CodeWindowHandle {
         let id = self.transform.uuid;
         let code_id = Uuid::new_v5(&id, b"code");

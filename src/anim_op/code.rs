@@ -1,6 +1,5 @@
 use std::ops::Range;
 
-use log::info;
 use uuid::Uuid;
 
 use crate::anim_object::text::code::{

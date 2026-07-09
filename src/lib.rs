@@ -62,15 +62,15 @@ async fn run_loop(
                 }
                 t
             }
-            AnimOP::Wait(dur) => start_time + dur,
-            AnimOP::CodeAddLines(_, _, _, dur, _, _)
+            AnimOP::Wait(dur)
+            | AnimOP::CodeAddLines(_, _, _, dur, _, _)
             | AnimOP::CodeModifyLine(_, _, _, dur, _, _)
-            | AnimOP::CodeRemoveLines(_, _, dur, _, _) => start_time + dur,
-            AnimOP::CodeHighlight(_, action) => start_time + action.duration_and_curve().0,
-            AnimOP::TransformMovePos(_, _, dur, _)
+            | AnimOP::CodeRemoveLines(_, _, dur, _, _)
+            | AnimOP::TransformMovePos(_, _, dur, _)
             | AnimOP::TransformMoveToObj(_, _, _, dur, _)
             | AnimOP::TransformRotate(_, _, dur, _)
             | AnimOP::TransformScale(_, _, dur, _) => start_time + dur,
+            AnimOP::CodeHighlight(_, action) => start_time + action.duration_and_curve().0,
             AnimOP::Instantiate(_) | AnimOP::Current { .. } => start_time,
         }
     }
@@ -120,7 +120,7 @@ async fn run_loop(
 
     animations.reverse();
     info!("Starting rendering loop...");
-    if (rendering_settings.width * 4) % 256 != 0 {
+    if !(rendering_settings.width * 4).is_multiple_of(256) {
         bail!("Wgpu needs the bytes_per_row(width * 4) value to be multiple of 256");
     }
     let codec_type = encoding_settings.codec_type;
@@ -247,15 +247,14 @@ fn convert_anim_op(op: scal_core::AnimOP, default_theme: &scal_core::Theme) -> R
             },
             delay,
         ),
-        scal_core::AnimOP::Instantiate(core_obj, _loc) => match &core_obj.kind {
-            scal_core::anim_obj::AnimObjKind::CodeWindow { .. } => {
+        scal_core::AnimOP::Instantiate(core_obj, _loc) => {
+            if let scal_core::anim_obj::AnimObjKind::CodeWindow { .. } = &core_obj.kind {
                 build_code_window_op(core_obj, default_theme)?
-            }
-            _ => {
+            } else {
                 let render_obj = convert_core_anim_obj(core_obj, default_theme)?;
                 AnimOP::Instantiate(render_obj)
             }
-        },
+        }
         scal_core::AnimOP::TransformMovePos(u, v, d, e, _loc) => {
             AnimOP::TransformMovePos(u, v, d, anim_op::convert_curve(e))
         }
@@ -269,13 +268,13 @@ fn convert_anim_op(op: scal_core::AnimOP, default_theme: &scal_core::Theme) -> R
             AnimOP::TransformScale(u, v, d, anim_op::convert_curve(e))
         }
         scal_core::AnimOP::CodeAddLines(u, t, f, d, e, s, _loc) => {
-            AnimOP::CodeAddLines(u, t, f, d, anim_op::convert_curve(e), convert_style(s))
+            AnimOP::CodeAddLines(u, t, f, d, anim_op::convert_curve(e), convert_style(&s))
         }
         scal_core::AnimOP::CodeModifyLine(u, l, t, d, e, s, _loc) => {
-            AnimOP::CodeModifyLine(u, l, t, d, anim_op::convert_curve(e), convert_style(s))
+            AnimOP::CodeModifyLine(u, l, t, d, anim_op::convert_curve(e), convert_style(&s))
         }
         scal_core::AnimOP::CodeRemoveLines(u, r, d, e, s, _loc) => {
-            AnimOP::CodeRemoveLines(u, r, d, anim_op::convert_curve(e), convert_style(s))
+            AnimOP::CodeRemoveLines(u, r, d, anim_op::convert_curve(e), convert_style(&s))
         }
         scal_core::AnimOP::CodeHighlight(_, _, _) => {
             bail!("CodeHighlight conversion not yet implemented")
@@ -283,10 +282,10 @@ fn convert_anim_op(op: scal_core::AnimOP, default_theme: &scal_core::Theme) -> R
     })
 }
 
-fn convert_style(
-    s: scal_core::anim_op::CodeAnimationStyle,
+const fn convert_style(
+    s: &scal_core::anim_op::CodeAnimationStyle,
 ) -> crate::anim_object::text::code::CodeAnimationStyle {
-    match s {
+    match *s {
         scal_core::anim_op::CodeAnimationStyle::TypeWriter => {
             crate::anim_object::text::code::CodeAnimationStyle::TypeWriter
         }
@@ -299,7 +298,7 @@ fn convert_style(
     }
 }
 
-fn make_transform(obj: &scal_core::AnimObj) -> crate::anim_object::Transform {
+const fn make_transform(obj: &scal_core::AnimObj) -> crate::anim_object::Transform {
     crate::anim_object::Transform {
         scale: obj.transform.scale,
         uuid: obj.id,

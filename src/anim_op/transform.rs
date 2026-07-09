@@ -1,8 +1,7 @@
-use glam::{Vec2, vec2, vec3};
+use glam::{Vec2, vec3};
 use uuid::Uuid;
 
 use crate::anim_op::{Animation, AnimationCurve};
-use crate::animator::Animator;
 use crate::types::*;
 
 pub fn move_pos(uuid: Uuid, target: Vec2, duration: Seconds, curve: AnimationCurve) -> Animation {

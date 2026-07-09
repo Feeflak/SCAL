@@ -5,16 +5,20 @@ use crate::{
         Transform,
         compose::LayoutContainer,
         object_trait::AnimObj,
-        primitive_shapes::Rectangle,
-        render::{ObjectRenderData, PipelineKind},
+        render::ObjectRenderData,
         text::{TextManager, atlas::GlyphUpdateData},
     },
     anim_op::{AnimOP, Animation},
     anim_render::AnimationState,
     projection::Camera,
     renderer::{Index, Vertex},
-    types::Color,
 };
+#[cfg(test)]
+use crate::anim_object::primitive_shapes::Rectangle;
+#[cfg(test)]
+use crate::types::Color;
+#[cfg(test)]
+use crate::anim_object::render::PipelineKind;
 use anyhow::{Context, Result, bail};
 use glam::Mat4;
 use log::debug;
@@ -95,7 +99,7 @@ impl Animator {
         })
     }
 
-    pub fn animate_next_frame(&mut self) -> Result<Option<FrameAnimationOutput>> {
+    pub fn animate_next_frame(&mut self) -> Result<Option<FrameAnimationOutput<'_>>> {
         debug!(
             "animate_next_frame- current_anim_state:{:?}",
             self.anim_state
