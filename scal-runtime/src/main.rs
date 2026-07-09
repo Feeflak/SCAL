@@ -1,17 +1,19 @@
+mod preview;
+
 use std::path::PathBuf;
 
 use anyhow::{Context, Result, bail};
 use scal_core::{EncodingSettings, RenderingSettings};
 use tokio::runtime::Handle;
 
-#[derive(serde::Deserialize)]
+#[derive(serde::Deserialize, Clone)]
 struct Config {
     animation: AnimationConfig,
     rendering: RenderingConfig,
     encoding: EncodingConfig,
 }
 
-#[derive(serde::Deserialize)]
+#[derive(serde::Deserialize, Clone)]
 struct AnimationConfig {
     #[serde(default = "default_animation_binary")]
     binary: String,
@@ -21,7 +23,7 @@ fn default_animation_binary() -> String {
     "cargo run --bin animation".to_string()
 }
 
-#[derive(serde::Deserialize)]
+#[derive(serde::Deserialize, Clone)]
 struct RenderingConfig {
     width: u32,
     height: u32,
@@ -39,7 +41,7 @@ fn default_text_resolution_multiplier() -> f32 {
     1.0
 }
 
-#[derive(serde::Deserialize)]
+#[derive(serde::Deserialize, Clone)]
 struct EncodingConfig {
     output_path: String,
     codec_type: String,
@@ -59,11 +61,22 @@ async fn main() -> Result<()> {
     let mode = &args[1];
     match mode.as_str() {
         "render" => run_render().await?,
-        "preview" => bail!("Preview mode not yet implemented"),
+        "preview" => run_preview().await?,
         _ => bail!("Unknown mode: {mode}. Use 'render' or 'preview'."),
     }
 
     Ok(())
+}
+
+async fn run_preview() -> Result<()> {
+    let config_path = PathBuf::from("Config.toml");
+    if !config_path.exists() {
+        bail!("Config.toml not found in current directory");
+    }
+    let content = std::fs::read_to_string(&config_path).context("Failed to read Config.toml")?;
+    let config: Config = toml::from_str(&content).context("Failed to parse Config.toml")?;
+
+    preview::run_preview(config).await
 }
 
 async fn run_render() -> Result<()> {

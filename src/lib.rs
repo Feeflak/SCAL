@@ -1,6 +1,6 @@
+#![warn(missing_docs)]
 #![warn(clippy::pedantic)]
 #![warn(clippy::nursery)]
-#![warn(clippy::cargo)]
 
 use crate::anim_object::code_window::code_window;
 use crate::anim_object::text::Align;
@@ -21,6 +21,7 @@ pub mod animator;
 pub mod encoder;
 pub mod nv12;
 pub mod prelude;
+pub mod preview;
 pub mod projection;
 mod readback;
 pub mod renderer;
@@ -222,7 +223,7 @@ pub async fn render_project(
     run_loop(tokio_handle, encoding, rendering, animations).await
 }
 
-fn convert_anim_ops(
+pub fn convert_anim_ops(
     ops: Vec<scal_core::AnimOP>,
     default_theme: &scal_core::Theme,
 ) -> Result<Vec<AnimOP>> {
