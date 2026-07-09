@@ -21,9 +21,7 @@ fn main() -> Project {
             camera: Camera::new(Vec2::new(1920., 1080.), Vec2::ZERO, 1.),
             default_theme: Theme::default(),
         },
-        timeline: timeline![
-            svg.instantiate(),
-            wait(1.s()),
-        ],
+        timeline: timeline![svg.instantiate(), wait(1.s()),],
     }
 }
+

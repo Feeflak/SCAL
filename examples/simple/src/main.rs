@@ -43,9 +43,19 @@ fn main() -> Project {
             triangle.instantiate(),
             wait(1.s()),
             parallel![
-                triangle.transform.position().to(Vec2::new(350., 800.)).over(1.s()).ease(Ease::OutBack),
-                rect.transform.position().to(Vec2::new(960., 540.)).over(1.s()).ease(Ease::InOutBack),
+                triangle
+                    .transform
+                    .position()
+                    .to(Vec2::new(350., 800.))
+                    .over(1.s())
+                    .ease(Ease::OutBack),
+                rect.transform
+                    .position()
+                    .to(Vec2::new(960., 540.))
+                    .over(1.s())
+                    .ease(Ease::InOutBack),
             ],
         ],
     }
 }
+
