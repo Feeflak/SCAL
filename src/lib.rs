@@ -216,10 +216,10 @@ fn convert_anim_ops(ops: Vec<scal_core::AnimOP>, default_theme: &scal_core::Them
 
 fn convert_anim_op(op: scal_core::AnimOP, default_theme: &scal_core::Theme) -> Result<AnimOP> {
     Ok(match op {
-        scal_core::AnimOP::Wait(dur) => AnimOP::Wait(dur),
-        scal_core::AnimOP::All(children) => AnimOP::All(convert_anim_ops(children, default_theme)?),
-        scal_core::AnimOP::Sequence(children) => AnimOP::Sequence(convert_anim_ops(children, default_theme)?),
-        scal_core::AnimOP::PlaySound(sfx, delay) => AnimOP::PlaySound(
+        scal_core::AnimOP::Wait(dur, _loc) => AnimOP::Wait(dur),
+        scal_core::AnimOP::All(children, _loc) => AnimOP::All(convert_anim_ops(children, default_theme)?),
+        scal_core::AnimOP::Sequence(children, _loc) => AnimOP::Sequence(convert_anim_ops(children, default_theme)?),
+        scal_core::AnimOP::PlaySound(sfx, delay, _loc) => AnimOP::PlaySound(
             crate::types::Sfx {
                 path: sfx.path,
                 volume: sfx.volume,
@@ -230,7 +230,7 @@ fn convert_anim_op(op: scal_core::AnimOP, default_theme: &scal_core::Theme) -> R
             },
             delay,
         ),
-        scal_core::AnimOP::Instantiate(core_obj) => {
+        scal_core::AnimOP::Instantiate(core_obj, _loc) => {
             match &core_obj.kind {
                 scal_core::anim_obj::AnimObjKind::CodeWindow { .. } => {
                     build_code_window_op(core_obj, default_theme)?
@@ -241,28 +241,28 @@ fn convert_anim_op(op: scal_core::AnimOP, default_theme: &scal_core::Theme) -> R
                 }
             }
         }
-        scal_core::AnimOP::TransformMovePos(u, v, d, e) => {
+        scal_core::AnimOP::TransformMovePos(u, v, d, e, _loc) => {
             AnimOP::TransformMovePos(u, v, d, anim_op::convert_curve(e))
         }
-        scal_core::AnimOP::TransformMoveToObj(u, t, o, d, e) => {
+        scal_core::AnimOP::TransformMoveToObj(u, t, o, d, e, _loc) => {
             AnimOP::TransformMoveToObj(u, t, o, d, anim_op::convert_curve(e))
         }
-        scal_core::AnimOP::TransformRotate(u, r, d, e) => {
+        scal_core::AnimOP::TransformRotate(u, r, d, e, _loc) => {
             AnimOP::TransformRotate(u, r, d, anim_op::convert_curve(e))
         }
-        scal_core::AnimOP::TransformScale(u, v, d, e) => {
+        scal_core::AnimOP::TransformScale(u, v, d, e, _loc) => {
             AnimOP::TransformScale(u, v, d, anim_op::convert_curve(e))
         }
-        scal_core::AnimOP::CodeAddLines(u, t, f, d, e, s) => {
+        scal_core::AnimOP::CodeAddLines(u, t, f, d, e, s, _loc) => {
             AnimOP::CodeAddLines(u, t, f, d, anim_op::convert_curve(e), convert_style(s))
         }
-        scal_core::AnimOP::CodeModifyLine(u, l, t, d, e, s) => {
+        scal_core::AnimOP::CodeModifyLine(u, l, t, d, e, s, _loc) => {
             AnimOP::CodeModifyLine(u, l, t, d, anim_op::convert_curve(e), convert_style(s))
         }
-        scal_core::AnimOP::CodeRemoveLines(u, r, d, e, s) => {
+        scal_core::AnimOP::CodeRemoveLines(u, r, d, e, s, _loc) => {
             AnimOP::CodeRemoveLines(u, r, d, anim_op::convert_curve(e), convert_style(s))
         }
-        scal_core::AnimOP::CodeHighlight(_, _) => {
+        scal_core::AnimOP::CodeHighlight(_, _, _) => {
             bail!("CodeHighlight conversion not yet implemented")
         }
     })

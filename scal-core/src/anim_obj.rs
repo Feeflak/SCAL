@@ -20,7 +20,7 @@ pub struct AnimObj {
 
 impl AnimObj {
     pub fn instantiate(&self) -> AnimOP {
-        AnimOP::Instantiate(self.clone())
+        AnimOP::Instantiate(self.clone(), None)
     }
 }
 
@@ -58,7 +58,7 @@ impl CodeAddLinesBuilder {
 
 impl From<CodeAddLinesBuilder> for AnimOP {
     fn from(b: CodeAddLinesBuilder) -> AnimOP {
-        AnimOP::CodeAddLines(b.uuid, b.text, b.from_line, b.duration, b.ease, b.style)
+        AnimOP::CodeAddLines(b.uuid, b.text, b.from_line, b.duration, b.ease, b.style, None)
     }
 }
 
@@ -96,7 +96,7 @@ impl CodeModifyLineBuilder {
 
 impl From<CodeModifyLineBuilder> for AnimOP {
     fn from(b: CodeModifyLineBuilder) -> AnimOP {
-        AnimOP::CodeModifyLine(b.uuid, b.line, b.text, b.duration, b.ease, b.style)
+        AnimOP::CodeModifyLine(b.uuid, b.line, b.text, b.duration, b.ease, b.style, None)
     }
 }
 
@@ -129,7 +129,7 @@ impl CodeRemoveLinesBuilder {
 
 impl From<CodeRemoveLinesBuilder> for AnimOP {
     fn from(b: CodeRemoveLinesBuilder) -> AnimOP {
-        AnimOP::CodeRemoveLines(b.uuid, b.range, b.duration, b.ease, b.style)
+        AnimOP::CodeRemoveLines(b.uuid, b.range, b.duration, b.ease, b.style, None)
     }
 }
 
@@ -243,7 +243,7 @@ impl std::ops::Deref for CodeHandle {
 
 impl CodeHandle {
     pub fn instantiate(&self) -> AnimOP {
-        AnimOP::Instantiate(self.0.clone())
+        AnimOP::Instantiate(self.0.clone(), None)
     }
     pub fn add_lines(&self) -> CodeAddLinesBuilder {
         CodeAddLinesBuilder {
@@ -285,7 +285,7 @@ impl std::ops::Deref for CodeWindowHandle {
 
 impl CodeWindowHandle {
     pub fn instantiate(&self) -> AnimOP {
-        AnimOP::Instantiate(self.0.clone())
+        AnimOP::Instantiate(self.0.clone(), None)
     }
     pub fn add_lines(&self) -> CodeAddLinesBuilder {
         let code_id = if let AnimObjKind::CodeWindow { code_id, .. } = &self.0.kind {

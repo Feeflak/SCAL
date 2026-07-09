@@ -95,8 +95,8 @@ impl From<PositionBuilder> for AnimOP {
     fn from(b: PositionBuilder) -> AnimOP {
         let target = b.target.unwrap_or(Vec2::ZERO);
         match b.object {
-            Some(obj) => AnimOP::TransformMoveToObj(b.uuid, obj, target, b.duration, b.ease),
-            None => AnimOP::TransformMovePos(b.uuid, target, b.duration, b.ease),
+            Some(obj) => AnimOP::TransformMoveToObj(b.uuid, obj, target, b.duration, b.ease, None),
+            None => AnimOP::TransformMovePos(b.uuid, target, b.duration, b.ease, None),
         }
     }
 }
@@ -137,7 +137,7 @@ impl ScaleBuilder {
 
 impl From<ScaleBuilder> for AnimOP {
     fn from(b: ScaleBuilder) -> AnimOP {
-        AnimOP::TransformScale(b.uuid, b.target.unwrap_or(Vec2::ONE), b.duration, b.ease)
+        AnimOP::TransformScale(b.uuid, b.target.unwrap_or(Vec2::ONE), b.duration, b.ease, None)
     }
 }
 
@@ -171,7 +171,7 @@ impl RotateBuilder {
 
 impl From<RotateBuilder> for AnimOP {
     fn from(b: RotateBuilder) -> AnimOP {
-        AnimOP::TransformRotate(b.uuid, b.target.unwrap_or(0.0), b.duration, b.ease)
+        AnimOP::TransformRotate(b.uuid, b.target.unwrap_or(0.0), b.duration, b.ease, None)
     }
 }
 

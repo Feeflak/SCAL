@@ -13,7 +13,7 @@ pub mod theme;
 
 pub use color::Color;
 pub use ease::Ease;
-pub use anim_op::{AnimOP, CodeAnimationStyle, CodeHighlightAction, IntoAnimOp};
+pub use anim_op::{AnimOP, SourceLoc, CodeAnimationStyle, CodeHighlightAction, IntoAnimOp};
 pub use anim_obj::{AnimObj, CodeHandle, CodeWindowHandle, SubObjectHandle, StretchMode, Syntax, TextAlign};
 pub use transform::Transform;
 pub use camera::Camera;

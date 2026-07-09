@@ -322,11 +322,23 @@ type StartAnimationFunction = Box<dyn Fn(&mut Animator, &mut Vec<f32>) -> Result
 
 type UpdateAnimationFunction = Box<dyn Fn(&mut Animator, f32, &mut Vec<f32>) -> Result<()>>;
 
+pub struct SourceLoc {
+    pub file: &'static str,
+    pub line: u32,
+}
+
+impl std::fmt::Display for SourceLoc {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "at {}:{}", self.file, self.line)
+    }
+}
+
 pub struct Animation {
     pub total_duration: f32,
     pub curve: AnimationCurve,
     pub start: StartAnimationFunction,
     pub update: Option<UpdateAnimationFunction>,
+    pub location: Option<SourceLoc>,
 }
 pub fn convert_curve(ease: scal_core::Ease) -> AnimationCurve {
     match ease {
@@ -339,25 +351,31 @@ pub fn convert_curve(ease: scal_core::Ease) -> AnimationCurve {
     }
 }
 impl Animation {
+    #[track_caller]
     pub fn new(
         total_duration: f32,
         curve: AnimationCurve,
         start: StartAnimationFunction,
         update: Option<UpdateAnimationFunction>,
     ) -> Self {
+        let loc = std::panic::Location::caller();
         Animation {
             total_duration,
             curve,
             start,
             update,
+            location: Some(SourceLoc { file: loc.file(), line: loc.line() }),
         }
     }
+    #[track_caller]
     pub fn instant(start: StartAnimationFunction) -> Self {
+        let loc = std::panic::Location::caller();
         Animation {
             total_duration: 0.0,
             curve: AnimationCurve::Linear,
             start,
             update: None,
+            location: Some(SourceLoc { file: loc.file(), line: loc.line() }),
         }
     }
 }
