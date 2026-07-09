@@ -221,4 +221,15 @@ impl Transform {
             world_uniform: None,
         }
     }
+    pub fn with_uuid(uuid: Uuid, position: Vec3) -> Self {
+        Self {
+            uuid,
+            parent: None,
+            position,
+            rotation: 0.0,
+            scale: Vec2::ONE,
+            layout_container: None,
+            world_uniform: None,
+        }
+    }
 }

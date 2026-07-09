@@ -3,6 +3,8 @@ use crate::encoder::{CodecType, EncodingSettings};
 use crate::renderer::RenderingSettings;
 use crate::sfx::{AudioEngine, ScheduledSound};
 use crate::types::{Seconds, Sfx};
+use crate::anim_object::code_window::code_window;
+use crate::anim_object::text::Align;
 use anyhow::{Context, Result, bail};
 use log::{debug, info};
 
@@ -229,8 +231,15 @@ fn convert_anim_op(op: scal_core::AnimOP, default_theme: &scal_core::Theme) -> R
             delay,
         ),
         scal_core::AnimOP::Instantiate(core_obj) => {
-            let render_obj = convert_core_anim_obj(core_obj, default_theme)?;
-            AnimOP::Instantiate(render_obj)
+            match &core_obj.kind {
+                scal_core::anim_obj::AnimObjKind::CodeWindow { .. } => {
+                    build_code_window_op(core_obj, default_theme)?
+                }
+                _ => {
+                    let render_obj = convert_core_anim_obj(core_obj, default_theme)?;
+                    AnimOP::Instantiate(render_obj)
+                }
+            }
         }
         scal_core::AnimOP::TransformMovePos(u, v, d, e) => {
             AnimOP::TransformMovePos(u, v, d, anim_op::convert_curve(e))
@@ -289,6 +298,46 @@ fn convert_base16(b: &scal_core::Base16) -> crate::anim_object::text::code::them
         colors[i] = c(col);
     }
     crate::anim_object::text::code::theme::Base16 { colors }
+}
+
+fn build_code_window_op(obj: scal_core::AnimObj, default_theme: &scal_core::Theme) -> Result<AnimOP> {
+    use scal_core::anim_obj::{AnimObjKind, Syntax};
+    if let AnimObjKind::CodeWindow {
+        source_code, font_family, font_size, syntax, theme, title,
+        title_font_size, width, height, background_color, code_id,
+        show_line_numbers, line_number_color,
+    } = obj.kind {
+        let syn = match syntax {
+            Syntax::Rust => crate::anim_object::text::code::Syntax::Rust,
+            Syntax::Nix => crate::anim_object::text::code::Syntax::Nix,
+            Syntax::Python => crate::anim_object::text::code::Syntax::Python,
+            Syntax::JS => crate::anim_object::text::code::Syntax::JS,
+            Syntax::Zig => crate::anim_object::text::code::Syntax::Zig,
+        };
+        let t = theme.as_ref().unwrap_or(default_theme);
+        let render_base16 = convert_base16(&t.base);
+        let th = crate::anim_object::text::code::theme::Theme::from_base16(render_base16);
+        let cw = code_window(
+            obj.transform.position,
+            source_code,
+            th,
+            font_family,
+            Align::Left,
+            font_size,
+            syn,
+            title,
+            width,
+            height,
+            title_font_size,
+            c(background_color),
+            code_id,
+            show_line_numbers,
+            c(line_number_color),
+        );
+        Ok(cw.instantiate())
+    } else {
+        bail!("build_code_window_op called on non-CodeWindow kind")
+    }
 }
 
 fn convert_core_anim_obj(obj: scal_core::AnimObj, default_theme: &scal_core::Theme) -> Result<crate::anim_object::object_trait::AnimObj> {
@@ -385,6 +434,9 @@ fn convert_core_anim_obj(obj: scal_core::AnimObj, default_theme: &scal_core::The
                 cached_size: None,
                 highlights: vec![],
             })))
+        }
+        scal_core::anim_obj::AnimObjKind::CodeWindow { .. } => {
+            bail!("CodeWindow should be handled by build_code_window_op")
         }
         scal_core::anim_obj::AnimObjKind::Group { .. } => {
             bail!("Group object conversion not yet implemented")

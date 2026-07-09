@@ -1,4 +1,5 @@
 use glam::{Vec2, Vec3};
+use uuid::Uuid;
 
 use crate::anim_obj::{AnimObj, AnimObjKind, StretchMode, Syntax, TextAlign};
 use crate::color::Color;
@@ -457,3 +458,115 @@ impl TextBuilder {
 }
 
 impl_transform_methods!(TextBuilder);
+
+pub fn code_window() -> CodeWindowBuilder {
+    CodeWindowBuilder::default()
+}
+
+pub struct CodeWindowBuilder {
+    source_code: String,
+    font_family: String,
+    font_size: f32,
+    syntax: Syntax,
+    theme: Option<Theme>,
+    title: String,
+    title_font_size: f32,
+    width: f32,
+    height: f32,
+    background_color: Color,
+    show_line_numbers: bool,
+    line_number_color: Color,
+    transform: Transform,
+}
+
+impl Default for CodeWindowBuilder {
+    fn default() -> Self {
+        Self {
+            source_code: String::new(),
+            font_family: "sans-serif".to_string(),
+            font_size: 20.0,
+            syntax: Syntax::Rust,
+            theme: None,
+            title: String::new(),
+            title_font_size: 16.0,
+            width: 800.0,
+            height: 600.0,
+            background_color: Color::new(0.176, 0.176, 0.176, 1.0),
+            show_line_numbers: false,
+            line_number_color: Color::new(0.5, 0.5, 0.5, 0.6),
+            transform: Transform::new(Vec3::ZERO),
+        }
+    }
+}
+
+impl CodeWindowBuilder {
+    pub fn source(mut self, code: impl Into<String>) -> Self {
+        self.source_code = code.into();
+        self
+    }
+    pub fn font_family(mut self, family: impl Into<String>) -> Self {
+        self.font_family = family.into();
+        self
+    }
+    pub fn font_size(mut self, size: f32) -> Self {
+        self.font_size = size;
+        self
+    }
+    pub fn syntax(mut self, syntax: Syntax) -> Self {
+        self.syntax = syntax;
+        self
+    }
+    pub fn theme(mut self, theme: Theme) -> Self {
+        self.theme = Some(theme);
+        self
+    }
+    pub fn title(mut self, title: impl Into<String>) -> Self {
+        self.title = title.into();
+        self
+    }
+    pub fn title_font_size(mut self, size: f32) -> Self {
+        self.title_font_size = size;
+        self
+    }
+    pub fn width(mut self, width: f32) -> Self {
+        self.width = width;
+        self
+    }
+    pub fn height(mut self, height: f32) -> Self {
+        self.height = height;
+        self
+    }
+    pub fn background_color(mut self, color: Color) -> Self {
+        self.background_color = color;
+        self
+    }
+    pub fn line_numbers(mut self, show: bool) -> Self {
+        self.show_line_numbers = show;
+        self
+    }
+    pub fn build(self) -> AnimObj {
+        let id = self.transform.uuid;
+        let code_id = Uuid::new_v5(&id, b"code");
+        AnimObj {
+            id,
+            transform: self.transform,
+            kind: AnimObjKind::CodeWindow {
+                source_code: self.source_code,
+                font_family: self.font_family,
+                font_size: self.font_size,
+                syntax: self.syntax,
+                theme: self.theme,
+                title: self.title,
+                title_font_size: self.title_font_size,
+                width: self.width,
+                height: self.height,
+                background_color: self.background_color,
+                code_id,
+                show_line_numbers: self.show_line_numbers,
+                line_number_color: self.line_number_color,
+            },
+        }
+    }
+}
+
+impl_transform_methods!(CodeWindowBuilder);

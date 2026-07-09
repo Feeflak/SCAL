@@ -1,4 +1,5 @@
 use glam::{Vec2, Vec3, vec2, vec3};
+use uuid::Uuid;
 
 use crate::anim_object::{
     Transform, circle,
@@ -130,6 +131,10 @@ pub fn code_window(
     width: f32,
     height: f32,
     title_font_size: f32,
+    background_color: Color,
+    code_id: Uuid,
+    show_line_numbers: bool,
+    line_number_color: Color,
 ) -> CodeWindow {
     let circle_r = 12.0;
 
@@ -157,16 +162,18 @@ pub fn code_window(
         title_font_size,
     );
 
-    let code = Code::new(
+    let mut code = Code::new(
         source_code,
         syntax,
         theme,
         font_family,
         alignment,
         font_size,
-        Transform::new(None, Vec3::ZERO, 0., Vec2::ONE),
+        Transform::with_uuid(code_id, Vec3::ZERO),
         25.0,
     );
+    code.show_line_numbers = show_line_numbers;
+    code.line_number_color = line_number_color;
 
     let title_layout = layout(
         Vec3::ZERO,
@@ -200,7 +207,7 @@ pub fn code_window(
             LayoutItem::Object(AnimObj(Box::new(code.clone()))),
         ],
         LayoutBackground {
-            color: Color::new(0.176, 0.176, 0.176, 1.0),
+            color: background_color,
             corner_radius: 5.,
         },
         LayoutDir::Column,

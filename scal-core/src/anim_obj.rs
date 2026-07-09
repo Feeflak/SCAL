@@ -23,9 +23,16 @@ impl AnimObj {
         AnimOP::Instantiate(self.clone())
     }
 
+    fn code_uuid(&self) -> Uuid {
+        match &self.kind {
+            AnimObjKind::CodeWindow { code_id, .. } => *code_id,
+            _ => self.id,
+        }
+    }
+
     pub fn add_lines(&self) -> CodeAddLinesBuilder {
         CodeAddLinesBuilder {
-            uuid: self.id,
+            uuid: self.code_uuid(),
             text: String::new(),
             from_line: 0,
             duration: 1.0,
@@ -36,7 +43,7 @@ impl AnimObj {
 
     pub fn modify_line(&self, line: u32) -> CodeModifyLineBuilder {
         CodeModifyLineBuilder {
-            uuid: self.id,
+            uuid: self.code_uuid(),
             line,
             text: String::new(),
             duration: 1.0,
@@ -47,7 +54,7 @@ impl AnimObj {
 
     pub fn remove_lines(&self, range: Range<u32>) -> CodeRemoveLinesBuilder {
         CodeRemoveLinesBuilder {
-            uuid: self.id,
+            uuid: self.code_uuid(),
             range,
             duration: 1.0,
             ease: Ease::Linear,
@@ -216,6 +223,21 @@ pub enum AnimObjKind {
         stroke: Option<Color>,
         stroke_width: Option<f32>,
         stretch: StretchMode,
+    },
+    CodeWindow {
+        source_code: String,
+        font_family: String,
+        font_size: f32,
+        syntax: Syntax,
+        theme: Option<Theme>,
+        title: String,
+        title_font_size: f32,
+        width: f32,
+        height: f32,
+        background_color: Color,
+        code_id: Uuid,
+        show_line_numbers: bool,
+        line_number_color: Color,
     },
     Group {
         children: Vec<AnimObj>,
