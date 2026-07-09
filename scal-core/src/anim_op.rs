@@ -40,6 +40,18 @@ pub enum CodeHighlightAction {
     Pattern { regex: String, color: Color, duration: Seconds, curve: Ease },
 }
 
+pub trait IntoAnimOp {
+    fn into_anim_op(self) -> AnimOP;
+}
+
+impl IntoAnimOp for AnimOP {
+    fn into_anim_op(self) -> AnimOP { self }
+}
+
+impl IntoAnimOp for PlaySoundBuilder {
+    fn into_anim_op(self) -> AnimOP { self.into() }
+}
+
 impl AnimOP {
     pub fn wait(duration: Seconds) -> Self {
         AnimOP::Wait(duration)
@@ -73,15 +85,22 @@ impl From<PlaySoundBuilder> for AnimOP {
 }
 
 #[macro_export]
+macro_rules! timeline {
+    ( $( $item:expr ),* $(,)? ) => {
+        vec![ $( $crate::IntoAnimOp::into_anim_op($item) ),* ]
+    };
+}
+
+#[macro_export]
 macro_rules! parallel {
     ( $( $op:expr ),* $(,)? ) => {
-        $crate::AnimOP::All(vec![ $( $op ),* ])
+        $crate::AnimOP::All(timeline![ $( $op ),* ])
     };
 }
 
 #[macro_export]
 macro_rules! sequence {
     ( $( $op:expr ),* $(,)? ) => {
-        $crate::AnimOP::Sequence(vec![ $( $op ),* ])
+        $crate::AnimOP::Sequence(timeline![ $( $op ),* ])
     };
 }

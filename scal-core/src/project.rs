@@ -3,6 +3,7 @@ use serde::{Deserialize, Serialize};
 use crate::anim_op::AnimOP;
 use crate::camera::Camera;
 use crate::color::Color;
+use crate::theme::Theme;
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Project {
@@ -14,4 +15,5 @@ pub struct Project {
 pub struct SceneSettings {
     pub background_color: Color,
     pub camera: Camera,
+    pub default_theme: Theme,
 }

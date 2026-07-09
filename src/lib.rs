@@ -22,7 +22,7 @@ pub mod sfx;
 pub mod types;
 
 const BYTES_PER_PIXEL: u32 = 4; //RGBA
-pub async fn run_loop(
+async fn run_loop(
     tokio_handle: &tokio::runtime::Handle,
     encoding_settings: EncodingSettings,
     rendering_settings: RenderingSettings,
@@ -198,24 +198,25 @@ pub async fn render_project(
         text_resolution_multiplier: core_rendering.text_resolution_multiplier,
     };
 
-    let animations = convert_anim_ops(core_project.timeline)?;
+    let default_theme = core_project.scene_settings.default_theme;
+    let animations = convert_anim_ops(core_project.timeline, &default_theme)?;
 
     run_loop(tokio_handle, encoding, rendering, animations).await
 }
 
-fn convert_anim_ops(ops: Vec<scal_core::AnimOP>) -> Result<Vec<AnimOP>> {
+fn convert_anim_ops(ops: Vec<scal_core::AnimOP>, default_theme: &scal_core::Theme) -> Result<Vec<AnimOP>> {
     let mut result = Vec::with_capacity(ops.len());
     for op in ops {
-        result.push(convert_anim_op(op)?);
+        result.push(convert_anim_op(op, default_theme)?);
     }
     Ok(result)
 }
 
-fn convert_anim_op(op: scal_core::AnimOP) -> Result<AnimOP> {
+fn convert_anim_op(op: scal_core::AnimOP, default_theme: &scal_core::Theme) -> Result<AnimOP> {
     Ok(match op {
         scal_core::AnimOP::Wait(dur) => AnimOP::Wait(dur),
-        scal_core::AnimOP::All(children) => AnimOP::All(convert_anim_ops(children)?),
-        scal_core::AnimOP::Sequence(children) => AnimOP::Sequence(convert_anim_ops(children)?),
+        scal_core::AnimOP::All(children) => AnimOP::All(convert_anim_ops(children, default_theme)?),
+        scal_core::AnimOP::Sequence(children) => AnimOP::Sequence(convert_anim_ops(children, default_theme)?),
         scal_core::AnimOP::PlaySound(sfx, delay) => AnimOP::PlaySound(
             crate::types::Sfx {
                 path: sfx.path,
@@ -228,7 +229,7 @@ fn convert_anim_op(op: scal_core::AnimOP) -> Result<AnimOP> {
             delay,
         ),
         scal_core::AnimOP::Instantiate(core_obj) => {
-            let render_obj = convert_core_anim_obj(core_obj)?;
+            let render_obj = convert_core_anim_obj(core_obj, default_theme)?;
             AnimOP::Instantiate(render_obj)
         }
         scal_core::AnimOP::TransformMovePos(u, v, d, e) => {
@@ -282,7 +283,15 @@ fn c(color: scal_core::Color) -> crate::types::Color {
     crate::types::Color::new(color.r, color.g, color.b, color.a)
 }
 
-fn convert_core_anim_obj(obj: scal_core::AnimObj) -> Result<crate::anim_object::object_trait::AnimObj> {
+fn convert_base16(b: &scal_core::Base16) -> crate::anim_object::text::code::theme::Base16 {
+    let mut colors = [crate::types::Color::BLACK; 16];
+    for (i, &col) in b.colors.iter().enumerate() {
+        colors[i] = c(col);
+    }
+    crate::anim_object::text::code::theme::Base16 { colors }
+}
+
+fn convert_core_anim_obj(obj: scal_core::AnimObj, default_theme: &scal_core::Theme) -> Result<crate::anim_object::object_trait::AnimObj> {
     use crate::anim_object::object_trait::AnimObj as RenderObj;
     let transform = make_transform(&obj);
     match obj.kind {
@@ -351,13 +360,9 @@ fn convert_core_anim_obj(obj: scal_core::AnimObj) -> Result<crate::anim_object::
                 scal_core::anim_obj::Syntax::JS => crate::anim_object::text::code::Syntax::JS,
                 scal_core::anim_obj::Syntax::Zig => crate::anim_object::text::code::Syntax::Zig,
             };
-            let mut base_colors = [crate::types::Color::BLACK; 16];
-            for (i, &hex) in theme.iter().take(16).enumerate() {
-                base_colors[i] = hex.into();
-            }
-            let th = crate::anim_object::text::code::theme::Theme::from_base16(
-                crate::anim_object::text::code::theme::Base16 { colors: base_colors }
-            );
+            let t = theme.as_ref().unwrap_or(default_theme);
+            let render_base16 = convert_base16(&t.base);
+            let th = crate::anim_object::text::code::theme::Theme::from_base16(render_base16);
             Ok(RenderObj(Box::new(crate::anim_object::text::code::Code {
                 id: obj.id,
                 source_code,

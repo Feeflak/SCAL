@@ -1,20 +1,35 @@
-use glam::Vec2;
-use uuid::Uuid;
+use glam::{Vec2, Vec3};
 
 use crate::anim_obj::{AnimObj, AnimObjKind, StretchMode, Syntax, TextAlign};
 use crate::color::Color;
+use crate::theme::Theme;
 use crate::transform::Transform;
 
+macro_rules! impl_transform_methods {
+    ($builder:ty) => {
+        impl $builder {
+            pub fn pos(mut self, position: Vec2) -> Self {
+                self.transform.position = position.extend(self.transform.position.z);
+                self
+            }
+            pub fn z(mut self, z: f32) -> Self {
+                self.transform.position.z = z;
+                self
+            }
+            pub fn scale(mut self, scale: Vec2) -> Self {
+                self.transform.scale = scale;
+                self
+            }
+            pub fn rot(mut self, rotation: f32) -> Self {
+                self.transform.rotation = rotation;
+                self
+            }
+        }
+    };
+}
+
 pub fn svg() -> SvgBuilder {
-    SvgBuilder {
-        path: String::new(),
-        size: Vec2::splat(40.0),
-        tint: Color::WHITE,
-        fill: None,
-        stroke: None,
-        stroke_width: None,
-        stretch: StretchMode::Fit,
-    }
+    SvgBuilder::default()
 }
 
 pub struct SvgBuilder {
@@ -25,6 +40,22 @@ pub struct SvgBuilder {
     stroke: Option<Color>,
     stroke_width: Option<f32>,
     stretch: StretchMode,
+    transform: Transform,
+}
+
+impl Default for SvgBuilder {
+    fn default() -> Self {
+        Self {
+            path: String::new(),
+            size: Vec2::splat(40.0),
+            tint: Color::WHITE,
+            fill: None,
+            stroke: None,
+            stroke_width: None,
+            stretch: StretchMode::Fit,
+            transform: Transform::new(Vec3::ZERO),
+        }
+    }
 }
 
 impl SvgBuilder {
@@ -56,10 +87,11 @@ impl SvgBuilder {
         self.stretch = stretch;
         self
     }
-    pub fn create(self, position: Vec2) -> AnimObj {
+    pub fn build(self) -> AnimObj {
+        let id = self.transform.uuid;
         AnimObj {
-            id: Uuid::new_v4(),
-            transform: Transform::new(position.extend(0.0)),
+            id,
+            transform: self.transform,
             kind: AnimObjKind::Svg {
                 path: self.path,
                 size: self.size,
@@ -73,18 +105,28 @@ impl SvgBuilder {
     }
 }
 
+impl_transform_methods!(SvgBuilder);
+
 pub fn rectangle() -> RectangleBuilder {
-    RectangleBuilder {
-        size: Vec2::splat(100.0),
-        corner_radius: 0.0,
-        color: Color::WHITE,
-    }
+    RectangleBuilder::default()
 }
 
 pub struct RectangleBuilder {
     size: Vec2,
     corner_radius: f32,
     color: Color,
+    transform: Transform,
+}
+
+impl Default for RectangleBuilder {
+    fn default() -> Self {
+        Self {
+            size: Vec2::splat(100.0),
+            corner_radius: 0.0,
+            color: Color::WHITE,
+            transform: Transform::new(Vec3::ZERO),
+        }
+    }
 }
 
 impl RectangleBuilder {
@@ -100,10 +142,11 @@ impl RectangleBuilder {
         self.color = color;
         self
     }
-    pub fn create(self, position: Vec2) -> AnimObj {
+    pub fn build(self) -> AnimObj {
+        let id = self.transform.uuid;
         AnimObj {
-            id: Uuid::new_v4(),
-            transform: Transform::new(position.extend(0.0)),
+            id,
+            transform: self.transform,
             kind: AnimObjKind::Rectangle {
                 size: self.size,
                 corner_radius: self.corner_radius,
@@ -113,16 +156,26 @@ impl RectangleBuilder {
     }
 }
 
+impl_transform_methods!(RectangleBuilder);
+
 pub fn circle() -> CircleBuilder {
-    CircleBuilder {
-        radius: 50.0,
-        color: Color::WHITE,
-    }
+    CircleBuilder::default()
 }
 
 pub struct CircleBuilder {
     radius: f32,
     color: Color,
+    transform: Transform,
+}
+
+impl Default for CircleBuilder {
+    fn default() -> Self {
+        Self {
+            radius: 50.0,
+            color: Color::WHITE,
+            transform: Transform::new(Vec3::ZERO),
+        }
+    }
 }
 
 impl CircleBuilder {
@@ -134,10 +187,11 @@ impl CircleBuilder {
         self.color = color;
         self
     }
-    pub fn create(self, position: Vec2) -> AnimObj {
+    pub fn build(self) -> AnimObj {
+        let id = self.transform.uuid;
         AnimObj {
-            id: Uuid::new_v4(),
-            transform: Transform::new(position.extend(0.0)),
+            id,
+            transform: self.transform,
             kind: AnimObjKind::Circle {
                 radius: self.radius,
                 color: self.color,
@@ -146,17 +200,10 @@ impl CircleBuilder {
     }
 }
 
+impl_transform_methods!(CircleBuilder);
+
 pub fn code() -> CodeBuilder {
-    CodeBuilder {
-        source_code: String::new(),
-        font_family: "sans-serif".to_string(),
-        font_size: 20.0,
-        syntax: Syntax::Rust,
-        theme: vec![],
-        padding: 20.0,
-        show_line_numbers: false,
-        line_number_color: Color::new(0.5, 0.5, 0.5, 0.6),
-    }
+    CodeBuilder::default()
 }
 
 pub struct CodeBuilder {
@@ -164,10 +211,27 @@ pub struct CodeBuilder {
     font_family: String,
     font_size: f32,
     syntax: Syntax,
-    theme: Vec<u32>,
+    theme: Option<Theme>,
     padding: f32,
     show_line_numbers: bool,
     line_number_color: Color,
+    transform: Transform,
+}
+
+impl Default for CodeBuilder {
+    fn default() -> Self {
+        Self {
+            source_code: String::new(),
+            font_family: "sans-serif".to_string(),
+            font_size: 20.0,
+            syntax: Syntax::Rust,
+            theme: None,
+            padding: 20.0,
+            show_line_numbers: false,
+            line_number_color: Color::new(0.5, 0.5, 0.5, 0.6),
+            transform: Transform::new(Vec3::ZERO),
+        }
+    }
 }
 
 impl CodeBuilder {
@@ -187,8 +251,8 @@ impl CodeBuilder {
         self.syntax = syntax;
         self
     }
-    pub fn theme(mut self, base16_colors: Vec<u32>) -> Self {
-        self.theme = base16_colors;
+    pub fn theme(mut self, theme: Theme) -> Self {
+        self.theme = Some(theme);
         self
     }
     pub fn padding(mut self, padding: f32) -> Self {
@@ -199,10 +263,11 @@ impl CodeBuilder {
         self.show_line_numbers = show;
         self
     }
-    pub fn create(self, position: Vec2) -> AnimObj {
+    pub fn build(self) -> AnimObj {
+        let id = self.transform.uuid;
         AnimObj {
-            id: Uuid::new_v4(),
-            transform: Transform::new(position.extend(0.0)),
+            id,
+            transform: self.transform,
             kind: AnimObjKind::Code {
                 source_code: self.source_code,
                 font_family: self.font_family,
@@ -217,18 +282,28 @@ impl CodeBuilder {
     }
 }
 
+impl_transform_methods!(CodeBuilder);
+
 pub fn polygon() -> PolygonBuilder {
-    PolygonBuilder {
-        radius: 50.0,
-        sides: 6,
-        color: Color::WHITE,
-    }
+    PolygonBuilder::default()
 }
 
 pub struct PolygonBuilder {
     radius: f32,
     sides: u32,
     color: Color,
+    transform: Transform,
+}
+
+impl Default for PolygonBuilder {
+    fn default() -> Self {
+        Self {
+            radius: 50.0,
+            sides: 6,
+            color: Color::WHITE,
+            transform: Transform::new(Vec3::ZERO),
+        }
+    }
 }
 
 impl PolygonBuilder {
@@ -244,10 +319,11 @@ impl PolygonBuilder {
         self.color = color;
         self
     }
-    pub fn create(self, position: Vec2) -> AnimObj {
+    pub fn build(self) -> AnimObj {
+        let id = self.transform.uuid;
         AnimObj {
-            id: Uuid::new_v4(),
-            transform: Transform::new(position.extend(0.0)),
+            id,
+            transform: self.transform,
             kind: AnimObjKind::Polygon {
                 radius: self.radius,
                 sides: self.sides,
@@ -257,13 +333,10 @@ impl PolygonBuilder {
     }
 }
 
+impl_transform_methods!(PolygonBuilder);
+
 pub fn image() -> ImageBuilder {
-    ImageBuilder {
-        path: String::new(),
-        size: Vec2::splat(100.0),
-        color: Color::WHITE,
-        stretch: StretchMode::Fit,
-    }
+    ImageBuilder::default()
 }
 
 pub struct ImageBuilder {
@@ -271,6 +344,19 @@ pub struct ImageBuilder {
     size: Vec2,
     color: Color,
     stretch: StretchMode,
+    transform: Transform,
+}
+
+impl Default for ImageBuilder {
+    fn default() -> Self {
+        Self {
+            path: String::new(),
+            size: Vec2::splat(100.0),
+            color: Color::WHITE,
+            stretch: StretchMode::Fit,
+            transform: Transform::new(Vec3::ZERO),
+        }
+    }
 }
 
 impl ImageBuilder {
@@ -290,10 +376,11 @@ impl ImageBuilder {
         self.stretch = stretch;
         self
     }
-    pub fn create(self, position: Vec2) -> AnimObj {
+    pub fn build(self) -> AnimObj {
+        let id = self.transform.uuid;
         AnimObj {
-            id: Uuid::new_v4(),
-            transform: Transform::new(position.extend(0.0)),
+            id,
+            transform: self.transform,
             kind: AnimObjKind::Image {
                 path: self.path,
                 size: self.size,
@@ -304,14 +391,10 @@ impl ImageBuilder {
     }
 }
 
+impl_transform_methods!(ImageBuilder);
+
 pub fn text() -> TextBuilder {
-    TextBuilder {
-        value: String::new(),
-        font_family: "sans-serif".to_string(),
-        alignment: TextAlign::Center,
-        color: Color::WHITE,
-        font_size: 24.0,
-    }
+    TextBuilder::default()
 }
 
 pub struct TextBuilder {
@@ -320,6 +403,20 @@ pub struct TextBuilder {
     alignment: TextAlign,
     color: Color,
     font_size: f32,
+    transform: Transform,
+}
+
+impl Default for TextBuilder {
+    fn default() -> Self {
+        Self {
+            value: String::new(),
+            font_family: "sans-serif".to_string(),
+            alignment: TextAlign::Center,
+            color: Color::WHITE,
+            font_size: 24.0,
+            transform: Transform::new(Vec3::ZERO),
+        }
+    }
 }
 
 impl TextBuilder {
@@ -343,10 +440,11 @@ impl TextBuilder {
         self.font_size = size;
         self
     }
-    pub fn create(self, position: Vec2) -> AnimObj {
+    pub fn build(self) -> AnimObj {
+        let id = self.transform.uuid;
         AnimObj {
-            id: Uuid::new_v4(),
-            transform: Transform::new(position.extend(0.0)),
+            id,
+            transform: self.transform,
             kind: AnimObjKind::Text {
                 value: self.value,
                 font_family: self.font_family,
@@ -357,3 +455,5 @@ impl TextBuilder {
         }
     }
 }
+
+impl_transform_methods!(TextBuilder);

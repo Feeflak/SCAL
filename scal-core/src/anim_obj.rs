@@ -1,8 +1,14 @@
+use std::ops::Range;
+
 use glam::Vec2;
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
+use crate::anim_op::{AnimOP, CodeAnimationStyle, IntoAnimOp};
 use crate::color::Color;
+use crate::ease::Ease;
+use crate::seconds::Seconds;
+use crate::theme::Theme;
 use crate::transform::Transform;
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -13,9 +19,154 @@ pub struct AnimObj {
 }
 
 impl AnimObj {
-    pub fn instantiate(&self) -> crate::anim_op::AnimOP {
-        crate::anim_op::AnimOP::Instantiate(self.clone())
+    pub fn instantiate(&self) -> AnimOP {
+        AnimOP::Instantiate(self.clone())
     }
+
+    pub fn add_lines(&self) -> CodeAddLinesBuilder {
+        CodeAddLinesBuilder {
+            uuid: self.id,
+            text: String::new(),
+            from_line: 0,
+            duration: 1.0,
+            ease: Ease::Linear,
+            style: CodeAnimationStyle::TypeWriter,
+        }
+    }
+
+    pub fn modify_line(&self, line: u32) -> CodeModifyLineBuilder {
+        CodeModifyLineBuilder {
+            uuid: self.id,
+            line,
+            text: String::new(),
+            duration: 1.0,
+            ease: Ease::Linear,
+            style: CodeAnimationStyle::TypeWriter,
+        }
+    }
+
+    pub fn remove_lines(&self, range: Range<u32>) -> CodeRemoveLinesBuilder {
+        CodeRemoveLinesBuilder {
+            uuid: self.id,
+            range,
+            duration: 1.0,
+            ease: Ease::Linear,
+            style: CodeAnimationStyle::TypeWriter,
+        }
+    }
+}
+
+pub struct CodeAddLinesBuilder {
+    uuid: Uuid,
+    text: String,
+    from_line: usize,
+    duration: Seconds,
+    ease: Ease,
+    style: CodeAnimationStyle,
+}
+
+impl CodeAddLinesBuilder {
+    pub fn str(mut self, text: impl Into<String>) -> Self {
+        self.text = text.into();
+        self
+    }
+    pub fn from_line(mut self, line: usize) -> Self {
+        self.from_line = line;
+        self
+    }
+    pub fn over(mut self, duration: Seconds) -> Self {
+        self.duration = duration;
+        self
+    }
+    pub fn ease(mut self, ease: Ease) -> Self {
+        self.ease = ease;
+        self
+    }
+    pub fn style(mut self, style: CodeAnimationStyle) -> Self {
+        self.style = style;
+        self
+    }
+}
+
+impl From<CodeAddLinesBuilder> for AnimOP {
+    fn from(b: CodeAddLinesBuilder) -> AnimOP {
+        AnimOP::CodeAddLines(b.uuid, b.text, b.from_line, b.duration, b.ease, b.style)
+    }
+}
+
+impl IntoAnimOp for CodeAddLinesBuilder {
+    fn into_anim_op(self) -> AnimOP { self.into() }
+}
+
+pub struct CodeModifyLineBuilder {
+    uuid: Uuid,
+    line: u32,
+    text: String,
+    duration: Seconds,
+    ease: Ease,
+    style: CodeAnimationStyle,
+}
+
+impl CodeModifyLineBuilder {
+    pub fn str(mut self, text: impl Into<String>) -> Self {
+        self.text = text.into();
+        self
+    }
+    pub fn over(mut self, duration: Seconds) -> Self {
+        self.duration = duration;
+        self
+    }
+    pub fn ease(mut self, ease: Ease) -> Self {
+        self.ease = ease;
+        self
+    }
+    pub fn style(mut self, style: CodeAnimationStyle) -> Self {
+        self.style = style;
+        self
+    }
+}
+
+impl From<CodeModifyLineBuilder> for AnimOP {
+    fn from(b: CodeModifyLineBuilder) -> AnimOP {
+        AnimOP::CodeModifyLine(b.uuid, b.line, b.text, b.duration, b.ease, b.style)
+    }
+}
+
+impl IntoAnimOp for CodeModifyLineBuilder {
+    fn into_anim_op(self) -> AnimOP { self.into() }
+}
+
+pub struct CodeRemoveLinesBuilder {
+    uuid: Uuid,
+    range: Range<u32>,
+    duration: Seconds,
+    ease: Ease,
+    style: CodeAnimationStyle,
+}
+
+impl CodeRemoveLinesBuilder {
+    pub fn over(mut self, duration: Seconds) -> Self {
+        self.duration = duration;
+        self
+    }
+    pub fn ease(mut self, ease: Ease) -> Self {
+        self.ease = ease;
+        self
+    }
+    pub fn style(mut self, style: CodeAnimationStyle) -> Self {
+        self.style = style;
+        self
+    }
+}
+
+impl From<CodeRemoveLinesBuilder> for AnimOP {
+    fn from(b: CodeRemoveLinesBuilder) -> AnimOP {
+        AnimOP::CodeRemoveLines(b.uuid, b.range, b.duration, b.ease, b.style)
+    }
+}
+
+impl IntoAnimOp for CodeRemoveLinesBuilder {
+    fn into_anim_op(self) -> AnimOP { self.into() }
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -46,7 +197,7 @@ pub enum AnimObjKind {
         font_family: String,
         font_size: f32,
         syntax: Syntax,
-        theme: Vec<u32>,
+        theme: Option<Theme>,
         padding: f32,
         show_line_numbers: bool,
         line_number_color: Color,

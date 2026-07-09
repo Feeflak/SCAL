@@ -2,7 +2,7 @@ use glam::{Vec2, Vec3};
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
-use crate::anim_op::AnimOP;
+use crate::anim_op::{AnimOP, IntoAnimOp};
 use crate::ease::Ease;
 use crate::seconds::Seconds;
 
@@ -31,29 +31,30 @@ impl Transform {
         self
     }
 
-    pub fn position(&self, target: Vec2) -> PositionBuilder {
+    pub fn position(&self) -> PositionBuilder {
         PositionBuilder {
             uuid: self.uuid,
-            target,
+            target: None,
             object: None,
             duration: 1.0,
             ease: Ease::Linear,
         }
     }
 
-    pub fn scale(&self, target: Vec2) -> ScaleBuilder {
+    pub fn scale(&self) -> ScaleBuilder {
         ScaleBuilder {
             uuid: self.uuid,
-            target,
+            target: None,
+            object: None,
             duration: 1.0,
             ease: Ease::Linear,
         }
     }
 
-    pub fn rotate(&self, target: f32) -> RotateBuilder {
+    pub fn rotation(&self) -> RotateBuilder {
         RotateBuilder {
             uuid: self.uuid,
-            target,
+            target: None,
             duration: 1.0,
             ease: Ease::Linear,
         }
@@ -62,7 +63,7 @@ impl Transform {
 
 pub struct PositionBuilder {
     pub(crate) uuid: Uuid,
-    pub(crate) target: Vec2,
+    pub(crate) target: Option<Vec2>,
     pub(crate) object: Option<Uuid>,
     pub(crate) duration: Seconds,
     pub(crate) ease: Ease,
@@ -71,6 +72,11 @@ pub struct PositionBuilder {
 impl PositionBuilder {
     pub fn object(mut self, target: uuid::Uuid) -> Self {
         self.object = Some(target);
+        self
+    }
+
+    pub fn to(mut self, target: Vec2) -> Self {
+        self.target = Some(target);
         self
     }
 
@@ -87,21 +93,37 @@ impl PositionBuilder {
 
 impl From<PositionBuilder> for AnimOP {
     fn from(b: PositionBuilder) -> AnimOP {
+        let target = b.target.unwrap_or(Vec2::ZERO);
         match b.object {
-            Some(target) => AnimOP::TransformMoveToObj(b.uuid, target, b.target, b.duration, b.ease),
-            None => AnimOP::TransformMovePos(b.uuid, b.target, b.duration, b.ease),
+            Some(obj) => AnimOP::TransformMoveToObj(b.uuid, obj, target, b.duration, b.ease),
+            None => AnimOP::TransformMovePos(b.uuid, target, b.duration, b.ease),
         }
     }
 }
 
+impl IntoAnimOp for PositionBuilder {
+    fn into_anim_op(self) -> AnimOP { self.into() }
+}
+
 pub struct ScaleBuilder {
     pub(crate) uuid: Uuid,
-    pub(crate) target: Vec2,
+    pub(crate) target: Option<Vec2>,
+    pub(crate) object: Option<Uuid>,
     pub(crate) duration: Seconds,
     pub(crate) ease: Ease,
 }
 
 impl ScaleBuilder {
+    pub fn object(mut self, target: uuid::Uuid) -> Self {
+        self.object = Some(target);
+        self
+    }
+
+    pub fn to(mut self, target: Vec2) -> Self {
+        self.target = Some(target);
+        self
+    }
+
     pub fn over(mut self, duration: Seconds) -> Self {
         self.duration = duration;
         self
@@ -115,18 +137,27 @@ impl ScaleBuilder {
 
 impl From<ScaleBuilder> for AnimOP {
     fn from(b: ScaleBuilder) -> AnimOP {
-        AnimOP::TransformScale(b.uuid, b.target, b.duration, b.ease)
+        AnimOP::TransformScale(b.uuid, b.target.unwrap_or(Vec2::ONE), b.duration, b.ease)
     }
+}
+
+impl IntoAnimOp for ScaleBuilder {
+    fn into_anim_op(self) -> AnimOP { self.into() }
 }
 
 pub struct RotateBuilder {
     pub(crate) uuid: Uuid,
-    pub(crate) target: f32,
+    pub(crate) target: Option<f32>,
     pub(crate) duration: Seconds,
     pub(crate) ease: Ease,
 }
 
 impl RotateBuilder {
+    pub fn to(mut self, target: f32) -> Self {
+        self.target = Some(target);
+        self
+    }
+
     pub fn over(mut self, duration: Seconds) -> Self {
         self.duration = duration;
         self
@@ -140,6 +171,10 @@ impl RotateBuilder {
 
 impl From<RotateBuilder> for AnimOP {
     fn from(b: RotateBuilder) -> AnimOP {
-        AnimOP::TransformRotate(b.uuid, b.target, b.duration, b.ease)
+        AnimOP::TransformRotate(b.uuid, b.target.unwrap_or(0.0), b.duration, b.ease)
     }
+}
+
+impl IntoAnimOp for RotateBuilder {
+    fn into_anim_op(self) -> AnimOP { self.into() }
 }
