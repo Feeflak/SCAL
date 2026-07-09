@@ -2,6 +2,7 @@
 binary = "cargo run -p audio"
 
 [rendering]
+text_resolution_multiplier = 2.0
 width = 3840
 height = 2160
 fps = 60
