@@ -4,14 +4,16 @@ use crate::{
     anim_object::{
         Transform,
         object_trait::AnimObj,
-        render::ObjectRenderData,
+        render::{ObjectRenderData, PipelineKind},
         text::{TextManager, atlas::GlyphUpdateData},
         compose::LayoutContainer,
+        primitive_shapes::Rectangle,
     },
     anim_op::{AnimOP, Animation},
     anim_render::AnimationState,
     projection::Camera,
     renderer::{Index, Vertex},
+    types::Color,
 };
 use anyhow::{Context, Result, bail};
 use glam::Mat4;
@@ -235,5 +237,102 @@ impl Animator {
                 None => Ok(local),
             }
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use glam::{Vec2, Vec3};
+
+    fn make_rect_obj(uuid: Uuid, parent: Option<Uuid>) -> Object {
+        Object {
+            anim_data: AnimObj(Box::new(Rectangle {
+                size: Vec2::new(10.0, 10.0),
+                corner_radius: 0.0,
+                color: Color::WHITE,
+                transform: Transform {
+                    uuid,
+                    parent,
+                    position: Vec3::ZERO,
+                    rotation: 0.0,
+                    scale: Vec2::ONE,
+                    layout_container: None,
+                    world_uniform: None,
+                },
+            })),
+            render_data: ObjectRenderData {
+                world_matrix_cache: Mat4::ZERO,
+                vertices_base_index: 0,
+                vertices: vec![],
+                indices_base_index: 0,
+                indices_count: 0,
+                pipeline: PipelineKind::Shape,
+                object_bind_groups: vec![],
+            },
+        }
+    }
+
+    fn make_animator() -> Animator {
+        let anim = AnimOP::Wait(0.0);
+        let camera = Camera::new(Vec2::new(100.0, 100.0), Vec2::ZERO, 1.0);
+        Animator::new(vec![anim], 60, camera, 1.0).unwrap()
+    }
+
+    #[test]
+    fn check_cycle_self_reference() {
+        let mut animator = make_animator();
+        let uuid = Uuid::new_v4();
+        animator.objects.push(make_rect_obj(uuid, Some(uuid)));
+        animator.objects_lookup.insert(uuid, 0);
+        assert!(animator.check_cycle(&uuid, &uuid).is_err());
+    }
+
+    #[test]
+    fn check_cycle_no_parent_ok() {
+        let mut animator = make_animator();
+        let uuid_a = Uuid::new_v4();
+        let uuid_b = Uuid::new_v4();
+        animator.objects.push(make_rect_obj(uuid_a, None));
+        animator.objects_lookup.insert(uuid_a, 0);
+        animator.objects.push(make_rect_obj(uuid_b, Some(uuid_a)));
+        animator.objects_lookup.insert(uuid_b, 1);
+        assert!(animator.check_cycle(&uuid_a, &uuid_b).is_err());
+    }
+
+    #[test]
+    fn check_cycle_unrelated_ok() {
+        let mut animator = make_animator();
+        let uuid_a = Uuid::new_v4();
+        let uuid_b = Uuid::new_v4();
+        animator.objects.push(make_rect_obj(uuid_a, None));
+        animator.objects_lookup.insert(uuid_a, 0);
+        assert!(animator.check_cycle(&uuid_a, &uuid_b).is_ok());
+        assert!(animator.check_cycle(&uuid_b, &Uuid::new_v4()).is_ok());
+    }
+
+    #[test]
+    fn check_cycle_transitive_cycle() {
+        let mut animator = make_animator();
+        let uuid_a = Uuid::new_v4();
+        let uuid_b = Uuid::new_v4();
+        let uuid_c = Uuid::new_v4();
+        animator.objects.push(make_rect_obj(uuid_a, Some(uuid_c)));
+        animator.objects_lookup.insert(uuid_a, 0);
+        animator.objects.push(make_rect_obj(uuid_b, Some(uuid_a)));
+        animator.objects_lookup.insert(uuid_b, 1);
+        animator.objects.push(make_rect_obj(uuid_c, Some(uuid_b)));
+        animator.objects_lookup.insert(uuid_c, 2);
+        assert!(animator.check_cycle(&uuid_c, &uuid_b).is_err());
+    }
+
+    #[test]
+    fn check_cycle_nonexistent_parent_ok() {
+        let mut animator = make_animator();
+        let uuid = Uuid::new_v4();
+        let nonexistent = Uuid::new_v4();
+        animator.objects.push(make_rect_obj(uuid, None));
+        animator.objects_lookup.insert(uuid, 0);
+        assert!(animator.check_cycle(&uuid, &nonexistent).is_ok());
     }
 }

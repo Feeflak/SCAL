@@ -295,6 +295,144 @@ pub fn remove_lines(
     Animation::new(duration, curve, start, update)
 }
 
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn insert_lines_beginning() {
+        let mut source = "line1\nline2".to_string();
+        let count = insert_lines(&mut source, "new1\nnew2", 0);
+        assert_eq!(count, 2);
+        assert_eq!(source, "new1\nnew2\nline1\nline2");
+    }
+
+    #[test]
+    fn insert_lines_middle() {
+        let mut source = "line1\nline2\nline3".to_string();
+        let count = insert_lines(&mut source, "new1\nnew2", 1);
+        assert_eq!(count, 2);
+        assert_eq!(source, "line1\nnew1\nnew2\nline2\nline3");
+    }
+
+    #[test]
+    fn insert_lines_end() {
+        let mut source = "line1\nline2".to_string();
+        let count = insert_lines(&mut source, "new1\nnew2", 2);
+        assert_eq!(count, 2);
+        assert_eq!(source, "line1\nline2\nnew1\nnew2");
+    }
+
+    #[test]
+    fn insert_lines_beyond_end_clamps() {
+        let mut source = "line1".to_string();
+        let count = insert_lines(&mut source, "new1\nnew2", 10);
+        assert_eq!(count, 2);
+        assert_eq!(source, "line1\nnew1\nnew2");
+    }
+
+    #[test]
+    fn insert_lines_empty_source() {
+        let mut source = String::new();
+        let count = insert_lines(&mut source, "new1\nnew2", 0);
+        assert_eq!(count, 2);
+        assert_eq!(source, "new1\nnew2");
+    }
+
+    #[test]
+    fn insert_lines_trims_trailing_newlines() {
+        let mut source = "line1".to_string();
+        let count = insert_lines(&mut source, "new1\nnew2\n", 1);
+        assert_eq!(count, 2);
+        assert_eq!(source, "line1\nnew1\nnew2");
+    }
+
+    #[test]
+    fn insert_lines_only_newlines_after_trim() {
+        let mut source = "line1".to_string();
+        let count = insert_lines(&mut source, "\n\n\n", 0);
+        assert_eq!(count, 0);
+        assert_eq!(source, "line1");
+    }
+
+    #[test]
+    fn replace_line_first() {
+        let mut source = "line1\nline2\nline3".to_string();
+        replace_line(&mut source, 0, "new1");
+        assert_eq!(source, "new1\nline2\nline3");
+    }
+
+    #[test]
+    fn replace_line_middle() {
+        let mut source = "line1\nline2\nline3".to_string();
+        replace_line(&mut source, 1, "new2");
+        assert_eq!(source, "line1\nnew2\nline3");
+    }
+
+    #[test]
+    fn replace_line_last() {
+        let mut source = "line1\nline2\nline3".to_string();
+        replace_line(&mut source, 2, "new3");
+        assert_eq!(source, "line1\nline2\nnew3");
+    }
+
+    #[test]
+    fn replace_line_out_of_bounds_clamps() {
+        let mut source = "line1".to_string();
+        replace_line(&mut source, 5, "new1");
+        assert_eq!(source, "new1");
+    }
+
+    #[test]
+    fn replace_line_single_line_source() {
+        let mut source = "line1".to_string();
+        replace_line(&mut source, 0, "new1");
+        assert_eq!(source, "new1");
+    }
+
+    #[test]
+    fn remove_line_range_start() {
+        let mut source = "line1\nline2\nline3".to_string();
+        remove_line_range(&mut source, 0, 2);
+        assert_eq!(source, "line3");
+    }
+
+    #[test]
+    fn remove_line_range_middle() {
+        let mut source = "line1\nline2\nline3".to_string();
+        remove_line_range(&mut source, 1, 2);
+        assert_eq!(source, "line1\nline3");
+    }
+
+    #[test]
+    fn remove_line_range_end() {
+        let mut source = "line1\nline2\nline3".to_string();
+        remove_line_range(&mut source, 1, 3);
+        assert_eq!(source, "line1");
+    }
+
+    #[test]
+    fn remove_line_range_all() {
+        let mut source = "line1\nline2\nline3".to_string();
+        remove_line_range(&mut source, 0, 3);
+        assert_eq!(source, "");
+    }
+
+    #[test]
+    fn remove_line_range_beyond_end() {
+        let mut source = "line1\nline2".to_string();
+        remove_line_range(&mut source, 0, 10);
+        assert_eq!(source, "");
+    }
+
+    #[test]
+    fn remove_line_range_empty_start_end() {
+        let mut source = "line1\nline2\nline3".to_string();
+        remove_line_range(&mut source, 0, 0);
+        assert_eq!(source, "line1\nline2\nline3");
+    }
+}
+
 pub fn highlight_fade_in(
     uuid: Uuid,
     action: CodeHighlightAction,

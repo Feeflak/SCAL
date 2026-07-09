@@ -277,6 +277,71 @@ impl AudioEngine {
     }
 }
 
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn pitch_volume_identity() {
+        let samples = vec![0.5, -0.3, 0.1, 0.0];
+        let result = apply_pitch_and_volume(samples.clone(), 1.0, 1.0);
+        assert_eq!(result, samples);
+    }
+
+    #[test]
+    fn volume_only() {
+        let samples = vec![0.5, -0.3];
+        let result = apply_pitch_and_volume(samples, 1.0, 0.5);
+        assert_eq!(result, vec![0.25, -0.15]);
+    }
+
+    #[test]
+    fn zero_volume() {
+        let samples = vec![1.0, -1.0, 0.5, -0.5];
+        let result = apply_pitch_and_volume(samples, 1.0, 0.0);
+        assert_eq!(result, vec![0.0, 0.0, 0.0, 0.0]);
+    }
+
+    #[test]
+    fn pitch_double_speed_half_frames() {
+        let samples = vec![1.0, 0.0, 0.0, 1.0, 0.5, 0.5];
+        let result = apply_pitch_and_volume(samples, 2.0, 1.0);
+        assert_eq!(result.len(), 2);
+        assert!((result[0] - 1.0).abs() < f32::EPSILON);
+        assert!((result[1] - 0.0).abs() < f32::EPSILON);
+    }
+
+    #[test]
+    fn pitch_half_speed_interpolates() {
+        let samples = vec![1.0, 0.0, 0.0, 1.0, 0.5, 0.5];
+        let result = apply_pitch_and_volume(samples, 0.5, 1.0);
+        assert_eq!(result.len(), 8, "expected 4 stereo frames, got {}", result.len());
+        assert!((result[0] - 1.0).abs() < f32::EPSILON);
+        assert!((result[1] - 0.0).abs() < f32::EPSILON);
+        assert!((result[2] - 0.5).abs() < f32::EPSILON);
+        assert!((result[3] - 0.5).abs() < f32::EPSILON);
+        assert!((result[4] - 0.0).abs() < f32::EPSILON);
+        assert!((result[5] - 1.0).abs() < f32::EPSILON);
+        assert!((result[6] - 0.25).abs() < f32::EPSILON);
+        assert!((result[7] - 0.75).abs() < 0.01);
+    }
+
+    #[test]
+    fn pitch_and_volume_combined() {
+        let samples = vec![1.0, -1.0];
+        let result = apply_pitch_and_volume(samples, 1.0, 0.5);
+        assert_eq!(result, vec![0.5, -0.5]);
+    }
+
+    #[test]
+    fn empty_input() {
+        let result = apply_pitch_and_volume(vec![], 1.0, 1.0);
+        assert!(result.is_empty());
+        let result = apply_pitch_and_volume(vec![], 0.5, 2.0);
+        assert!(result.is_empty());
+    }
+}
+
 fn apply_pitch_and_volume(
     samples: Vec<f32>,
     pitch: f32,

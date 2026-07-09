@@ -78,3 +78,64 @@ impl PartialEq for AnimObj {
         self.uuid() == other.uuid()
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::anim_object::primitive_shapes::Rectangle;
+    use crate::types::Color;
+    use glam::{Vec2, Vec3};
+
+    #[test]
+    fn anim_obj_eq_compares_by_uuid() {
+        let id = Uuid::new_v4();
+        let other_id = Uuid::new_v4();
+        let rect1 = Rectangle {
+            size: Vec2::new(10.0, 10.0),
+            corner_radius: 0.0,
+            color: Color::WHITE,
+            transform: Transform {
+                uuid: id,
+                parent: None,
+                position: Vec3::ZERO,
+                rotation: 0.0,
+                scale: Vec2::ONE,
+                layout_container: None,
+                world_uniform: None,
+            },
+        };
+        let rect2 = Rectangle {
+            size: Vec2::new(20.0, 20.0),
+            corner_radius: 5.0,
+            color: Color::RED,
+            transform: Transform {
+                uuid: id,
+                parent: None,
+                position: Vec3::ZERO,
+                rotation: 0.0,
+                scale: Vec2::ONE,
+                layout_container: None,
+                world_uniform: None,
+            },
+        };
+        let rect3 = Rectangle {
+            size: Vec2::new(10.0, 10.0),
+            corner_radius: 0.0,
+            color: Color::WHITE,
+            transform: Transform {
+                uuid: other_id,
+                parent: None,
+                position: Vec3::ZERO,
+                rotation: 0.0,
+                scale: Vec2::ONE,
+                layout_container: None,
+                world_uniform: None,
+            },
+        };
+        let obj1 = AnimObj(Box::new(rect1));
+        let obj2 = AnimObj(Box::new(rect2));
+        let obj3 = AnimObj(Box::new(rect3));
+        assert_eq!(obj1, obj2);
+        assert_ne!(obj1, obj3);
+    }
+}

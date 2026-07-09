@@ -379,3 +379,67 @@ impl Animation {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn linear_curve() {
+        let curve = AnimationCurve::Linear;
+        assert!((curve.apply(0.0) - 0.0).abs() < f32::EPSILON);
+        assert!((curve.apply(0.5) - 0.5).abs() < f32::EPSILON);
+        assert!((curve.apply(1.0) - 1.0).abs() < f32::EPSILON);
+    }
+
+    #[test]
+    fn ease_out_cubic() {
+        let curve = AnimationCurve::EaseOutCubic;
+        assert!((curve.apply(0.0) - 0.0).abs() < f32::EPSILON);
+        assert!((curve.apply(1.0) - 1.0).abs() < f32::EPSILON);
+        assert!((curve.apply(0.5) - 0.875).abs() < f32::EPSILON);
+    }
+
+    #[test]
+    fn ease_in_out_cubic() {
+        let curve = AnimationCurve::EaseInOutCubic;
+        assert!((curve.apply(0.0) - 0.0).abs() < f32::EPSILON);
+        assert!((curve.apply(1.0) - 1.0).abs() < f32::EPSILON);
+        assert!((curve.apply(0.25) - 0.0625).abs() < f32::EPSILON);
+        assert!((curve.apply(0.75) - 0.9375).abs() < f32::EPSILON);
+    }
+
+    #[test]
+    fn ease_in_out_back() {
+        let curve = AnimationCurve::EaseInOutBack;
+        assert!((curve.apply(0.0) - 0.0).abs() < f32::EPSILON);
+        assert!((curve.apply(1.0) - 1.0).abs() < f32::EPSILON);
+        assert!((curve.apply(0.5) - 0.5).abs() < f32::EPSILON);
+        assert!(curve.apply(0.75) > 0.8, "expected easeInOutBack to overshoot forward, got {}", curve.apply(0.75));
+    }
+
+    #[test]
+    fn ease_out_back() {
+        let curve = AnimationCurve::EaseOutBack;
+        assert!((curve.apply(0.0) - 0.0).abs() < f32::EPSILON);
+        assert!((curve.apply(1.0) - 1.0).abs() < f32::EPSILON);
+        let val = curve.apply(0.5);
+        assert!(val > 1.0, "expected easeOutBack to overshoot, got {}", val);
+    }
+
+    #[test]
+    fn ease_in_back() {
+        let curve = AnimationCurve::EaseInBack;
+        assert!((curve.apply(0.0) - 0.0).abs() < f32::EPSILON);
+        assert!((curve.apply(1.0) - 1.0).abs() < f32::EPSILON);
+        let val = curve.apply(0.5);
+        assert!(val < 0.5, "expected easeInBack to undershoot, got {}", val);
+    }
+
+    #[test]
+    fn curve_clamps_input() {
+        let curve = AnimationCurve::Linear;
+        assert!((curve.apply(-0.5) - 0.0).abs() < f32::EPSILON);
+        assert!((curve.apply(1.5) - 1.0).abs() < f32::EPSILON);
+    }
+}
