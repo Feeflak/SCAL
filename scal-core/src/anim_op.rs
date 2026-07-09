@@ -67,12 +67,16 @@ pub fn wait(duration: Seconds) -> AnimOP {
 }
 
 pub struct PlaySoundBuilder {
-    sfx: Sfx,
-    delay: Seconds,
+    pub(crate) sfx: Sfx,
+    pub(crate) delay: Seconds,
 }
 
 impl PlaySoundBuilder {
     pub fn after(mut self, delay: Seconds) -> AnimOP {
+        self.delay = delay;
+        self.into()
+    }
+    pub fn delay(mut self, delay: Seconds) -> AnimOP {
         self.delay = delay;
         self.into()
     }

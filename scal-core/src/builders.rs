@@ -1,7 +1,7 @@
 use glam::{Vec2, Vec3};
 use uuid::Uuid;
 
-use crate::anim_obj::{AnimObj, AnimObjKind, StretchMode, Syntax, TextAlign};
+use crate::anim_obj::{AnimObj, AnimObjKind, CodeHandle, CodeWindowHandle, StretchMode, Syntax, TextAlign};
 use crate::color::Color;
 use crate::theme::Theme;
 use crate::transform::Transform;
@@ -264,9 +264,9 @@ impl CodeBuilder {
         self.show_line_numbers = show;
         self
     }
-    pub fn build(self) -> AnimObj {
+    pub fn build(self) -> CodeHandle {
         let id = self.transform.uuid;
-        AnimObj {
+        CodeHandle(AnimObj {
             id,
             transform: self.transform,
             kind: AnimObjKind::Code {
@@ -279,7 +279,7 @@ impl CodeBuilder {
                 show_line_numbers: self.show_line_numbers,
                 line_number_color: self.line_number_color,
             },
-        }
+        })
     }
 }
 
@@ -544,10 +544,10 @@ impl CodeWindowBuilder {
         self.show_line_numbers = show;
         self
     }
-    pub fn build(self) -> AnimObj {
+    pub fn build(self) -> CodeWindowHandle {
         let id = self.transform.uuid;
         let code_id = Uuid::new_v5(&id, b"code");
-        AnimObj {
+        CodeWindowHandle(AnimObj {
             id,
             transform: self.transform,
             kind: AnimObjKind::CodeWindow {
@@ -565,7 +565,7 @@ impl CodeWindowBuilder {
                 show_line_numbers: self.show_line_numbers,
                 line_number_color: self.line_number_color,
             },
-        }
+        })
     }
 }
 

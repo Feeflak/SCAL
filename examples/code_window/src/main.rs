@@ -30,7 +30,7 @@ fn main() -> Project {
         .title("fib.rs")
         .width(800.)
         .height(600.)
-        .title_font_size(16.)
+        .title_font_size(25.)
         .background_color(Color::new(0.15, 0.15, 0.2, 1.))
         .pos(WINDOW / 2.)
         .build();

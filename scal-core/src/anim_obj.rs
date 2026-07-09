@@ -22,45 +22,6 @@ impl AnimObj {
     pub fn instantiate(&self) -> AnimOP {
         AnimOP::Instantiate(self.clone())
     }
-
-    fn code_uuid(&self) -> Uuid {
-        match &self.kind {
-            AnimObjKind::CodeWindow { code_id, .. } => *code_id,
-            _ => self.id,
-        }
-    }
-
-    pub fn add_lines(&self) -> CodeAddLinesBuilder {
-        CodeAddLinesBuilder {
-            uuid: self.code_uuid(),
-            text: String::new(),
-            from_line: 0,
-            duration: 1.0,
-            ease: Ease::Linear,
-            style: CodeAnimationStyle::TypeWriter,
-        }
-    }
-
-    pub fn modify_line(&self, line: u32) -> CodeModifyLineBuilder {
-        CodeModifyLineBuilder {
-            uuid: self.code_uuid(),
-            line,
-            text: String::new(),
-            duration: 1.0,
-            ease: Ease::Linear,
-            style: CodeAnimationStyle::TypeWriter,
-        }
-    }
-
-    pub fn remove_lines(&self, range: Range<u32>) -> CodeRemoveLinesBuilder {
-        CodeRemoveLinesBuilder {
-            uuid: self.code_uuid(),
-            range,
-            duration: 1.0,
-            ease: Ease::Linear,
-            style: CodeAnimationStyle::TypeWriter,
-        }
-    }
 }
 
 pub struct CodeAddLinesBuilder {
@@ -264,4 +225,103 @@ pub enum Syntax {
 pub enum StretchMode {
     Fit,
     Fill,
+}
+
+pub struct CodeHandle(pub AnimObj);
+
+impl std::ops::Deref for CodeHandle {
+    type Target = AnimObj;
+    fn deref(&self) -> &AnimObj { &self.0 }
+}
+
+impl CodeHandle {
+    pub fn instantiate(&self) -> AnimOP {
+        AnimOP::Instantiate(self.0.clone())
+    }
+    pub fn add_lines(&self) -> CodeAddLinesBuilder {
+        CodeAddLinesBuilder {
+            uuid: self.0.id,
+            text: String::new(),
+            from_line: 0,
+            duration: 1.0,
+            ease: Ease::Linear,
+            style: CodeAnimationStyle::TypeWriter,
+        }
+    }
+    pub fn modify_line(&self, line: u32) -> CodeModifyLineBuilder {
+        CodeModifyLineBuilder {
+            uuid: self.0.id,
+            line,
+            text: String::new(),
+            duration: 1.0,
+            ease: Ease::Linear,
+            style: CodeAnimationStyle::TypeWriter,
+        }
+    }
+    pub fn remove_lines(&self, range: Range<u32>) -> CodeRemoveLinesBuilder {
+        CodeRemoveLinesBuilder {
+            uuid: self.0.id,
+            range,
+            duration: 1.0,
+            ease: Ease::Linear,
+            style: CodeAnimationStyle::TypeWriter,
+        }
+    }
+}
+
+pub struct CodeWindowHandle(pub AnimObj);
+
+impl std::ops::Deref for CodeWindowHandle {
+    type Target = AnimObj;
+    fn deref(&self) -> &AnimObj { &self.0 }
+}
+
+impl CodeWindowHandle {
+    pub fn instantiate(&self) -> AnimOP {
+        AnimOP::Instantiate(self.0.clone())
+    }
+    pub fn add_lines(&self) -> CodeAddLinesBuilder {
+        let code_id = if let AnimObjKind::CodeWindow { code_id, .. } = &self.0.kind {
+            *code_id
+        } else {
+            self.0.id
+        };
+        CodeAddLinesBuilder {
+            uuid: code_id,
+            text: String::new(),
+            from_line: 0,
+            duration: 1.0,
+            ease: Ease::Linear,
+            style: CodeAnimationStyle::TypeWriter,
+        }
+    }
+    pub fn modify_line(&self, line: u32) -> CodeModifyLineBuilder {
+        let code_id = if let AnimObjKind::CodeWindow { code_id, .. } = &self.0.kind {
+            *code_id
+        } else {
+            self.0.id
+        };
+        CodeModifyLineBuilder {
+            uuid: code_id,
+            line,
+            text: String::new(),
+            duration: 1.0,
+            ease: Ease::Linear,
+            style: CodeAnimationStyle::TypeWriter,
+        }
+    }
+    pub fn remove_lines(&self, range: Range<u32>) -> CodeRemoveLinesBuilder {
+        let code_id = if let AnimObjKind::CodeWindow { code_id, .. } = &self.0.kind {
+            *code_id
+        } else {
+            self.0.id
+        };
+        CodeRemoveLinesBuilder {
+            uuid: code_id,
+            range,
+            duration: 1.0,
+            ease: Ease::Linear,
+            style: CodeAnimationStyle::TypeWriter,
+        }
+    }
 }
