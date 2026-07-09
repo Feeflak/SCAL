@@ -1,3 +1,30 @@
+//! GPU readback ring buffer.
+//!
+//! # Synchronization
+//!
+//! A fixed set of [`Slot`]s is allocated once during [`init_buffers`]. Each slot
+//! contains a [`wgpu::Buffer`] with `MAP_READ` usage.
+//!
+//! # Why slots?
+//!
+//! Mapping a GPU buffer for reading is a synchronous operation that stalls the
+//! GPU if the buffer is still in use. By rotating through N slots we can have
+//! one slot being mapped/read by the CPU while the GPU writes into another.
+//!
+//! # Why mapping happens later
+//!
+//! Mapping is initiated in `copy_texture_to_buffer()` / `run_and_copy()` right
+//! after the copy/compute commands are submitted. The call to
+//! `device.poll(wgpu::PollType::WaitIndefinitely)` blocks until the map is
+//! complete, ensuring the data is available before the frame is sent to the
+//! encoder.
+//!
+//! # Why unmapping occurs when it does
+//!
+//! After reading the mapped range, [`unmap`] is called immediately so the
+//! buffer becomes available for the next frame's copy operation. The buffer
+//! index is then sent back through the free-slots channel.
+
 use std::sync::OnceLock;
 
 use anyhow::{Context, Result, bail};

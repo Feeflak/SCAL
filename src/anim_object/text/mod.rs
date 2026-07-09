@@ -6,6 +6,7 @@ pub(crate) mod render;
 
 use std::collections::HashMap;
 
+use anyhow::{Context, Result};
 use crate::{
     anim_object::Transform,
     anim_object::object_trait::{AnimObjectTrait, BindGroupLoader, MeshResult},
@@ -71,7 +72,7 @@ impl AnimObjectTrait for Text {
         glam::vec2(width, height)
     }
     fn generate_mesh(&mut self, mgr: &mut TextManager) -> MeshResult {
-        crate::anim_object::text::mesh::generate_text_mesh(mgr, self)
+        Ok(crate::anim_object::text::mesh::generate_text_mesh(mgr, self))
     }
     fn bind_group_loader(&self) -> Option<BindGroupLoader> {
         None
@@ -107,10 +108,10 @@ impl TextManager {
             scale,
         }
     }
-    pub fn layout_code(&mut self, code: &mut Code, id: Uuid) -> Buffer {
+    pub fn layout_code(&mut self, code: &mut Code, id: Uuid) -> Result<Buffer> {
         if !code.dirty {
             if let Some(buffer) = self.layouts.get(&id) {
-                return buffer.to_owned();
+                return Ok(buffer.to_owned());
             }
         }
         code.dirty = false;
@@ -163,7 +164,10 @@ impl TextManager {
         buffer.shape_until_scroll(&mut self.font_system, false);
 
         self.layouts.insert(id, buffer);
-        self.layouts.get(&id).unwrap().to_owned()
+        self.layouts
+            .get(&id)
+            .context("layout was just inserted, should exist")
+            .map(|b| b.to_owned())
     }
 
     pub fn layout(&mut self, text: &Text) -> Buffer {

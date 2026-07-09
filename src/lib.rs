@@ -135,12 +135,18 @@ async fn run_loop(
     let adapter = instance
         .request_adapter(&wgpu::RequestAdapterOptions::default())
         .await
-        .unwrap();
+        .context("failed to request wgpu adapter")?;
+
+    info!(
+        "Adapter: {:?} (backend: {:?})",
+        adapter.get_info().name,
+        adapter.get_info().backend
+    );
 
     let (device, queue) = adapter
         .request_device(&wgpu::DeviceDescriptor::default())
         .await
-        .unwrap();
+        .context("failed to request wgpu device")?;
     readback::init_buffers(rendering_settings.buffer_count, pixel_buffer_size, &device)
         .context("while initializing buffers")?;
     let (renderer_send, renderer_rec) =

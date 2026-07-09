@@ -32,7 +32,7 @@ impl AnimObjectTrait for Svg {
         self.size
     }
     fn generate_mesh(&mut self, _mgr: &mut crate::anim_object::text::TextManager) -> MeshResult {
-        generate_svg_mesh_data(self)
+        Ok(generate_svg_mesh_data(self))
     }
     fn bind_group_loader(&self) -> Option<BindGroupLoader> {
         let svg = self.clone();

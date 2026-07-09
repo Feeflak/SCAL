@@ -30,7 +30,7 @@ impl AnimObjectTrait for Rectangle {
         self.size
     }
     fn generate_mesh(&mut self, _mgr: &mut crate::anim_object::text::TextManager) -> MeshResult {
-        generate_rectangle_mesh_data(self)
+        Ok(generate_rectangle_mesh_data(self))
     }
     fn bind_group_loader(&self) -> Option<BindGroupLoader> {
         None
@@ -65,7 +65,7 @@ impl AnimObjectTrait for Circle {
         vec2(d, d)
     }
     fn generate_mesh(&mut self, _mgr: &mut crate::anim_object::text::TextManager) -> MeshResult {
-        generate_circle_mesh_data(self)
+        Ok(generate_circle_mesh_data(self))
     }
     fn bind_group_loader(&self) -> Option<BindGroupLoader> {
         None
@@ -101,7 +101,7 @@ impl AnimObjectTrait for Polygon {
         vec2(d, d)
     }
     fn generate_mesh(&mut self, _mgr: &mut crate::anim_object::text::TextManager) -> MeshResult {
-        generate_polygon_mesh_data(self)
+        Ok(generate_polygon_mesh_data(self))
     }
     fn bind_group_loader(&self) -> Option<BindGroupLoader> {
         None

@@ -1,3 +1,32 @@
+//! GPU rendering pipeline and buffer management.
+//!
+//! # Pipeline layout
+//!
+//! | Bind index | Resource          | Scope              |
+//! |------------|-------------------|--------------------|
+//! | 0          | Camera uniform    | Per-frame          |
+//! | 1          | Transform uniform | Per-object         |
+//! | 2+         | Object-specific   | Per-pipeline       |
+//!
+//! # Render order
+//!
+//! Objects are sorted by z (back-to-front) in the [`Animator`]. The renderer
+//! iterates the sorted list, switching pipeline (Shape / Text / Image) as needed.
+//!
+//! # Buckets
+//!
+//! There are no explicit bucket structures. Each [`PipelineKind`] maps to
+//! exactly one [`wgpu::RenderPipeline`] and a set of shared bind groups.
+//! During drawing the same pipeline is reused for all objects that share it,
+//! which gives implicit batching.
+//!
+//! # Buffer growth
+//!
+//! Vertex and index buffers are re-created when the mesh size changes
+//! (detected by comparing the current vs previous length). This is cheap
+//! because mesh updates are infrequent after initial object instantiation.
+//!
+use anyhow::Result;
 use log::debug;
 use std::collections::HashMap;
 use uuid::Uuid;
@@ -79,67 +108,70 @@ impl Renderer {
         device: &wgpu::Device,
         queue: &wgpu::Queue,
         scene: &Scene,
-    ) {
+    ) -> Result<()> {
         if scene.mesh_changed_this_frame {
-            {
-                let indices = scene.indices;
-                if self.index_buffer_size != indices.len() {
-                    self.index_buffer_size = indices.len();
-                    self.index_buffer =
-                        device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-                            label: Some("Object Index Buffer"),
-                            contents: bytemuck::cast_slice(&indices),
-                            usage: wgpu::BufferUsages::INDEX | wgpu::BufferUsages::COPY_DST,
-                        });
-                } else {
-                    queue.write_buffer(&self.index_buffer, 0, bytemuck::cast_slice(indices));
-                }
+            let indices = scene.indices;
+            let prev_idx_size = self.index_buffer_size;
+            if prev_idx_size != indices.len() {
+                self.index_buffer_size = indices.len();
+                self.index_buffer =
+                    device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                        label: Some("Object Index Buffer"),
+                        contents: bytemuck::cast_slice(indices),
+                        usage: wgpu::BufferUsages::INDEX | wgpu::BufferUsages::COPY_DST,
+                    });
+                debug!(
+                    "Index buffer resized: old={} new={}",
+                    prev_idx_size,
+                    indices.len()
+                );
+            } else {
+                queue.write_buffer(&self.index_buffer, 0, bytemuck::cast_slice(indices));
             }
-            {
-                let vertices = scene.vertices;
-                if self.vertex_buffer_size != vertices.len() {
-                    self.vertex_buffer_size = vertices.len();
-                    self.vertex_buffer =
-                        device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-                            label: Some("Object Vertex Buffer"),
-                            contents: bytemuck::cast_slice(&vertices),
-                            usage: wgpu::BufferUsages::VERTEX | wgpu::BufferUsages::COPY_DST,
-                        });
-                } else {
-                    queue.write_buffer(&self.vertex_buffer, 0, bytemuck::cast_slice(vertices));
-                }
+            let vertices = scene.vertices;
+            let prev_vert_size = self.vertex_buffer_size;
+            if prev_vert_size != vertices.len() {
+                self.vertex_buffer_size = vertices.len();
+                self.vertex_buffer =
+                    device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                        label: Some("Object Vertex Buffer"),
+                        contents: bytemuck::cast_slice(vertices),
+                        usage: wgpu::BufferUsages::VERTEX | wgpu::BufferUsages::COPY_DST,
+                    });
+                debug!(
+                    "Vertex buffer resized: old={} new={} ({} bytes)",
+                    prev_vert_size,
+                    vertices.len(),
+                    vertices.len() * std::mem::size_of::<Vertex>(),
+                );
+            } else {
+                queue.write_buffer(&self.vertex_buffer, 0, bytemuck::cast_slice(vertices));
             }
         }
 
-        {
-            for obj in scene.objects_sorted_by_z {
-                let transf = obj.anim_data.transform();
-                let transform_data = match self.object_transform_data_lookup.get_mut(&transf.uuid) {
-                    Some(transform_data) => transform_data,
-                    None => {
-                        let (bind_group, buffer) = create_transform_bind_group_and_buffer(device);
-                        self.object_transform_data_lookup
-                            .insert(transf.uuid, ObjectTransformData { bind_group, buffer });
-                        self.object_transform_data_lookup.get(&transf.uuid).unwrap()
-                    }
-                };
+        for obj in scene.objects_sorted_by_z {
+            let transf = obj.anim_data.transform();
+            let transform_data = self
+                .object_transform_data_lookup
+                .entry(transf.uuid)
+                .or_insert_with(|| {
+                    let (bind_group, buffer) = create_transform_bind_group_and_buffer(device);
+                    ObjectTransformData { bind_group, buffer }
+                });
 
-                queue.write_buffer(
-                    &transform_data.buffer,
-                    0,
-                    bytemuck::bytes_of(&obj.render_data.world_matrix_cache),
-                );
-            }
+            queue.write_buffer(
+                &transform_data.buffer,
+                0,
+                bytemuck::bytes_of(&obj.render_data.world_matrix_cache),
+            );
         }
 
-        {
-            if scene.camera.dirty {
-                queue.write_buffer(
-                    &self.camera_buffer,
-                    0,
-                    bytemuck::bytes_of(&scene.camera.get_matrix()),
-                );
-            }
+        if scene.camera.dirty {
+            queue.write_buffer(
+                &self.camera_buffer,
+                0,
+                bytemuck::bytes_of(&scene.camera.get_matrix()),
+            );
         }
 
         for obj in scene.objects_sorted_by_z {
@@ -152,6 +184,8 @@ impl Renderer {
                 self.per_object_bind_groups.insert(uuid, groups);
             }
         }
+
+        Ok(())
     }
 
     pub(crate) fn draw_objects(
@@ -180,11 +214,14 @@ impl Renderer {
                     render_pass.set_bind_group(OTHER_BINDING_OFFSET + i as u32, bind_group, &[]);
                 }
             }
-            let bind_group = &self
-                .object_transform_data_lookup
-                .get(object.uuid())
-                .expect("there was no transform matrix in the lookup for a transform, probably someone forgot to mark it as dirty initially.")
-                .bind_group;
+            let Some(transform_data) = self.object_transform_data_lookup.get(object.uuid()) else {
+                log::warn!(
+                    "draw_objects: missing transform for object {} — skipping",
+                    object.uuid()
+                );
+                continue;
+            };
+            let bind_group = &transform_data.bind_group;
 
             render_pass.set_bind_group(TRANSFORM_BIND_INDEX, bind_group, &[]);
 
@@ -267,14 +304,15 @@ pub(crate) fn draw_scene(
     queue: &wgpu::Queue,
     scene: Scene,
     renderer: &mut Renderer,
-) {
+) -> Result<()> {
     if scene.objects_sorted_by_z.len() == 0 {
         debug!("No objects, skipping drawing buckets");
-        return;
+        return Ok(());
     }
 
-    renderer.update_render_buffers(device, queue, &scene);
+    renderer.update_render_buffers(device, queue, &scene)?;
     renderer.draw_objects(render_pass, pipelines, scene.objects_sorted_by_z);
+    Ok(())
 }
 
 #[derive(Clone, Copy)]

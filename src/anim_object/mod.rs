@@ -1,5 +1,6 @@
 use super::types::*;
 use anim_op::AnimOP;
+use anyhow::{Context, Result};
 use glam::{Vec2, Vec3};
 use uuid::Uuid;
 
@@ -179,10 +180,9 @@ pub struct TransformUniform {
     pub rotation: f32,
 }
 impl Transform {
-    pub fn get_world_uniform(&self) -> TransformUniform {
+    pub fn get_world_uniform(&self) -> Result<TransformUniform> {
         self.world_uniform
-            .clone()
-            .expect("The world matrix wasn't cached yet")
+            .context("world uniform was not cached; call get_object_world_matrix first")
     }
     pub fn set_parent(&mut self, parent: Option<Uuid>) {
         self.parent = parent;

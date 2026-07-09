@@ -1,5 +1,40 @@
-use anyhow::Result;
-use ffmpeg::software::scaling::{context::Context, flag::Flags};
+//! Video encoding pipeline using FFmpeg.
+//!
+//! # Data flow
+//!
+//! ```text
+//! Input RGBA (from GPU readback)
+//!         │
+//!         ▼
+//!   ┌─────────────────┐
+//!   │  Push frame      │  memcpy from mapped buffer into ffmpeg frame
+//!   └────────┬────────┘
+//!            │
+//!            ▼
+//!   ┌─────────────────┐
+//!   │  RGBA → NV12     │  (optional, only for H264 codecs)
+//!   │  or              │
+//!   │  RGBA → YUV444P  │  (PRORES codec)
+//!   └────────┬────────┘
+//!            │
+//!            ▼
+//!   ┌─────────────────┐
+//!   │  encoder.send    │  FFmpeg video encoder (libx264, h264_nvenc, prores)
+//!   └────────┬────────┘
+//!            │
+//!            ▼
+//!   ┌─────────────────┐
+//!   │  packet.write    │  Interleaved mux into output container
+//!   └─────────────────┘
+//! ```
+//!
+//! The encoder runs on a dedicated [`spawn_blocking`] thread so that
+//! CPU-intensive encoding does not block the async rendering loop.
+//! A pair of mpsc channels coordinate buffer ownership: the renderer
+//! sends filled buffers, the encoder sends back freed buffer indices.
+
+use anyhow::{Context, Result};
+use ffmpeg::software::scaling::{context::Context as SwsContext, flag::Flags};
 
 use ffmpeg_next as ffmpeg;
 use log::{debug, info};
@@ -16,7 +51,7 @@ pub(crate) struct Encoder {
     width: u32,
     height: u32,
     frame_index: i64,
-    scaler: Option<Context>,
+    scaler: Option<SwsContext>,
     rgba_frame: ffmpeg::frame::Video,
     yuv_frame: ffmpeg::frame::Video,
     use_nv12: bool,
@@ -79,7 +114,7 @@ impl Encoder {
         let scaler = if use_nv12 {
             None
         } else {
-            Some(Context::get(
+            Some(SwsContext::get(
                 ffmpeg::format::Pixel::RGBA,
                 width,
                 height,
@@ -138,6 +173,12 @@ impl Encoder {
         let t0 = std::time::Instant::now();
 
         self.frame_index += 1;
+        debug!(
+            "push_frame: index={} pts={} size={}",
+            self.frame_index,
+            self.frame_index - 1,
+            bytes.len(),
+        );
 
         let t_mem = std::time::Instant::now();
         if self.use_nv12 {
@@ -217,7 +258,10 @@ impl Encoder {
             packet.set_stream(self.stream_index);
             packet.rescale_ts(
                 self.encoder.time_base(),
-                self.output.stream(self.stream_index).unwrap().time_base(),
+                self.output
+                    .stream(self.stream_index)
+                    .expect("video stream should exist")
+                    .time_base(),
             );
             packet.write_interleaved(&mut self.output)?;
         }
@@ -310,7 +354,10 @@ impl Encoder {
                 packet.set_stream(audio_stream_index);
                 packet.rescale_ts(
                     audio_encoder.time_base(),
-                    self.output.stream(audio_stream_index).unwrap().time_base(),
+                    self.output
+                        .stream(audio_stream_index)
+                        .expect("audio stream should exist")
+                        .time_base(),
                 );
                 packet.write_interleaved(&mut self.output)?;
             }
@@ -325,7 +372,10 @@ impl Encoder {
             packet.set_stream(audio_stream_index);
             packet.rescale_ts(
                 audio_encoder.time_base(),
-                self.output.stream(audio_stream_index).unwrap().time_base(),
+                self.output
+                    .stream(audio_stream_index)
+                    .expect("audio stream should exist")
+                    .time_base(),
             );
             packet.write_interleaved(&mut self.output)?;
         }
@@ -343,7 +393,10 @@ impl Encoder {
             packet.set_stream(self.stream_index);
             packet.rescale_ts(
                 self.encoder.time_base(),
-                self.output.stream(self.stream_index).unwrap().time_base(),
+                self.output
+                    .stream(self.stream_index)
+                    .expect("video stream should exist")
+                    .time_base(),
             );
             packet.write_interleaved(&mut self.output)?;
         }
@@ -378,7 +431,7 @@ impl Encoder {
         &mut self,
         mut buffer_to_encode_rc: Receiver<EncoderComunication>,
         free_buffers_sd: Sender<usize>,
-    ) {
+    ) -> Result<()> {
         debug!("Start Encoding Loop");
         while let Some(communication) = buffer_to_encode_rc.recv().await {
             debug!("Received For Encoding");
@@ -388,15 +441,16 @@ impl Encoder {
                 }
                 EncoderComunication::FrameData { bytes, id } => {
                     self.push_frame(&bytes)
-                        .expect("while pushing a new frame in the encoding loop");
+                        .context("during encode loop push_frame")?;
                     free_buffers_sd
                         .try_send(id)
-                        .expect("while sending free frame index in the encoding loop");
+                        .context("during encode loop free buffer send")?;
                 }
             }
         }
         debug!("Finished Encoding");
-        self.finish().expect("while finishing");
+        self.finish().context("during encode loop finish")?;
+        Ok(())
     }
 }
 fn setup_audio_stream(
@@ -435,35 +489,48 @@ pub fn start_encoding_task(
     audio_engine: Option<AudioEngine>,
 ) -> Result<()> {
     tokio_handle.spawn_blocking(move || {
-        let output =
-            ffmpeg::format::output(&encoding_settings.output_path).expect("invalid output path");
+        let output = match ffmpeg::format::output(&encoding_settings.output_path) {
+            Ok(o) => o,
+            Err(e) => {
+                log::error!("failed to open output path '{}': {e:?}", encoding_settings.output_path);
+                return;
+            }
+        };
 
-        let mut encoder = Encoder::new(
+        let mut encoder = match Encoder::new(
             encoding_settings,
             output,
             rendering_settings.width,
             rendering_settings.height,
             rendering_settings.fps,
             audio_engine,
-        )
-        .unwrap();
+        ) {
+            Ok(e) => e,
+            Err(e) => {
+                log::error!("failed to create encoder: {e:?}");
+                return;
+            }
+        };
 
-        // Need a blocking receiver instead of tokio Receiver
         while let Some(msg) = encoder_rec.blocking_recv() {
             match msg {
                 EncoderComunication::Finish => break,
-
                 EncoderComunication::FrameData { bytes, id } => {
-                    encoder.push_frame(&bytes).expect("encoding frame");
-
-                    renderer_send
-                        .blocking_send(id)
-                        .expect("sending free buffer");
+                    if let Err(e) = encoder.push_frame(&bytes) {
+                        log::error!("encoding frame {} failed: {e:?}", encoder.frame_index);
+                        return;
+                    }
+                    if let Err(e) = renderer_send.blocking_send(id) {
+                        log::error!("sending free buffer {} failed: {e:?}", id);
+                        return;
+                    }
                 }
             }
         }
 
-        encoder.finish().expect("finishing encoder");
+        if let Err(e) = encoder.finish() {
+            log::error!("finishing encoder failed: {e:?}");
+        }
         info!("encoding finished!");
     });
 

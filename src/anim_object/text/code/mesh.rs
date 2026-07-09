@@ -1,3 +1,4 @@
+use anyhow::{Context, Result};
 use glam::vec2;
 use uuid::Uuid;
 
@@ -15,10 +16,10 @@ pub fn generate_code_mesh(
     manager: &mut TextManager,
     id: Uuid,
     code: &mut Code,
-) -> (Vec<Vertex>, Vec<u32>, PipelineKind) {
+) -> Result<(Vec<Vertex>, Vec<u32>, PipelineKind)> {
     code.update_highlight_if_dirty(&mut manager.code_highlighter)
-        .expect("code highlighting did not succeed");
-    let buffer = manager.layout_code(code, id);
+        .context("code highlighting did not succeed")?;
+    let buffer = manager.layout_code(code, id)?;
     let scale = manager.scale;
 
     let reveal = code.anim_reveal;
@@ -350,7 +351,7 @@ pub fn generate_code_mesh(
         run_count
     );
 
-    (vertices, indices, PipelineKind::Text)
+    Ok((vertices, indices, PipelineKind::Text))
 }
 
 fn emit_quad(

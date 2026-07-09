@@ -144,7 +144,9 @@ impl AudioEngine {
                                     OUTPUT_SAMPLE_RATE,
                                 )?);
                             }
-                            let rsmpl = resampler.as_mut().unwrap();
+                            let rsmpl = resampler
+                                .as_mut()
+                                .expect("resampler was just initialized above");
                             let mut converted = ffmpeg::frame::Audio::empty();
                             let converted_valid = match rsmpl.run(&decoded, &mut converted) {
                                 Ok(_) => true,

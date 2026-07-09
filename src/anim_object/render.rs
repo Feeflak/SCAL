@@ -37,7 +37,9 @@ impl Animator {
         }
 
         let (render_data, mut indices) = {
-            let (vertives, indices, pipeline) = anim_data.generate_mesh(&mut self.text_manager);
+            let (vertives, indices, pipeline) = anim_data
+                .generate_mesh(&mut self.text_manager)
+                .context("generating mesh for new object")?;
 
             let vertex_base = self.vertices.len();
             let index_base = self.indices.len();
@@ -81,8 +83,10 @@ impl Animator {
             .context("object not found for mesh regeneration")?;
         let obj = &mut self.objects[obj_idx];
 
-        let (new_vertices_data, new_indices, pipeline) =
-            obj.anim_data.generate_mesh(&mut self.text_manager);
+        let (new_vertices_data, new_indices, pipeline) = obj
+            .anim_data
+            .generate_mesh(&mut self.text_manager)
+            .context("regenerating object mesh")?;
 
         let old_vert_start = obj.render_data.vertices_base_index;
         let old_vert_count = obj.render_data.vertices.len();

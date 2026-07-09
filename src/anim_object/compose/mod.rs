@@ -162,7 +162,7 @@ impl AnimObjectTrait for LayoutContainer {
         &mut self.transform
     }
     fn generate_mesh(&mut self, _mgr: &mut TextManager) -> MeshResult {
-        (vec![], vec![], PipelineKind::Shape)
+        Ok((vec![], vec![], PipelineKind::Shape))
     }
     fn bind_group_loader(&self) -> Option<BindGroupLoader> {
         None
@@ -418,7 +418,7 @@ pub fn layout_with_ids(
             .container
             .as_any()
             .downcast_ref::<LayoutContainer>()
-            .unwrap()
+            .expect("nested container should always be a LayoutContainer")
             .clone();
         relayout_nested_children(bg_size, &container, &mut nested.items);
     }

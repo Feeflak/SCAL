@@ -1,5 +1,6 @@
 use std::any::Any;
 
+use anyhow::Result;
 use glam::Vec2;
 use uuid::Uuid;
 
@@ -9,7 +10,7 @@ use crate::anim_object::{Transform, TransformUniform};
 use crate::anim_op::{AnimOP, CurrentClosure};
 use crate::renderer::{Index, Vertex};
 
-pub type MeshResult = (Vec<Vertex>, Vec<Index>, PipelineKind);
+pub type MeshResult = Result<(Vec<Vertex>, Vec<Index>, PipelineKind)>;
 
 pub trait AnimObjectTrait: Any + std::fmt::Debug + Send + Sync {
     fn transform(&self) -> &Transform;
@@ -49,7 +50,7 @@ impl AnimObj {
             closure: CurrentClosure(std::sync::Arc::new(closure)),
         }
     }
-    pub fn current_world_uniform(&self) -> TransformUniform {
+    pub fn current_world_uniform(&self) -> Result<TransformUniform> {
         self.transform().get_world_uniform()
     }
 }

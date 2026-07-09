@@ -35,7 +35,7 @@ impl AnimObjectTrait for Image {
         self.size
     }
     fn generate_mesh(&mut self, _mgr: &mut crate::anim_object::text::TextManager) -> MeshResult {
-        generate_image_mesh_data(self)
+        Ok(generate_image_mesh_data(self))
     }
     fn bind_group_loader(&self) -> Option<BindGroupLoader> {
         let path = self.path.clone();

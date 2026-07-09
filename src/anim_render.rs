@@ -172,7 +172,8 @@ pub async fn render_animations(
                 &queue,
                 scene,
                 &mut renderer,
-            );
+            )
+            .context("while drawing scene")?;
         }
         timing_render += t1.elapsed();
 
@@ -190,7 +191,7 @@ pub async fn render_animations(
             timing_submit += t_sub.elapsed();
 
             nv12.as_ref()
-                .unwrap()
+                .context("NV12 converter not initialized but codec requires NV12")?
                 .run_and_copy(&device, &queue, slot, encoder_send.clone());
         } else {
             copy_texture_to_buffer(

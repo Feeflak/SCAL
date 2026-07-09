@@ -1,3 +1,23 @@
+//! Animation timeline and scene graph.
+//!
+//! The [`Animator`] owns all scene objects, their transforms, and manages
+//! the animation timeline. Key design:
+//!
+//! - **Ownership**: Objects live in `objects: Vec<Object>`. The `objects_lookup`
+//!   maps `Uuid -> index` and is rebuilt every frame after z-sorting.
+//! - **Transforms**: Each object carries its own local `Transform`. World matrices
+//!   are computed on-demand in [`Animator::get_object_world_matrix()`] and cached
+//!   in [`ObjectRenderData::world_matrix_cache`].
+//! - **Cache lifetime**: The world-matrix cache is invalidated at the start of
+//!   each call to [`Animator::animate_next_frame()`] (set to `Mat4::ZERO`), then
+//!   lazily recomputed by [`Animator::update_object_matrix_cache()`].
+//! - **Update order**: `animate_next_frame()` → (run animation step) →
+//!   `update_object_matrix_cache()` → `sort_objects_by_z()`. This guarantees
+//!   that transform changes from the current frame are reflected before rendering.
+//! - **Dirty propagation**: Every frame recomputes *all* world matrices from
+//!   scratch. There is no dirty-flag system — correctness is simpler at the cost
+//!   of O(n×depth) for deep parent chains.
+
 use std::collections::HashMap;
 
 use crate::{
@@ -21,7 +41,7 @@ use crate::types::Color;
 use crate::anim_object::render::PipelineKind;
 use anyhow::{Context, Result, bail};
 use glam::Mat4;
-use log::debug;
+use log::{debug, info};
 use uuid::Uuid;
 #[derive(Debug, Clone)]
 pub struct Object {
@@ -156,7 +176,7 @@ impl Animator {
             }
         }
 
-        self.update_object_matrix_cache();
+        self.update_object_matrix_cache()?;
         self.sort_objects_by_z();
 
         let scene = Scene {
@@ -182,17 +202,24 @@ impl Animator {
             .map(|(i, obj)| (obj.anim_data.transform().uuid, i))
             .collect();
     }
-    pub fn update_object_matrix_cache(&mut self) {
+    pub fn update_object_matrix_cache(&mut self) -> Result<()> {
         self.objects
             .iter_mut()
             .for_each(|obj| obj.render_data.world_matrix_cache = Mat4::ZERO);
-        let objects = self.objects_lookup.clone();
-        for uuid in objects.keys() {
-            self.get_object_mut(uuid)
-                .unwrap()
+        let uuids: Vec<Uuid> = self.objects_lookup.keys().copied().collect();
+        let updated_count = uuids.len();
+        for uuid in &uuids {
+            let matrix = self.get_object_world_matrix(uuid)?;
+            self.get_object_mut(uuid)?
                 .render_data
-                .world_matrix_cache = self.get_object_world_matrix(&uuid).unwrap();
+                .world_matrix_cache = matrix;
         }
+        info!(
+            "update_object_matrix_cache: objects={}, updated={}",
+            self.objects.len(),
+            updated_count,
+        );
+        Ok(())
     }
 
     pub fn check_cycle(&self, child_uuid: &Uuid, parent_uuid: &Uuid) -> Result<()> {
