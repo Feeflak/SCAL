@@ -70,8 +70,8 @@ pub struct PositionBuilder {
 }
 
 impl PositionBuilder {
-    pub fn object(mut self, target: uuid::Uuid) -> Self {
-        self.object = Some(target);
+    pub fn object(mut self, target: impl Into<uuid::Uuid>) -> Self {
+        self.object = Some(target.into());
         self
     }
 
@@ -114,8 +114,8 @@ pub struct ScaleBuilder {
 }
 
 impl ScaleBuilder {
-    pub fn object(mut self, target: uuid::Uuid) -> Self {
-        self.object = Some(target);
+    pub fn object(mut self, target: impl Into<uuid::Uuid>) -> Self {
+        self.object = Some(target.into());
         self
     }
 

@@ -547,6 +547,13 @@ impl CodeWindowBuilder {
     pub fn build(self) -> CodeWindowHandle {
         let id = self.transform.uuid;
         let code_id = Uuid::new_v5(&id, b"code");
+        let close_btn_id = Uuid::new_v5(&id, b"close");
+        let minimize_btn_id = Uuid::new_v5(&id, b"minimize");
+        let maximize_btn_id = Uuid::new_v5(&id, b"maximize");
+        let title_id = Uuid::new_v5(&id, b"title");
+        let bg_id = Uuid::new_v5(&id, b"bg");
+        let container_id = Uuid::new_v5(&id, b"container");
+        let title_bar_bg_id = Uuid::new_v5(&id, b"title_bg");
         CodeWindowHandle(AnimObj {
             id,
             transform: self.transform,
@@ -562,6 +569,13 @@ impl CodeWindowBuilder {
                 height: self.height,
                 background_color: self.background_color,
                 code_id,
+                close_btn_id,
+                minimize_btn_id,
+                maximize_btn_id,
+                title_id,
+                bg_id,
+                container_id,
+                title_bar_bg_id,
                 show_line_numbers: self.show_line_numbers,
                 line_number_color: self.line_number_color,
             },

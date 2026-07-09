@@ -197,6 +197,13 @@ pub enum AnimObjKind {
         height: f32,
         background_color: Color,
         code_id: Uuid,
+        close_btn_id: Uuid,
+        minimize_btn_id: Uuid,
+        maximize_btn_id: Uuid,
+        title_id: Uuid,
+        bg_id: Uuid,
+        container_id: Uuid,
+        title_bar_bg_id: Uuid,
         show_line_numbers: bool,
         line_number_color: Color,
     },
@@ -322,6 +329,91 @@ impl CodeWindowHandle {
             duration: 1.0,
             ease: Ease::Linear,
             style: CodeAnimationStyle::TypeWriter,
+        }
+    }
+
+    fn sub_handle(&self, field_id: Uuid) -> SubObjectHandle {
+        SubObjectHandle(field_id)
+    }
+
+    pub fn close_button(&self) -> SubObjectHandle {
+        if let AnimObjKind::CodeWindow { close_btn_id, .. } = &self.0.kind {
+            self.sub_handle(*close_btn_id)
+        } else {
+            SubObjectHandle(self.0.id)
+        }
+    }
+    pub fn minimize_button(&self) -> SubObjectHandle {
+        if let AnimObjKind::CodeWindow { minimize_btn_id, .. } = &self.0.kind {
+            self.sub_handle(*minimize_btn_id)
+        } else {
+            SubObjectHandle(self.0.id)
+        }
+    }
+    pub fn maximize_button(&self) -> SubObjectHandle {
+        if let AnimObjKind::CodeWindow { maximize_btn_id, .. } = &self.0.kind {
+            self.sub_handle(*maximize_btn_id)
+        } else {
+            SubObjectHandle(self.0.id)
+        }
+    }
+    pub fn title_text(&self) -> SubObjectHandle {
+        if let AnimObjKind::CodeWindow { title_id, .. } = &self.0.kind {
+            self.sub_handle(*title_id)
+        } else {
+            SubObjectHandle(self.0.id)
+        }
+    }
+    pub fn window_background(&self) -> SubObjectHandle {
+        SubObjectHandle(self.0.id)
+    }
+    pub fn container(&self) -> SubObjectHandle {
+        if let AnimObjKind::CodeWindow { container_id, .. } = &self.0.kind {
+            self.sub_handle(*container_id)
+        } else {
+            SubObjectHandle(self.0.id)
+        }
+    }
+    pub fn title_bar_background(&self) -> SubObjectHandle {
+        if let AnimObjKind::CodeWindow { title_bar_bg_id, .. } = &self.0.kind {
+            self.sub_handle(*title_bar_bg_id)
+        } else {
+            SubObjectHandle(self.0.id)
+        }
+    }
+}
+
+pub struct SubObjectHandle(pub Uuid);
+
+impl From<SubObjectHandle> for Uuid {
+    fn from(h: SubObjectHandle) -> Uuid { h.0 }
+}
+
+impl SubObjectHandle {
+    pub fn position(&self) -> crate::transform::PositionBuilder {
+        crate::transform::PositionBuilder {
+            uuid: self.0,
+            target: None,
+            object: None,
+            duration: 1.0,
+            ease: Ease::Linear,
+        }
+    }
+    pub fn scale(&self) -> crate::transform::ScaleBuilder {
+        crate::transform::ScaleBuilder {
+            uuid: self.0,
+            target: None,
+            object: None,
+            duration: 1.0,
+            ease: Ease::Linear,
+        }
+    }
+    pub fn rotation(&self) -> crate::transform::RotateBuilder {
+        crate::transform::RotateBuilder {
+            uuid: self.0,
+            target: None,
+            duration: 1.0,
+            ease: Ease::Linear,
         }
     }
 }

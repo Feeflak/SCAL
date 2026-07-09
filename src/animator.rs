@@ -196,17 +196,17 @@ impl Animator {
         let index = self
             .objects_lookup
             .get(uuid)
-            .context("there was no object with that uuid")?;
+            .with_context(|| format!("there was no object with uuid {uuid}"))?;
 
         self.objects
             .get(*index)
-            .context("index from the object lookup was out of bounds ")
+            .context("index from the object lookup was out of bounds")
     }
     pub(crate) fn get_object_mut(&mut self, uuid: &Uuid) -> Result<&mut Object> {
         let index = self
             .objects_lookup
             .get(uuid)
-            .context("there was no object with that uuid")?;
+            .with_context(|| format!("there was no object with uuid {uuid}"))?;
         self.objects
             .get_mut(*index)
             .context("index from the object lookup was out of bounds ")

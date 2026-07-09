@@ -305,7 +305,10 @@ fn build_code_window_op(obj: scal_core::AnimObj, default_theme: &scal_core::Them
     if let AnimObjKind::CodeWindow {
         source_code, font_family, font_size, syntax, theme, title,
         title_font_size, width, height, background_color, code_id,
+        close_btn_id, minimize_btn_id, maximize_btn_id, title_id,
+        container_id, title_bar_bg_id,
         show_line_numbers, line_number_color,
+        ..
     } = obj.kind {
         let syn = match syntax {
             Syntax::Rust => crate::anim_object::text::code::Syntax::Rust,
@@ -331,6 +334,13 @@ fn build_code_window_op(obj: scal_core::AnimObj, default_theme: &scal_core::Them
             title_font_size,
             c(background_color),
             code_id,
+            close_btn_id,
+            minimize_btn_id,
+            maximize_btn_id,
+            title_id,
+            obj.id,
+            container_id,
+            title_bar_bg_id,
             show_line_numbers,
             c(line_number_color),
         );

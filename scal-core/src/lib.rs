@@ -14,7 +14,7 @@ pub mod theme;
 pub use color::Color;
 pub use ease::Ease;
 pub use anim_op::{AnimOP, CodeAnimationStyle, CodeHighlightAction, IntoAnimOp};
-pub use anim_obj::{AnimObj, CodeHandle, CodeWindowHandle, StretchMode, Syntax, TextAlign};
+pub use anim_obj::{AnimObj, CodeHandle, CodeWindowHandle, SubObjectHandle, StretchMode, Syntax, TextAlign};
 pub use transform::Transform;
 pub use camera::Camera;
 pub use project::{Project, SceneSettings};
@@ -26,7 +26,7 @@ pub use theme::{Base16, Theme};
 pub mod prelude {
     pub use crate::builders::*;
     pub use crate::anim_op::{wait, AnimOP, CodeAnimationStyle, CodeHighlightAction, IntoAnimOp};
-    pub use crate::anim_obj::{AnimObj, CodeHandle, CodeWindowHandle, StretchMode, Syntax, TextAlign};
+    pub use crate::anim_obj::{AnimObj, CodeHandle, CodeWindowHandle, SubObjectHandle, StretchMode, Syntax, TextAlign};
     pub use crate::color::Color;
     pub use crate::ease::Ease;
     pub use crate::theme::{Base16, Theme};
