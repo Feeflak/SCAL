@@ -39,7 +39,6 @@ members = [
         "./examples/code",
         "./examples/code_window",
         "./examples/image",
-        "./examples/ipc_simple",
         "./examples/simple",
         "./examples/svg",
 ]

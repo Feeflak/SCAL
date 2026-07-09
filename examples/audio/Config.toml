@@ -1,11 +1,11 @@
 [animation]
-binary = "cargo run --bin ipc_simple"
+binary = "cargo run -p audio"
 
 [rendering]
-width =  3840
+width = 3840
 height = 2160
 fps = 60
 
 [encoding]
-output_path = "output.mov"
+output_path = "test.mov"
 codec_type = "H264Nvenc"

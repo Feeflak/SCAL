@@ -1,73 +1,45 @@
-use anyhow::Result;
+use glam::Vec2;
+use scal_core::prelude::*;
 
-use glam::{Vec2, vec2, vec3};
-use log::{LevelFilter, info};
-use scal::{
-    anim_object::*,
-    projection::Camera,
-    types::Color,
-};
-use tokio::runtime::Handle;
+#[scal_ipc::main]
+fn main() -> Project {
+    let img = image()
+        .path("test.png")
+        .size(Vec2::new(800., 500.))
+        .color(Color::WHITE)
+        .stretch(StretchMode::Fill)
+        .pos(Vec2::new(400., 250.))
+        .z(1.)
+        .build();
 
-const LEVEL_FILTER: LevelFilter = LevelFilter::Info;
-pub const CANVAS_SIZE: Vec2 = vec2(1920., 1080.);
-#[tokio::main]
-async fn main() -> Result<()> {
-    let mut builder = colog::default_builder();
-    builder.filter_level(LEVEL_FILTER);
-    builder.init();
-    let handle = Handle::current();
+    let img2 = image()
+        .path("test.png")
+        .size(Vec2::new(800., 500.))
+        .color(Color::WHITE)
+        .stretch(StretchMode::Fit)
+        .pos(Vec2::new(800., 250.))
+        .z(1.)
+        .build();
 
-    let encoding_settings = scal::encoder::EncodingSettings {
-        output_path: "test.mov".to_string(),
-        codec_type: scal::encoder::CodecType::PRORES,
-    };
-    let rendering_settings = scal::renderer::RenderingSettings {
-        camera: Camera::new(CANVAS_SIZE, Vec2::ZERO, 1.),
-        background_color: Color::new(0.8, 0.8, 0.8, 0.),
-        buffer_count: 3,
-        width: 1920,
-        height: 1080,
-        fps: 60,
-        text_resolution_multiplier: 1.0,
-    };
+    let img_fit = image()
+        .path("test.png")
+        .size(Vec2::new(150., 200.))
+        .color(Color::new(1., 1., 0.8, 1.))
+        .stretch(StretchMode::Fit)
+        .pos(Vec2::new(1600., 250.))
+        .build();
 
-    let img = image(
-        Transform::new(None, vec3(400., 250., 1.), 0., Vec2::ONE),
-        "test.png".to_string(),
-        vec2(800., 500.),
-        Color::new(1., 1., 1., 1.),
-        scal::anim_object::image::StretchMode::Fill,
-    );
-
-    let img2 = image(
-        Transform::new(None, vec3(800., 250., 1.), 0., Vec2::ONE),
-        "test.png".to_string(),
-        vec2(800., 500.),
-        Color::new(1., 1., 1., 1.),
-        scal::anim_object::image::StretchMode::Fit,
-    );
-
-    let img_fit = image(
-        Transform::new(None, vec3(1600., 250., 0.), 0., Vec2::ONE),
-        "test.png".to_string(),
-        vec2(150., 200.),
-        Color::new(1., 1., 0.8, 1.),
-        scal::anim_object::image::StretchMode::Fit,
-    );
-
-    scal::run_loop(
-        &handle,
-        encoding_settings,
-        rendering_settings,
-        vec![
+    Project {
+        scene_settings: SceneSettings {
+            background_color: Color::new(0.8, 0.8, 0.8, 0.),
+            camera: Camera::new(Vec2::new(1920., 1080.), Vec2::ZERO, 1.),
+            default_theme: Theme::default(),
+        },
+        timeline: timeline![
             img.instantiate(),
             img2.instantiate(),
             img_fit.instantiate(),
-            wait(1.),
+            wait(1.s()),
         ],
-    )
-    .await?;
-    info!("Hello, world!");
-    Ok(())
+    }
 }

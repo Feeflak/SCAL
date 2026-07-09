@@ -157,12 +157,9 @@ dependencies = [
 name = "audio"
 version = "0.1.0"
 dependencies = [
- "anyhow",
- "colog",
  "glam",
- "log",
- "scal",
- "tokio",
+ "scal-core",
+ "scal-ipc",
 ]
 
 [[package]]
@@ -390,24 +387,18 @@ dependencies = [
 name = "code"
 version = "0.1.0"
 dependencies = [
- "anyhow",
- "colog",
  "glam",
- "log",
- "scal",
- "tokio",
+ "scal-core",
+ "scal-ipc",
 ]
 
 [[package]]
 name = "code_window"
 version = "0.1.0"
 dependencies = [
- "anyhow",
- "colog",
  "glam",
- "log",
- "scal",
- "tokio",
+ "scal-core",
+ "scal-ipc",
 ]
 
 [[package]]
@@ -1028,13 +1019,9 @@ checksum = "3d3067d79b975e8844ca9eb072e16b31c3c1c36928edf9c6789548c524d0d954"
 name = "image"
 version = "0.1.0"
 dependencies = [
- "anyhow",
- "colog",
  "glam",
- "image 0.25.10",
- "log",
- "scal",
- "tokio",
+ "scal-core",
+ "scal-ipc",
 ]
 
 [[package]]
@@ -1104,15 +1091,6 @@ dependencies = [
  "proc-macro2",
  "quote",
  "syn",
-]
-
-[[package]]
-name = "ipc_simple"
-version = "0.1.0"
-dependencies = [
- "glam",
- "scal-core",
- "scal-ipc",
 ]
 
 [[package]]
@@ -2297,13 +2275,9 @@ dependencies = [
 name = "simple"
 version = "0.1.0"
 dependencies = [
- "anyhow",
- "colog",
  "glam",
- "image 0.25.10",
- "log",
- "scal",
- "tokio",
+ "scal-core",
+ "scal-ipc",
 ]
 
 [[package]]
@@ -2418,13 +2392,9 @@ dependencies = [
 name = "svg"
 version = "0.1.0"
 dependencies = [
- "anyhow",
- "colog",
  "glam",
- "image 0.25.10",
- "log",
- "scal",
- "tokio",
+ "scal-core",
+ "scal-ipc",
 ]
 
 [[package]]
