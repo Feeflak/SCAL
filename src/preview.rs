@@ -584,10 +584,10 @@ impl PreviewRenderer {
                         label: Some("Preview Frame Encoder"),
                     });
 
-                // Just clear the screen and show UI
+                // Render current scene and UI
                 {
-                    let _rpass = encoder.begin_render_pass(&RenderPassDescriptor {
-                        label: Some("Clear Pass"),
+                    let mut rpass = encoder.begin_render_pass(&RenderPassDescriptor {
+                        label: Some("Scene Pass"),
                         color_attachments: &[Some(RenderPassColorAttachment {
                             view: &surface_view,
                             resolve_target: None,
@@ -607,9 +607,28 @@ impl PreviewRenderer {
                         occlusion_query_set: None,
                         multiview_mask: None,
                     });
+
+                    let scene = crate::animator::Scene {
+                        mesh_changed_this_frame: false,
+                        camera: &self.animator.camera,
+                        object_lookup: &self.animator.objects_lookup,
+                        objects_sorted_by_z: &self.animator.objects,
+                        vertices: &self.animator.vertices,
+                        indices: &self.animator.indices,
+                    };
+
+                    if let Err(e) = draw_scene(
+                        &mut rpass,
+                        &self.pipelines,
+                        &self.device,
+                        &self.queue,
+                        scene,
+                        &mut self.renderer,
+                    ) {
+                        log::error!("Render scene in pause: {e:#}");
+                    }
                 }
 
-                // UI only
                 self.build_ui_geometry();
                 if self.ui_index_count > 0 {
                     self.render_ui_pass(&mut encoder, &surface_view);
