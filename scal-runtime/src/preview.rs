@@ -99,6 +99,7 @@ fn run_event_loop(config: AnimationConfig, reload_rx: watch::Receiver<bool>) -> 
             cursor_pos: (0.0, 0.0),
             mouse_down: false,
             last_seek_time: std::time::Instant::now(),
+            modifiers: None,
             reload_rx: reload_rx.clone(),
             device: None,
             queue: None,
@@ -122,6 +123,7 @@ struct PreviewState {
     cursor_pos: (f64, f64),
     mouse_down: bool,
     last_seek_time: std::time::Instant,
+    modifiers: Option<winit::event::Modifiers>,
     reload_rx: watch::Receiver<bool>,
     device: Option<std::sync::Arc<wgpu::Device>>,
     queue: Option<std::sync::Arc<wgpu::Queue>>,
@@ -245,6 +247,9 @@ impl ApplicationHandler for PreviewState {
                     window.request_redraw();
                 }
             }
+            WindowEvent::ModifiersChanged(modifiers) => {
+                self.modifiers = Some(modifiers);
+            }
             WindowEvent::RedrawRequested => {
                 // Check for reload
                 if self.reload_requested {
@@ -277,7 +282,7 @@ impl ApplicationHandler for PreviewState {
             WindowEvent::KeyboardInput { ref event, .. }
                 if event.state == winit::event::ElementState::Pressed =>
             {
-                handle_keyboard(event, preview);
+                handle_keyboard(event, preview, self.modifiers);
                 self.needs_render = true;
                 if let Some(ref window) = self.window {
                     window.request_redraw();
@@ -346,29 +351,51 @@ fn seek_on_timeline(preview: &mut PreviewRenderer, window_size: (u32, u32), curs
     false
 }
 
-fn handle_keyboard(key_event: &winit::event::KeyEvent, preview: &mut PreviewRenderer) {
+fn seek_by_seconds(preview: &mut PreviewRenderer, offset: f32) {
+    let new_time = (preview.current_time() + offset).clamp(0.0, preview.total_duration());
+    if let Err(e) = preview.seek_to(new_time) {
+        log::error!("Seek error: {e}");
+    }
+}
+
+fn handle_keyboard(
+    key_event: &winit::event::KeyEvent,
+    preview: &mut PreviewRenderer,
+    modifiers: Option<winit::event::Modifiers>,
+) {
+    let shift = modifiers
+        .as_ref()
+        .map_or(false, |m| m.state().intersects(winit::keyboard::ModifiersState::SHIFT));
     match &key_event.logical_key {
         Key::Named(NamedKey::Space) => {
             let was_paused = preview.is_paused();
             preview.toggle_pause();
             log::info!("{}", if was_paused { "Playing" } else { "Paused" });
         }
+        Key::Named(NamedKey::ArrowRight) if shift => seek_by_seconds(preview, 1.0),
         Key::Named(NamedKey::ArrowRight) => {
             if let Err(e) = preview.step_forward() {
                 log::error!("Step forward error: {e}");
             }
         }
+        Key::Named(NamedKey::ArrowLeft) if shift => seek_by_seconds(preview, -1.0),
         Key::Named(NamedKey::ArrowLeft) => {
             if let Err(e) = preview.step_backward() {
                 log::error!("Step backward error: {e}");
             }
         }
-        Key::Character(c) if c == "l" => {
+        Key::Character(c) if (c == "l" || c == "L") && shift => {
+            seek_by_seconds(preview, 1.0)
+        }
+        Key::Character(c) if c == "l" || c == "L" => {
             if let Err(e) = preview.step_forward() {
                 log::error!("Step forward error: {e}");
             }
         }
-        Key::Character(c) if c == "h" => {
+        Key::Character(c) if (c == "h" || c == "H") && shift => {
+            seek_by_seconds(preview, -1.0)
+        }
+        Key::Character(c) if c == "h" || c == "H" => {
             if let Err(e) = preview.step_backward() {
                 log::error!("Step backward error: {e}");
             }
