@@ -774,7 +774,26 @@ impl PreviewRenderer {
     pub fn step_forward(&mut self) -> Result<bool> {
         self.paused = true;
         if self.current_frame < self.total_frames {
-            self.advance_render_present()
+            let frame_data = self.animator.animate_next_frame()
+                .context("while stepping forward")?;
+            match frame_data {
+                Some(data) => {
+                    self.current_frame += 1;
+                    if self.current_frame >= self.total_frames {
+                        self.finished = true;
+                    }
+                    if let Some(glyph_data) = data.glyph_update_data {
+                        self.text_renderer
+                            .update_glyphs_if_needed(glyph_data, &self.queue);
+                    }
+                }
+                None => {
+                    self.finished = true;
+                    return Ok(false);
+                }
+            }
+            self.frame_rendered = false;
+            Ok(true)
         } else {
             Ok(false)
         }

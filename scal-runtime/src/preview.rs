@@ -89,21 +89,23 @@ fn run_event_loop(config: AnimationConfig, reload_rx: watch::Receiver<bool>) -> 
         .build()
         .context("Failed to create event loop")?;
 
-    let mut state = PreviewState {
-        config: Some(config),
-        preview: None,
-        window: None,
-        window_size: (0, 0),
-        needs_render: true,
-        reload_requested: false,
-        cursor_pos: (0.0, 0.0),
-        reload_rx: reload_rx.clone(),
-        device: None,
-        queue: None,
-        instance: None,
-        binary: None,
-        default_theme: None,
-    };
+        let mut state = PreviewState {
+            config: Some(config),
+            preview: None,
+            window: None,
+            window_size: (0, 0),
+            needs_render: true,
+            reload_requested: false,
+            cursor_pos: (0.0, 0.0),
+            mouse_down: false,
+            last_seek_time: std::time::Instant::now(),
+            reload_rx: reload_rx.clone(),
+            device: None,
+            queue: None,
+            instance: None,
+            binary: None,
+            default_theme: None,
+        };
 
     event_loop
         .run_app(&mut state)
@@ -118,6 +120,8 @@ struct PreviewState {
     needs_render: bool,
     reload_requested: bool,
     cursor_pos: (f64, f64),
+    mouse_down: bool,
+    last_seek_time: std::time::Instant,
     reload_rx: watch::Receiver<bool>,
     device: Option<std::sync::Arc<wgpu::Device>>,
     queue: Option<std::sync::Arc<wgpu::Queue>>,
@@ -281,29 +285,34 @@ impl ApplicationHandler for PreviewState {
             }
             WindowEvent::CursorMoved { position, .. } => {
                 self.cursor_pos = (position.x, position.y);
+                if self.mouse_down
+                    && self.last_seek_time.elapsed() >= std::time::Duration::from_millis(33)
+                    && seek_on_timeline(preview, self.window_size, self.cursor_pos)
+                {
+                    self.last_seek_time = std::time::Instant::now();
+                    if let Some(ref window) = self.window {
+                        window.request_redraw();
+                    }
+                }
             }
             WindowEvent::MouseInput {
                 state: winit::event::ElementState::Pressed,
                 button: winit::event::MouseButton::Left,
                 ..
             } => {
-                let (ww, wh) = self.window_size;
-                if ww > 0 && wh > 0 {
-                    let (cx, cy) = self.cursor_pos;
-                    let timeline_top = wh as f64 - 48.0;
-                    if cy >= timeline_top && cy <= wh as f64 {
-                        let click_ratio = (cx / ww as f64).clamp(0.0, 1.0);
-                        let total_dur = preview.total_duration();
-                        let seek_time = click_ratio as f32 * total_dur;
-                        if let Err(e) = preview.seek_to(seek_time) {
-                            log::error!("Seek error: {e}");
-                        }
-                        self.needs_render = true;
-                        if let Some(ref window) = self.window {
-                            window.request_redraw();
-                        }
+                self.mouse_down = true;
+                if seek_on_timeline(preview, self.window_size, self.cursor_pos) {
+                    if let Some(ref window) = self.window {
+                        window.request_redraw();
                     }
                 }
+            }
+            WindowEvent::MouseInput {
+                state: winit::event::ElementState::Released,
+                button: winit::event::MouseButton::Left,
+                ..
+            } => {
+                self.mouse_down = false;
             }
             _ => {}
         }
@@ -319,6 +328,24 @@ impl ApplicationHandler for PreviewState {
     }
 }
 
+fn seek_on_timeline(preview: &mut PreviewRenderer, window_size: (u32, u32), cursor_pos: (f64, f64)) -> bool {
+    let (ww, wh) = window_size;
+    if ww > 0 && wh > 0 {
+        let (cx, cy) = cursor_pos;
+        let timeline_top = wh as f64 - 48.0;
+        if cy >= timeline_top && cy <= wh as f64 {
+            let click_ratio = (cx / ww as f64).clamp(0.0, 1.0);
+            let total_dur = preview.total_duration();
+            let seek_time = click_ratio as f32 * total_dur;
+            if let Err(e) = preview.seek_to(seek_time) {
+                log::error!("Seek error: {e}");
+            }
+            return true;
+        }
+    }
+    false
+}
+
 fn handle_keyboard(key_event: &winit::event::KeyEvent, preview: &mut PreviewRenderer) {
     match &key_event.logical_key {
         Key::Named(NamedKey::Space) => {
@@ -327,9 +354,21 @@ fn handle_keyboard(key_event: &winit::event::KeyEvent, preview: &mut PreviewRend
             log::info!("{}", if was_paused { "Playing" } else { "Paused" });
         }
         Key::Named(NamedKey::ArrowRight) => {
-            let _ = preview.step_forward();
+            if let Err(e) = preview.step_forward() {
+                log::error!("Step forward error: {e}");
+            }
         }
         Key::Named(NamedKey::ArrowLeft) => {
+            if let Err(e) = preview.step_backward() {
+                log::error!("Step backward error: {e}");
+            }
+        }
+        Key::Character(c) if c == "l" => {
+            if let Err(e) = preview.step_forward() {
+                log::error!("Step forward error: {e}");
+            }
+        }
+        Key::Character(c) if c == "h" => {
             if let Err(e) = preview.step_backward() {
                 log::error!("Step backward error: {e}");
             }
