@@ -609,7 +609,7 @@ impl PreviewRenderer {
                     });
 
                     let scene = crate::animator::Scene {
-                        mesh_changed_this_frame: false,
+                        mesh_changed_this_frame: true,
                         camera: &self.animator.camera,
                         object_lookup: &self.animator.objects_lookup,
                         objects_sorted_by_z: &self.animator.objects,
