@@ -1,7 +1,7 @@
 pub mod code;
 mod transform;
 
-use anyhow::Result;
+use anyhow::{Context, Result};
 use glam::{Vec2, Vec4Swizzles, vec3};
 use log::debug;
 use uuid::Uuid;
@@ -182,10 +182,12 @@ pub fn get_sequence_animation(ops: Vec<AnimOP>) -> Result<Animation> {
         let loc_ops = ops.to_owned();
         move |animator: &mut Animator, store: &mut Vec<f32>| {
             store.clear();
-            for op in loc_ops.to_owned() {
+            for (child_idx, op) in loc_ops.to_owned().into_iter().enumerate() {
+                let op_debug = format!("{op:?}");
                 let anim: Animation = op.try_into()?;
                 let mut data = vec![];
-                (*anim.start)(animator, &mut data)?;
+                (*anim.start)(animator, &mut data)
+                    .with_context(|| format!("child[{child_idx}] start failed for op {op_debug}"))?;
                 store.push(data.len() as f32);
                 store.append(&mut data);
             }
@@ -203,7 +205,9 @@ pub fn get_sequence_animation(ops: Vec<AnimOP>) -> Result<Animation> {
                 let mut store_index = 0;
 
                 for (i, op) in ops_clone.iter().enumerate() {
-                    let anim: Animation = op.to_owned().try_into()?;
+                    let op_debug = format!("{op:?}");
+                    let anim: Animation = op.to_owned().try_into()
+                        .with_context(|| format!("failed to convert child[{i}] op {op_debug}"))?;
                     let to_read = store[store_index] as usize;
                     let child_duration = durations[i];
 
@@ -215,7 +219,8 @@ pub fn get_sequence_animation(ops: Vec<AnimOP>) -> Result<Animation> {
                         let mut temp_store =
                             store[store_index + 1..store_index + 1 + to_read].to_vec();
                         if let Some(update) = anim.update {
-                            (*update)(animator, local_t, &mut temp_store)?;
+                            (*update)(animator, local_t, &mut temp_store)
+                                .with_context(|| format!("child[{i}] update failed for op {op_debug}"))?;
                         }
                         store[store_index + 1..store_index + 1 + to_read]
                             .copy_from_slice(&temp_store);
@@ -252,10 +257,12 @@ pub fn get_all_animation(ops: Vec<AnimOP>) -> Result<Animation> {
         let loc_ops = ops.to_owned();
         move |animator: &mut Animator, store: &mut Vec<f32>| {
             store.clear();
-            for op in loc_ops.to_owned() {
+            for (child_idx, op) in loc_ops.to_owned().into_iter().enumerate() {
+                let op_debug = format!("{op:?}");
                 let anim: Animation = op.try_into()?;
                 let mut data = vec![];
-                (*anim.start)(animator, &mut data)?;
+                (*anim.start)(animator, &mut data)
+                    .with_context(|| format!("child[{child_idx}] start failed for op {op_debug}"))?;
                 store.push(data.len() as f32);
                 store.append(&mut data);
             }
@@ -267,8 +274,10 @@ pub fn get_all_animation(ops: Vec<AnimOP>) -> Result<Animation> {
             move |animator: &mut Animator, t: f32, store: &mut Vec<f32>| {
                 let mut updated_store = vec![];
                 let mut store_index = 0;
-                for op in ops.to_owned() {
-                    let anim: Animation = op.try_into()?;
+                for (child_idx, op) in ops.to_owned().into_iter().enumerate() {
+                    let op_debug = format!("{op:?}");
+                    let anim: Animation = op.try_into()
+                        .with_context(|| format!("failed to convert child[{child_idx}] op {op_debug}"))?;
                     if let Some(update) = anim.update {
                         let to_read = store[store_index] as usize;
                         // +1 to skip the to_read;

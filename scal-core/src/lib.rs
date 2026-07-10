@@ -1,3 +1,6 @@
+#![warn(missing_docs)]
+#![warn(clippy::pedantic)]
+#![warn(clippy::nursery)]
 pub mod anim_obj;
 pub mod anim_op;
 pub mod builders;

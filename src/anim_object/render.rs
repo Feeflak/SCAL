@@ -26,6 +26,7 @@ pub enum PipelineKind {
 impl Animator {
     pub fn add_anim_object(&mut self, mut anim_data: AnimObj) -> Result<()> {
         let id = anim_data.uuid();
+        debug!("add_anim_object uuid={id} objects_len={}", self.objects.len());
 
         if let Some(container) = anim_data.as_any().downcast_ref::<LayoutContainer>() {
             self.layout_containers

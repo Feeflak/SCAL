@@ -125,7 +125,7 @@ pub async fn render_animations(
         let t0 = std::time::Instant::now();
         let frame_animation_data = animator
             .animate_next_frame()
-            .context("while rendering next frame")?;
+            .with_context(|| format!("while rendering frame {}", frame_count + 1))?;
         timing_animation += t0.elapsed();
 
         let frame_animation_data = match frame_animation_data {

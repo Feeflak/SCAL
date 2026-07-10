@@ -37,6 +37,18 @@
           ];
           shellHook = ''
             export LIBCLANG_PATH="${pkgs.llvmPackages.libclang.lib}/lib"
+
+            export LD_LIBRARY_PATH="${
+              pkgs.lib.makeLibraryPath [
+                pkgs.wayland
+                pkgs.libxkbcommon
+                pkgs.xorg.libX11
+                pkgs.xorg.libXcursor
+                pkgs.xorg.libXi
+                pkgs.xorg.libXrandr
+                pkgs.xorg.libxcb
+              ]
+            }:$LD_LIBRARY_PATH"
           '';
           nativeBuildInputs = with pkgs; [
             pkg-config

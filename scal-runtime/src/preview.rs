@@ -19,18 +19,17 @@ use winit::platform::wayland::EventLoopBuilderExtWayland;
 use crate::Config;
 
 pub async fn run_preview(config: Config) -> Result<()> {
-    // Initial load of the animation binary
     let (project, default_theme) = load_animation(&config.animation.binary).await?;
-    let win_scale = 0.5f64;
+
+    let win_scale = 0.5;
     let win_w = (config.rendering.width as f64 * win_scale) as u32;
     let win_h = (config.rendering.height as f64 * win_scale) as u32;
 
-    // Start file watcher
     let (reload_tx, reload_rx) = watch::channel(false);
     let watch_dir = std::env::current_dir().context("Failed to get current dir")?;
+
     let _watcher_handle = start_file_watcher(watch_dir, reload_tx);
 
-    // Move the event loop to a dedicated thread
     let th_config = AnimationConfig {
         win_w: win_w.max(100),
         win_h: win_h.max(100),
@@ -52,20 +51,10 @@ pub async fn run_preview(config: Config) -> Result<()> {
             &project.scene_settings.default_theme,
         )?,
         binary: config.animation.binary.clone(),
-        default_theme: default_theme,
+        default_theme,
     };
 
-    std::thread::Builder::new()
-        .name("preview-window".into())
-        .spawn(move || {
-            let result = run_event_loop(th_config, reload_rx);
-            if let Err(e) = result {
-                log::error!("Preview error: {e}");
-            }
-        })
-        .context("Failed to spawn preview thread")?;
-
-    Ok(())
+    run_event_loop(th_config, reload_rx)
 }
 
 struct AnimationConfig {
@@ -274,7 +263,7 @@ impl ApplicationHandler for PreviewState {
                         }
                     }
                     Err(e) => {
-                        log::error!("Render error: {e}");
+                        log::error!("Render error: {e:#}");
                     }
                 }
                 if let Some(ref window) = self.window {

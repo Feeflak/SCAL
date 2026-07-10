@@ -208,8 +208,11 @@ impl PreviewRenderer {
             .bind_groups
             .push(text_renderer.bind_group.clone());
 
+        // Animator::new pops from the end, so we need to reverse
+        let mut anims_for_animator = animations.clone();
+        anims_for_animator.reverse();
         let animator = Animator::new(
-            animations.clone(),
+            anims_for_animator,
             fps,
             camera,
             text_resolution_multiplier,
@@ -458,7 +461,11 @@ impl PreviewRenderer {
         let have_scene = if !self.paused && self.current_frame < self.total_frames {
             // Advance the animator
             let frame_data = self.animator.animate_next_frame()
-                .context("while advancing animation frame")?;
+                .with_context(|| format!(
+                    "while advancing animation frame {}/{}",
+                    self.current_frame + 1,
+                    self.total_frames,
+                ))?;
 
             match frame_data {
                 Some(data) => {
@@ -678,8 +685,11 @@ impl PreviewRenderer {
         self.finished = false;
         self.frame_rendered = false;
 
+        // Animator::new pops from the end, so we need to reverse
+        let mut anims_for_animator = self.original_animations.clone();
+        anims_for_animator.reverse();
         let mut animator = Animator::new(
-            self.original_animations.clone(),
+            anims_for_animator,
             self.fps,
             self.camera,
             self.text_resolution_multiplier,
@@ -783,8 +793,11 @@ impl PreviewRenderer {
         self.paused = false;
         self.frame_rendered = false;
 
+        // Animator::new pops from the end, so we need to reverse
+        let mut anims_for_animator = self.original_animations.clone();
+        anims_for_animator.reverse();
         self.animator = Animator::new(
-            self.original_animations.clone(),
+            anims_for_animator,
             self.fps,
             self.camera,
             self.text_resolution_multiplier,

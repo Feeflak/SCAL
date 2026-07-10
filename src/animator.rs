@@ -20,6 +20,12 @@
 
 use std::collections::HashMap;
 
+#[cfg(test)]
+use crate::anim_object::primitive_shapes::Rectangle;
+#[cfg(test)]
+use crate::anim_object::render::PipelineKind;
+#[cfg(test)]
+use crate::types::Color;
 use crate::{
     anim_object::{
         Transform,
@@ -33,12 +39,6 @@ use crate::{
     projection::Camera,
     renderer::{Index, Vertex},
 };
-#[cfg(test)]
-use crate::anim_object::primitive_shapes::Rectangle;
-#[cfg(test)]
-use crate::types::Color;
-#[cfg(test)]
-use crate::anim_object::render::PipelineKind;
 use anyhow::{Context, Result, bail};
 use glam::Mat4;
 use log::{debug, info};
@@ -126,7 +126,8 @@ impl Animator {
         );
 
         loop {
-            let animation: Animation = self.anim_state.anim_op.clone().try_into()?;
+            let animation: Animation = self.anim_state.anim_op.clone().try_into()
+                .context("while converting anim_op to animation for the next frame")?;
 
             let mut storage = self.anim_state.storage.clone();
 
@@ -176,7 +177,8 @@ impl Animator {
             }
         }
 
-        self.update_object_matrix_cache()?;
+        self.update_object_matrix_cache()
+            .context("while updating object matrix caches")?;
         self.sort_objects_by_z();
 
         let scene = Scene {
@@ -210,11 +212,9 @@ impl Animator {
         let updated_count = uuids.len();
         for uuid in &uuids {
             let matrix = self.get_object_world_matrix(uuid)?;
-            self.get_object_mut(uuid)?
-                .render_data
-                .world_matrix_cache = matrix;
+            self.get_object_mut(uuid)?.render_data.world_matrix_cache = matrix;
         }
-        info!(
+        debug!(
             "update_object_matrix_cache: objects={}, updated={}",
             self.objects.len(),
             updated_count,
