@@ -172,29 +172,15 @@ impl From<PlaySoundBuilder> for AnimOP {
 }
 
 #[macro_export]
-macro_rules! timeline {
-    ( $( $item:expr ),* $(,)? ) => {
-        vec![ $( {
-            let __op = $crate::IntoAnimOp::into_anim_op($item);
-            __op.with_location($crate::SourceLoc {
-                file: file!().to_string(),
-                line: line!(),
-                col: column!(),
-            })
-        } ),* ]
-    };
-}
-
-#[macro_export]
 macro_rules! parallel {
     ( $( $op:expr ),* $(,)? ) => {
-        $crate::AnimOP::All(timeline![ $( $op ),* ], None)
+        $crate::AnimOP::All($crate::timeline![ $( $op ),* ], None)
     };
 }
 
 #[macro_export]
 macro_rules! sequence {
     ( $( $op:expr ),* $(,)? ) => {
-        $crate::AnimOP::Sequence(timeline![ $( $op ),* ], None)
+        $crate::AnimOP::Sequence($crate::timeline![ $( $op ),* ], None)
     };
 }

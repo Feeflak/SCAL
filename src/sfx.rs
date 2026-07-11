@@ -14,6 +14,7 @@ pub struct ScheduledSound {
     pub start_time: Seconds,
     pub seek_offset: Seconds,
     pub duration: Seconds,
+    pub source_loc: Option<scal_core::SourceLoc>,
 }
 
 pub struct AudioEngine {
@@ -387,7 +388,7 @@ pub fn compute_waveform(pcm: &[f32], num_samples: usize) -> Vec<f32> {
 pub fn collect_sounds_from_ops(ops: &[super::anim_op::AnimOP]) -> Vec<ScheduledSound> {
     fn end_time(op: &super::anim_op::AnimOP, t: f32, out: &mut Vec<ScheduledSound>) -> f32 {
         match op {
-            super::anim_op::AnimOP::PlaySound(sfx, delay, _) => {
+            super::anim_op::AnimOP::PlaySound(sfx, delay, source_loc) => {
                 let abs_time = t + delay;
                 let pitch = if sfx.pitch_variation > 0.0 {
                     use rand::Rng;
@@ -404,6 +405,7 @@ pub fn collect_sounds_from_ops(ops: &[super::anim_op::AnimOP]) -> Vec<ScheduledS
                     start_time: abs_time,
                     seek_offset: sfx.time_offset,
                     duration: sfx.duration,
+                    source_loc: source_loc.clone(),
                 };
                 out.push(scheduled);
                 t

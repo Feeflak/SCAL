@@ -43,13 +43,23 @@ pub enum OpKind {
     Composite,
 }
 
+#[derive(Clone, Debug)]
+pub struct SoundMarker {
+    pub start: f32,
+    pub end: Option<f32>,
+    pub file: String,
+    pub line: u32,
+    pub name: String,
+}
+
 const UI_TIMELINE_HEIGHT: f32 = 80.0;
-const UI_TIMELINE_TICK_HEIGHT: f32 = 8.0;
+
+
 const UI_OPERATION_MARKER_HEIGHT: f32 = 20.0;
 const UI_PLAYHEAD_WIDTH: f32 = 2.0;
 
-const UI_TIME_TEXT_FONT_SIZE: f32 = 15.0;
-const UI_TIME_TEXT_HEIGHT: f32 = 20.0;
+const UI_TIME_TEXT_FONT_SIZE: f32 = 17.0;
+const UI_TIME_TEXT_HEIGHT: f32 = 22.0;
 
 #[repr(C)]
 #[derive(Copy, Clone, Debug, bytemuck::Pod, bytemuck::Zeroable)]
@@ -71,9 +81,9 @@ fn op_label(op: &AnimOP) -> &'static str {
         AnimOP::TransformMovePos(..) | AnimOP::TransformMoveToObj(..) => "Move",
         AnimOP::TransformRotate(..) => "Rotate",
         AnimOP::TransformScale(..) => "Scale",
-        AnimOP::CodeAddLines(..) => "Code+",
-        AnimOP::CodeModifyLine(..) => "Code~",
-        AnimOP::CodeRemoveLines(..) => "Code-",
+        AnimOP::CodeAddLines(..) => "Add Lines",
+        AnimOP::CodeModifyLine(..) => "Modify Line",
+        AnimOP::CodeRemoveLines(..) => "Remove Lines",
         AnimOP::CodeHighlight(..) => "Highlight",
         AnimOP::Current { .. } => "Snapshot",
         AnimOP::All(..) => "All",
@@ -195,6 +205,10 @@ struct TimeTextAtlas {
     atlas_height: u32,
     pixels: Vec<u8>,
     dirty: bool,
+    overlay_texture: Option<wgpu::Texture>,
+    overlay_bind_group: Option<wgpu::BindGroup>,
+    overlay_width: f32,
+    overlay_height: f32,
 }
 
 impl TimeTextAtlas {
@@ -269,6 +283,10 @@ impl TimeTextAtlas {
             atlas_height: 1,
             pixels: Vec::new(),
             dirty: true,
+            overlay_texture: None,
+            overlay_bind_group: None,
+            overlay_width: 0.0,
+            overlay_height: 0.0,
         }
     }
 
@@ -304,7 +322,7 @@ impl TimeTextAtlas {
 
         for run in buffer.layout_runs() {
             for glyph in run.glyphs.iter() {
-                let physical = glyph.physical((0.0, 0.0), 1.0);
+                let physical = glyph.physical((0.0, run.line_y), 1.0);
                 if let Some(image) = self.swash_cache.get_image(&mut self.font_system, physical.cache_key) {
                     let place = image.placement;
                     for row in 0..place.height as u32 {
@@ -313,8 +331,7 @@ impl TimeTextAtlas {
                             if src_idx < image.data.len() {
                                 let alpha = image.data[src_idx];
                                 let dx = (physical.x as i32 + col as i32) as i32;
-                                let dy = (physical.y as i32 - place.height as i32
-                                    + place.top as i32 + row as i32)
+                                let dy = (physical.y as i32 - place.top as i32 + row as i32)
                                     as i32;
                                 if dx >= 0 && dy >= 0 && dx < w as i32 && dy < h as i32 {
                                     let dst_idx = (dy as u32 * w + dx as u32) as usize;
@@ -458,6 +475,63 @@ impl TimeTextAtlas {
         self.bind_group = Some(bind_group);
     }
 
+    fn set_overlay_text(&mut self, device: &wgpu::Device, queue: &wgpu::Queue, text: &str) {
+        let (canvas, w, h) = self.rasterize_text(text, UI_TIME_TEXT_FONT_SIZE);
+        let w = w.max(1);
+        let h = h.max(1);
+        let texture = device.create_texture(&wgpu::TextureDescriptor {
+            label: Some("overlay text"),
+            size: wgpu::Extent3d { width: w, height: h, depth_or_array_layers: 1 },
+            mip_level_count: 1,
+            sample_count: 1,
+            dimension: wgpu::TextureDimension::D2,
+            format: wgpu::TextureFormat::R8Unorm,
+            usage: wgpu::TextureUsages::TEXTURE_BINDING | wgpu::TextureUsages::COPY_DST,
+            view_formats: &[],
+        });
+        queue.write_texture(
+            wgpu::TexelCopyTextureInfo {
+                texture: &texture,
+                mip_level: 0,
+                origin: wgpu::Origin3d::ZERO,
+                aspect: wgpu::TextureAspect::All,
+            },
+            &canvas,
+            wgpu::TexelCopyBufferLayout {
+                offset: 0,
+                bytes_per_row: Some(w),
+                rows_per_image: Some(h),
+            },
+            wgpu::Extent3d { width: w, height: h, depth_or_array_layers: 1 },
+        );
+        let view = texture.create_view(&wgpu::TextureViewDescriptor::default());
+        let bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
+            label: Some("overlay text bind group"),
+            layout: &self.bind_group_layout,
+            entries: &[
+                wgpu::BindGroupEntry {
+                    binding: 0,
+                    resource: wgpu::BindingResource::TextureView(&view),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 1,
+                    resource: wgpu::BindingResource::Sampler(&self.sampler),
+                },
+            ],
+        });
+        self.overlay_texture = Some(texture);
+        self.overlay_bind_group = Some(bind_group);
+        self.overlay_width = w as f32;
+        self.overlay_height = h as f32;
+    }
+
+    fn clear_overlay(&mut self) {
+        self.overlay_texture = None;
+        self.overlay_bind_group = None;
+        self.overlay_width = 0.0;
+        self.overlay_height = 0.0;
+    }
+
 }
 
 fn compute_time_mark_interval(visible_duration: f32, target_marks: u32) -> f32 {
@@ -502,7 +576,7 @@ pub struct PreviewRenderer {
 
     audio_player: Option<AudioPlayer>,
     waveform: Vec<f32>,
-    sound_markers: Vec<(f32, Option<f32>)>,
+    sound_markers: Vec<SoundMarker>,
 
     ui_pipeline: RenderPipeline,
     ui_bind_group_layout: wgpu::BindGroupLayout,
@@ -510,8 +584,12 @@ pub struct PreviewRenderer {
     ui_vertex_buffer: Option<wgpu::Buffer>,
     ui_index_buffer: Option<wgpu::Buffer>,
     ui_index_count: u32,
+    ui_overlay_start: u32,
 
     selected_op_info: Option<String>,
+    overlay_file: String,
+    overlay_line: u32,
+    overlay_anim_type: String,
 
     time_scale: f32,
     time_text_atlas: TimeTextAtlas,
@@ -596,17 +674,26 @@ impl PreviewRenderer {
             ui_vertex_buffer: None,
             ui_index_buffer: None,
             ui_index_count: 0,
+            ui_overlay_start: 0,
             selected_op_info: None,
+            overlay_file: String::new(),
+            overlay_line: 0,
+            overlay_anim_type: String::new(),
             time_scale: 1.0,
             time_text_atlas,
         })
     }
 
-    fn init_audio(animations: &[AnimOP], timeline_width: u32, initially_paused: bool) -> (Option<AudioPlayer>, Vec<f32>, Vec<(f32, Option<f32>)>) {
+    fn init_audio(animations: &[AnimOP], timeline_width: u32, initially_paused: bool) -> (Option<AudioPlayer>, Vec<f32>, Vec<SoundMarker>) {
         let sounds = collect_sounds_from_ops(animations);
-        let sound_markers: Vec<(f32, Option<f32>)> = sounds.iter().map(|s| {
+        let sound_markers: Vec<SoundMarker> = sounds.iter().map(|s| {
             let end = if s.duration > 0.0 { Some(s.start_time + s.duration) } else { None };
-            (s.start_time, end)
+            let (file, line) = match &s.source_loc {
+                Some(loc) => (loc.file.clone(), loc.line),
+                None => (String::new(), 0),
+            };
+            let name = s.path.rsplit('/').next().unwrap_or(&s.path).to_string();
+            SoundMarker { start: s.start_time, end, file, line, name }
         }).collect();
         if sounds.is_empty() {
             return (None, vec![], sound_markers);
@@ -622,7 +709,7 @@ impl PreviewRenderer {
         if pcm.is_empty() {
             return (None, vec![], sound_markers);
         }
-        let waveform = compute_waveform(&pcm, timeline_width.max(1) as usize);
+        let waveform = compute_waveform(&pcm, (timeline_width.max(1) as usize) * 50);
         let player = match AudioPlayer::new(pcm, crate::sfx::OUTPUT_SAMPLE_RATE) {
             Ok(p) => {
                 p.set_paused(initially_paused);
@@ -791,11 +878,17 @@ impl PreviewRenderer {
         if total_dur <= 0.0 {
             return 0.0;
         }
-        let px_per_sec = (w / total_dur) * self.time_scale;
-        let center_x = w / 2.0;
-        let center_time = self.current_time();
-        let dx = (time - center_time) * px_per_sec;
-        center_x + dx
+        if self.time_scale <= 1.0 {
+            // Default zoom: full timeline fits the window width
+            (time / total_dur) * w
+        } else {
+            // Zoomed in: center the view on the playhead
+            let px_per_sec = (w / total_dur) * self.time_scale;
+            let center_x = w / 2.0;
+            let center_time = self.current_time();
+            let dx = (time - center_time) * px_per_sec;
+            center_x + dx
+        }
     }
 
     fn x_to_time(&self, x: f32, w: f32) -> f32 {
@@ -803,11 +896,17 @@ impl PreviewRenderer {
         if total_dur <= 0.0 {
             return 0.0;
         }
-        let px_per_sec = (w / total_dur) * self.time_scale;
-        let center_x = w / 2.0;
-        let center_time = self.current_time();
-        let dx = x - center_x;
-        (center_time + dx / px_per_sec).clamp(0.0, total_dur)
+        if self.time_scale <= 1.0 {
+            // Default zoom: simple linear mapping
+            ((x / w) * total_dur).clamp(0.0, total_dur)
+        } else {
+            // Zoomed in: center the view on the playhead
+            let px_per_sec = (w / total_dur) * self.time_scale;
+            let center_x = w / 2.0;
+            let center_time = self.current_time();
+            let dx = x - center_x;
+            (center_time + dx / px_per_sec).clamp(0.0, total_dur)
+        }
     }
 
     fn video_viewport(&self, w: u32, h: u32) -> (f32, f32, f32, f32) {
@@ -857,18 +956,14 @@ impl PreviewRenderer {
         let bg_color = [0.05, 0.05, 0.1, 0.85];
         append_rect(&mut vertices, &mut indices, 0.0, timeline_top, w, timeline_bottom, bg_color, NO_UV);
 
-        // Layout: time text at top, then ticks, then ops, then waveform at bottom
+        // Layout: time text at top, then ops, then waveform at bottom
         let text_y = timeline_top + 2.0;
 
-        let tick_top = text_y + UI_TIME_TEXT_HEIGHT + 2.0;
-        let tick_bot = tick_top + UI_TIMELINE_TICK_HEIGHT;
-        let tick_color = [0.5, 0.5, 0.6, 0.7];
-
-        let marker_top = tick_bot + 4.0;
+        let marker_top = text_y + UI_TIME_TEXT_HEIGHT + 2.0;
         let marker_bot = marker_top + UI_OPERATION_MARKER_HEIGHT;
         let border_w = 3.0;
 
-        let waveform_area_top = marker_bot + 4.0;
+        let waveform_area_top = marker_bot + 2.0;
         let waveform_area_bot = timeline_bottom - 4.0;
         let waveform_center = (waveform_area_top + waveform_area_bot) / 2.0;
         let waveform_scale = (waveform_area_bot - waveform_area_top) / 2.0;
@@ -882,9 +977,11 @@ impl PreviewRenderer {
                 .map_or(0.0, |p| p.total_duration());
             if audio_total > 0.0 {
                 let n = self.waveform.len();
-                // For each sound marker range, draw waveform inside it
-                for &(sound_start, sound_end) in &self.sound_markers {
-                    let end_t = sound_end.unwrap_or(sound_start + 1.0);
+                // For each sound marker range, draw one rect per visible pixel column
+                // with the peak waveform value in that column's time span
+                for marker in &self.sound_markers {
+                    let end_t = marker.end.unwrap_or(marker.start + 1.0);
+                    let sound_start = marker.start;
                     if end_t <= 0.0 {
                         continue;
                     }
@@ -895,32 +992,37 @@ impl PreviewRenderer {
                     }
                     let visible_start = range_start_x.max(0.0);
                     let visible_end = range_end_x.min(w);
-                    let visible_w = (visible_end - visible_start).max(0.0);
-                    if visible_w <= 0.0 {
+                    if visible_end <= visible_start {
                         continue;
                     }
-                    // Draw waveform samples within this range
-                    let samples_in_range = (n as f32 * ((end_t - sound_start) / audio_total)) as usize;
-                    let samples_start = (n as f32 * (sound_start / audio_total)) as usize;
-                    let samples_end = (samples_start + samples_in_range).min(n);
-                    let step = visible_w / samples_in_range.max(1) as f32;
-                    for i in samples_start..samples_end {
-                        let amp = self.waveform[i];
-                        let t = (i as f32 / n as f32) * audio_total;
-                        let x = self.time_to_x(t, w);
-                        let half_h = (amp * waveform_scale).max(1.0);
-                        if x >= 0.0 && x <= w {
-                            append_rect(
-                                &mut vertices,
-                                &mut indices,
-                                x,
-                                waveform_center - half_h,
-                                x + step.max(1.0),
-                                waveform_center + half_h,
-                                wave_color,
-                                NO_UV,
-                            );
+                    let px_start = visible_start.ceil() as i32;
+                    let px_end = visible_end.floor() as i32;
+                    for px in px_start..=px_end {
+                        let t0 = self.x_to_time(px as f32, w).max(sound_start);
+                        let t1 = self.x_to_time((px + 1) as f32, w).min(end_t);
+                        if t1 <= t0 {
+                            continue;
                         }
+                        let si0 = ((t0 / audio_total) * n as f32) as usize;
+                        let si1 = ((t1 / audio_total) * n as f32) as usize;
+                        if si1 <= si0 || si0 >= n {
+                            continue;
+                        }
+                        let peak = {
+                            let end = si1.min(n);
+                            let mut p = 0.0f32;
+                            for &s in &self.waveform[si0..end] {
+                                if s > p { p = s; }
+                            }
+                            p
+                        };
+                        let half_h = (peak * waveform_scale).max(1.0);
+                        append_rect(
+                            &mut vertices, &mut indices,
+                            px as f32, waveform_center - half_h,
+                            (px + 1) as f32, waveform_center + half_h,
+                            wave_color, NO_UV,
+                        );
                     }
                     // Sound start marker (blue) and end marker (red)
                     let sx = range_start_x;
@@ -931,7 +1033,7 @@ impl PreviewRenderer {
                             [0.2, 0.5, 1.0, 0.9], NO_UV,
                         );
                     }
-                    if sound_end.is_some() {
+                    if marker.end.is_some() {
                         let ex = range_end_x;
                         if ex >= 0.0 && ex <= w {
                             append_rect(
@@ -988,39 +1090,31 @@ impl PreviewRenderer {
                 let first_mark = (self.x_to_time(0.0, w) / interval).ceil() * interval;
                 let last_mark = self.x_to_time(w, w);
 
+                // Use integer indexing for deterministic mark times (avoids FP drift in += loop)
+                let n_marks = if interval > 0.0 {
+                    ((last_mark - first_mark) / interval).floor() as i32 + 1
+                } else {
+                    0
+                };
+
                 let mut label_data: Vec<(f32, String, f32)> = Vec::new();
-                let mut mark_time = first_mark;
-                while mark_time <= last_mark {
+                for i in 0..n_marks {
+                    let mark_time = first_mark + i as f32 * interval;
                     let mx = self.time_to_x(mark_time, w);
-                    if mx >= 0.0 && mx <= w {
-                        // Tick mark
-                        append_rect(
-                            &mut vertices,
-                            &mut indices,
-                            mx - 1.0,
-                            tick_top,
-                            mx + 1.0,
-                            tick_bot,
-                            tick_color,
-                            NO_UV,
-                        );
-                        // Label text (will be drawn as textured quad)
-                        if mark_time >= 0.0 {
-                            let label = if mark_time >= 60.0 {
-                                format!("{}m{:02}s", (mark_time as u32) / 60, (mark_time as u32) % 60)
-                            } else {
-                                format!("{}s", mark_time as u32)
-                            };
-                            label_data.push((mark_time, label, mx));
-                        }
+                    if mx >= 0.0 && mx <= w && mark_time >= 0.0 {
+                        let label = if mark_time >= 60.0 {
+                            let m = (mark_time / 60.0) as u32;
+                            let s = mark_time % 60.0;
+                            format!("{}m{:04.1}s", m, s)
+                        } else {
+                            format!("{:.1}s", mark_time)
+                        };
+                        label_data.push((mark_time, label, mx));
                     }
-                    mark_time += interval;
                 }
 
-                // Rebuild text atlas if needed
-                let needs_rebuild = self.time_text_atlas.dirty
-                    || self.time_text_atlas.labels.len() != label_data.len();
-                if needs_rebuild || label_data.is_empty() {
+                // Rebuild text atlas on explicit dirty (zoom/resize/reload) or when label set changes
+                if self.time_text_atlas.dirty || label_data.len() != self.time_text_atlas.labels.len() {
                     self.time_text_atlas.rebuild(&self.device, &self.queue, &label_data);
                 }
 
@@ -1082,6 +1176,27 @@ impl PreviewRenderer {
             ph_color,
             NO_UV,
         );
+
+        // Top-right overlay for selected op info
+        if self.time_text_atlas.overlay_bind_group.is_some() {
+            let ow = self.time_text_atlas.overlay_width + 16.0;
+            let oh = self.time_text_atlas.overlay_height + 8.0;
+            let ox = w - ow - 8.0;
+            let oy = 8.0;
+            let bg = [0.05, 0.05, 0.1, 0.85];
+            append_rect(&mut vertices, &mut indices, ox, oy, ox + ow, oy + oh, bg, NO_UV);
+            let tx = ox + 8.0;
+            let ty = oy + 4.0;
+            self.ui_overlay_start = indices.len() as u32;
+            append_rect_textured(
+                &mut vertices, &mut indices,
+                tx, ty, tx + self.time_text_atlas.overlay_width, ty + self.time_text_atlas.overlay_height,
+                [1.0, 1.0, 1.0, 0.95],
+                [0.0, 0.0], [1.0, 1.0],
+            );
+        } else {
+            self.ui_overlay_start = indices.len() as u32;
+        }
 
         self.ui_index_count = indices.len() as u32;
 
@@ -1368,12 +1483,24 @@ impl PreviewRenderer {
 
         rpass.set_pipeline(&self.ui_pipeline);
         rpass.set_bind_group(0, &uniform_bind_group, &[]);
-        if let Some(ref texture_bg) = self.time_text_atlas.bind_group {
-            rpass.set_bind_group(1, texture_bg, &[]);
-        }
         rpass.set_vertex_buffer(0, vertex_buffer.slice(..));
         rpass.set_index_buffer(index_buffer.slice(..), wgpu::IndexFormat::Uint32);
-        rpass.draw_indexed(0..self.ui_index_count, 0, 0..1);
+
+        // Draw main UI (timeline, time text, ops, waveform, playhead, overlay background)
+        if self.ui_overlay_start > 0 {
+            if let Some(ref texture_bg) = self.time_text_atlas.bind_group {
+                rpass.set_bind_group(1, texture_bg, &[]);
+            }
+            rpass.draw_indexed(0..self.ui_overlay_start, 0, 0..1);
+        }
+
+        // Draw overlay text quad with its own texture bind group
+        if self.ui_overlay_start < self.ui_index_count {
+            if let Some(ref overlay_bg) = self.time_text_atlas.overlay_bind_group {
+                rpass.set_bind_group(1, overlay_bg, &[]);
+            }
+            rpass.draw_indexed(self.ui_overlay_start..self.ui_index_count, 0, 0..1);
+        }
     }
 
     pub fn seek_to(&mut self, time_sec: f32) -> Result<()> {
@@ -1514,9 +1641,9 @@ impl PreviewRenderer {
         self.surface_config.height = height;
         self.surface.configure(&self.device, &self.surface_config);
 
-        // Recompute waveform for new width
+        // Recompute waveform at high resolution for zoomable detail
         if let Some(ref player) = self.audio_player {
-            self.waveform = compute_waveform(player.buffer(), width.max(1) as usize);
+            self.waveform = compute_waveform(player.buffer(), (width.max(1) as usize) * 50);
         }
 
         // Force time text atlas rebuild
@@ -1576,16 +1703,16 @@ impl PreviewRenderer {
         self.timeline_ops.iter().find(|op| click_time >= op.start_time && click_time <= op.end_time)
     }
 
-    pub fn find_sound_at_x(&self, x: f32) -> Option<(f32, Option<f32>, usize)> {
+    pub fn find_sound_at_x(&self, x: f32) -> Option<(f32, Option<f32>, usize, &SoundMarker)> {
         let w = self.surface_config.width as f32;
         if w <= 0.0 {
             return None;
         }
         let click_time = self.x_to_time(x, w);
-        for (i, &(start, end)) in self.sound_markers.iter().enumerate() {
-            let end_time = end.unwrap_or(start);
-            if click_time >= start && click_time <= end_time {
-                return Some((start, end, i));
+        for (i, marker) in self.sound_markers.iter().enumerate() {
+            let end_time = marker.end.unwrap_or(marker.start);
+            if click_time >= marker.start && click_time <= end_time {
+                return Some((marker.start, marker.end, i, marker));
             }
         }
         None
@@ -1595,13 +1722,24 @@ impl PreviewRenderer {
         (self.surface_config.width, self.surface_config.height)
     }
 
-    pub fn set_selected_op_info(&mut self, info: Option<String>) {
-        self.selected_op_info = info;
+    pub fn set_selected_op(&mut self, op: Option<(&str, u32, &str)>) {
+        if let Some((file, line, label)) = op {
+            self.selected_op_info = Some(format!("{} @ {}:{}", label, file, line));
+            self.overlay_file = file.to_string();
+            self.overlay_line = line;
+            self.overlay_anim_type = label.to_string();
+            self.time_text_atlas.set_overlay_text(
+                &self.device, &self.queue,
+                &format!("{}:{} {}", file, line, label),
+            );
+        } else {
+            self.selected_op_info = None;
+            self.overlay_file.clear();
+            self.overlay_line = 0;
+            self.overlay_anim_type.clear();
+            self.time_text_atlas.clear_overlay();
+        }
         self.frame_rendered = false;
-    }
-
-    pub fn selected_op_info(&self) -> Option<&str> {
-        self.selected_op_info.as_deref()
     }
 
     pub fn zoom_in(&mut self) {
@@ -1611,7 +1749,11 @@ impl PreviewRenderer {
     }
 
     pub fn zoom_out(&mut self) {
-        self.time_scale = (self.time_scale / 1.3).max(0.05);
+        if self.time_scale <= 0.2 {
+            self.time_scale = 1.0;
+        } else {
+            self.time_scale = (self.time_scale / 1.3).max(0.2);
+        }
         self.time_text_atlas.dirty = true;
         self.frame_rendered = false;
     }

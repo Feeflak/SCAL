@@ -342,22 +342,47 @@ impl ApplicationHandler for PreviewState {
             } => {
                 self.mouse_down = true;
                 let was_on_timeline = seek_on_timeline(preview, self.window_size, self.cursor_pos);
-                let info = click_on_op_marker(preview, self.window_size, self.cursor_pos)
-                    .or_else(|| click_on_sound_marker(preview, self.window_size, self.cursor_pos));
-                if let Some(ref info) = info {
-                    preview.set_selected_op_info(Some(info.clone()));
+                let (cx, cy) = self.cursor_pos;
+                let (ww, wh) = self.window_size;
+                let h = wh as f32;
+                let timeline_top = h - 80.0;
+                let marker_bot = h - 34.0;
+                let op_click = if cy as f32 >= timeline_top && cy as f32 <= marker_bot {
+                    preview.find_op_at_x(cx as f32).map(|op| {
+                        let info = match op.source_loc {
+                            Some(ref loc) => format!("{} @ {}:{},{}", op.label, loc.file, loc.line, loc.col),
+                            None => format!("{} (no source)", op.label),
+                        };
+                        log::info!("Op: {}", info);
+                        let file = op.source_loc.as_ref().map(|l| l.file.clone()).unwrap_or_default();
+                        let line = op.source_loc.as_ref().map(|l| l.line).unwrap_or(0);
+                        let label = op.label.clone();
+                        (info, file, line, label)
+                    })
+                } else if cy as f32 >= marker_bot && cy as f32 <= h {
+                    preview.find_sound_at_x(cx as f32).map(|(start, end, _idx, marker)| {
+                        let end_str = end.map_or("?".to_string(), |e| format!("{:.2}s", e));
+                        let info = format!("{} @ {}:{}", marker.name, marker.file, marker.line);
+                        log::info!("Sound: {}", info);
+                        (info, marker.file.clone(), marker.line, marker.name.clone())
+                    })
+                } else {
+                    None
+                };
+                if let Some((ref info, ref file, line, ref label)) = op_click {
+                    preview.set_selected_op(Some((file.as_str(), line, label.as_str())));
                     if let Some(ref window) = self.window {
                         window.set_title(&format!("SCAL Preview - {}", info));
                         window.request_redraw();
                     }
                 } else if was_on_timeline {
-                    preview.set_selected_op_info(None);
+                    preview.set_selected_op(None);
                     if let Some(ref window) = self.window {
                         window.set_title("SCAL Preview");
                         window.request_redraw();
                     }
                 } else {
-                    preview.set_selected_op_info(None);
+                    preview.set_selected_op(None);
                     if let Some(ref window) = self.window {
                         window.set_title("SCAL Preview");
                         window.request_redraw();
@@ -399,48 +424,6 @@ fn seek_on_timeline(preview: &mut PreviewRenderer, window_size: (u32, u32), curs
         }
     }
     false
-}
-
-fn click_on_op_marker(preview: &PreviewRenderer, window_size: (u32, u32), cursor_pos: (f64, f64)) -> Option<String> {
-    let (ww, wh) = window_size;
-    if ww == 0 || wh == 0 {
-        return None;
-    }
-    let (cx, cy) = cursor_pos;
-    let h = wh as f32;
-    let marker_top = h - 44.0;
-    let marker_bot = marker_top + 20.0;
-    if cy as f32 >= marker_top && cy as f32 <= marker_bot {
-        if let Some(op) = preview.find_op_at_x(cx as f32) {
-            let info = match op.source_loc {
-                Some(ref loc) => format!("{} @ {}:{},{}", op.label, loc.file, loc.line, loc.col),
-                None => format!("{} (no source)", op.label),
-            };
-            log::info!("Op: {}", info);
-            return Some(info);
-        }
-    }
-    None
-}
-
-fn click_on_sound_marker(preview: &PreviewRenderer, window_size: (u32, u32), cursor_pos: (f64, f64)) -> Option<String> {
-    let (ww, wh) = window_size;
-    if ww == 0 || wh == 0 {
-        return None;
-    }
-    let (cx, cy) = cursor_pos;
-    let h = wh as f32;
-    let waveform_area_top = h - 20.0;
-    let waveform_area_bot = h - 4.0;
-    if cy as f32 >= waveform_area_top && cy as f32 <= waveform_area_bot {
-        if let Some((start, end, _idx)) = preview.find_sound_at_x(cx as f32) {
-            let end_str = end.map_or("?".to_string(), |e| format!("{:.2}s", e));
-            let info = format!("SFX: {:.2}s to {}", start, end_str);
-            log::info!("Sound: {}", info);
-            return Some(info);
-        }
-    }
-    None
 }
 
 fn seek_by_seconds(preview: &mut PreviewRenderer, offset: f32) {

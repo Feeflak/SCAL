@@ -18,6 +18,7 @@ pub use anim_obj::{
     AnimObj, CodeHandle, CodeWindowHandle, StretchMode, SubObjectHandle, Syntax, TextAlign,
 };
 pub use anim_op::{AnimOP, CodeAnimationStyle, CodeHighlightAction, IntoAnimOp, SourceLoc};
+pub use scal_ipc_macros::timeline;
 pub use camera::Camera;
 pub use color::Color;
 pub use ease::Ease;

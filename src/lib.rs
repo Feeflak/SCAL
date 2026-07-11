@@ -203,15 +203,15 @@ async fn run_loop(
     rendering_settings: RenderingSettings,
     mut animations: Vec<AnimOP>,
 ) -> Result<()> {
-    fn op_end_time(op: &AnimOP, start_time: Seconds, out: &mut Vec<(Sfx, Seconds)>) -> Seconds {
+    fn op_end_time(op: &AnimOP, start_time: Seconds, out: &mut Vec<(Sfx, Seconds, Option<scal_core::SourceLoc>)>) -> Seconds {
         match op {
-            AnimOP::PlaySound(sfx, video_delay, _) => {
+            AnimOP::PlaySound(sfx, video_delay, source_loc) => {
                 let abs_time = start_time + video_delay;
                 debug!(
                     "audio: {} at abs_time={}, seek={}",
                     sfx.path, abs_time, sfx.time_offset
                 );
-                out.push((sfx.clone(), abs_time));
+                out.push((sfx.clone(), abs_time, source_loc.clone()));
                 start_time
             }
             AnimOP::All(children, _) => {
@@ -244,7 +244,7 @@ async fn run_loop(
         }
     }
 
-    let mut sfx_sounds: Vec<(Sfx, Seconds)> = vec![];
+    let mut sfx_sounds: Vec<(Sfx, Seconds, Option<scal_core::SourceLoc>)> = vec![];
     let mut time = 0.0;
     for op in &animations {
         time = op_end_time(op, time, &mut sfx_sounds);
@@ -257,7 +257,7 @@ async fn run_loop(
 
     let scheduled: Vec<ScheduledSound> = sfx_sounds
         .into_iter()
-        .map(|(s, abs_start_time)| {
+        .map(|(s, abs_start_time, source_loc_opt)| {
             let pitch_var = if s.pitch_variation > 0.0 {
                 use rand::Rng;
                 let mut rng = rand::thread_rng();
@@ -273,6 +273,7 @@ async fn run_loop(
                 start_time: abs_start_time,
                 seek_offset: s.time_offset,
                 duration: s.duration,
+                source_loc: source_loc_opt,
             };
             debug!(
                 "ScheduledSound: path={}, start_time={}, seek={}, duration={}, pitch={}",
