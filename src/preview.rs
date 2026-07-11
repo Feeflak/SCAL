@@ -3,6 +3,8 @@ use std::collections::HashMap;
 use anyhow::{Context, Result};
 use cosmic_text::{Attrs, FontSystem, Metrics, Shaping, SwashCache};
 use wgpu::util::DeviceExt;
+use crate::anim_op::CodeHighlight;
+use crate::anim_op::CodeHighlight;
 use crate::sfx::{AudioEngine, collect_sounds_from_ops, compute_waveform};
 use crate::audio_player::AudioPlayer;
 use wgpu::{
@@ -19,7 +21,7 @@ use crate::{
         render::{get_pipelines, PipelineData, PipelineKind},
         text::render::TextRenderer,
     },
-    anim_op::AnimOP,
+    anim_op::AnimOperation,
     animator::Animator,
     renderer::draw_scene,
 };
@@ -75,35 +77,35 @@ struct UIUniforms {
     resolution: [f32; 2],
 }
 
-fn op_label(op: &AnimOP) -> &'static str {
+fn op_label(op: &AnimOperation) -> &'static str {
     match op {
-        AnimOP::Instantiate(..) => "Instantiate",
-        AnimOP::TransformMovePos(..) | AnimOP::TransformMoveToObj(..) => "Move",
-        AnimOP::TransformRotate(..) => "Rotate",
-        AnimOP::TransformScale(..) => "Scale",
-        AnimOP::CodeAddLines(..) => "Add Lines",
-        AnimOP::CodeModifyLine(..) => "Modify Line",
-        AnimOP::CodeRemoveLines(..) => "Remove Lines",
-        AnimOP::CodeHighlight(..) => "Highlight",
-        AnimOP::Current { .. } => "Snapshot",
-        AnimOP::All(..) => "All",
-        AnimOP::Sequence(..) => "Sequence",
-        AnimOP::Wait(..) => "Wait",
-        AnimOP::PlaySound(..) => "Sound",
+        AnimOperation::Instantiate(..) => "Instantiate",
+        AnimOperation::TransformMovePos(..) | AnimOperation::TransformMoveToObj(..) => "Move",
+        AnimOperation::TransformRotate(..) => "Rotate",
+        AnimOperation::TransformScale(..) => "Scale",
+        AnimOperation::CodeAddLines(..) => "Add Lines",
+        AnimOperation::CodeModifyLine(..) => "Modify Line",
+        AnimOperation::CodeRemoveLines(..) => "Remove Lines",
+        AnimOperation::CodeHighlight(CodeHighlight(..)) => "Highlight",
+        AnimOperation::Current { .. } => "Snapshot",
+        AnimOperation::All(..) => "All",
+        AnimOperation::Sequence(..) => "Sequence",
+        AnimOperation::Wait(..) => "Wait",
+        AnimOperation::PlaySound(..) => "Sound",
     }
 }
 
-fn op_kind(op: &AnimOP) -> OpKind {
+fn op_kind(op: &AnimOperation) -> OpKind {
     match op {
-        AnimOP::Instantiate(..) => OpKind::Instantiate,
-        AnimOP::TransformMovePos(..) | AnimOP::TransformMoveToObj(..)
-        | AnimOP::TransformRotate(..) | AnimOP::TransformScale(..) => OpKind::Transform,
-        AnimOP::CodeAddLines(..) | AnimOP::CodeModifyLine(..)
-        | AnimOP::CodeRemoveLines(..) | AnimOP::CodeHighlight(..) => OpKind::Code,
-        AnimOP::Current { .. } => OpKind::Instantiate,
-        AnimOP::All(..) | AnimOP::Sequence(..) => OpKind::Composite,
-        AnimOP::Wait(..) => OpKind::Wait,
-        AnimOP::PlaySound(..) => OpKind::Sound,
+        AnimOperation::Instantiate(..) => OpKind::Instantiate,
+        AnimOperation::TransformMovePos(..) | AnimOperation::TransformMoveToObj(..)
+        | AnimOperation::TransformRotate(..) | AnimOperation::TransformScale(..) => OpKind::Transform,
+        AnimOperation::CodeAddLines(..) | AnimOperation::CodeModifyLine(..)
+        | AnimOperation::CodeRemoveLines(..) | AnimOperation::CodeHighlight(CodeHighlight(..)) => OpKind::Code,
+        AnimOperation::Current { .. } => OpKind::Instantiate,
+        AnimOperation::All(..) | AnimOperation::Sequence(..) => OpKind::Composite,
+        AnimOperation::Wait(..) => OpKind::Wait,
+        AnimOperation::PlaySound(..) => OpKind::Sound,
     }
 }
 
@@ -118,32 +120,32 @@ fn op_color(kind: OpKind) -> [f32; 4] {
     }
 }
 
-fn op_source_loc(op: &AnimOP) -> Option<scal_core::SourceLoc> {
+fn op_source_loc(op: &AnimOperation) -> Option<scal_core::SourceLoc> {
     match op {
-        AnimOP::Instantiate(_, loc)
-        | AnimOP::TransformMovePos(_, _, _, _, loc)
-        | AnimOP::TransformMoveToObj(_, _, _, _, _, loc)
-        | AnimOP::TransformRotate(_, _, _, _, loc)
-        | AnimOP::TransformScale(_, _, _, _, loc)
-        | AnimOP::CodeAddLines(_, _, _, _, _, _, loc)
-        | AnimOP::CodeModifyLine(_, _, _, _, _, _, loc)
-        | AnimOP::CodeRemoveLines(_, _, _, _, _, loc)
-        | AnimOP::CodeHighlight(_, _, loc)
-        | AnimOP::All(_, loc)
-        | AnimOP::Sequence(_, loc)
-        | AnimOP::Wait(_, loc)
-        | AnimOP::PlaySound(_, _, loc) => loc.clone(),
-        AnimOP::Current { source_loc, .. } => source_loc.clone(),
+        AnimOperation::Instantiate(_, loc)
+        | AnimOperation::TransformMovePos(_, _, _, _, loc)
+        | AnimOperation::TransformMoveToObj(_, _, _, _, _, loc)
+        | AnimOperation::TransformRotate(_, _, _, _, loc)
+        | AnimOperation::TransformScale(_, _, _, _, loc)
+        | AnimOperation::CodeAddLines(_, _, _, _, _, _, loc)
+        | AnimOperation::CodeModifyLine(_, _, _, _, _, _, loc)
+        | AnimOperation::CodeRemoveLines(_, _, _, _, _, loc)
+        | AnimOperation::CodeHighlight(CodeHighlight(_, _, loc))
+        | AnimOperation::All(_, loc)
+        | AnimOperation::Sequence(_, loc)
+        | AnimOperation::Wait(_, loc)
+        | AnimOperation::PlaySound(_, _, loc) => loc.clone(),
+        AnimOperation::Current { source_loc, .. } => source_loc.clone(),
     }
 }
 
-pub fn flatten_ops(ops: &[AnimOP]) -> (Vec<TimelineOp>, f32) {
-    fn flatten_inner(ops: &[AnimOP], start_time: f32, result: &mut Vec<TimelineOp>) -> f32 {
+pub fn flatten_ops(ops: &[AnimOperation]) -> (Vec<TimelineOp>, f32) {
+    fn flatten_inner(ops: &[AnimOperation], start_time: f32, result: &mut Vec<TimelineOp>) -> f32 {
         let mut time = start_time;
         for op in ops {
             let op_start = time;
             match op {
-                AnimOP::All(children, _) => {
+                AnimOperation::All(children, _) => {
                     let mut max_end = time;
                     for child in children {
                         let end = flatten_inner(std::slice::from_ref(child), time, result);
@@ -153,22 +155,22 @@ pub fn flatten_ops(ops: &[AnimOP]) -> (Vec<TimelineOp>, f32) {
                     }
                     time = max_end;
                 }
-                AnimOP::Sequence(children, _) => {
+                AnimOperation::Sequence(children, _) => {
                     time = flatten_inner(children, time, result);
                 }
-                AnimOP::Wait(d, _) => time += d,
-                AnimOP::TransformMovePos(_, _, d, _, _)
-                | AnimOP::TransformMoveToObj(_, _, _, d, _, _)
-                | AnimOP::TransformRotate(_, _, d, _, _)
-                | AnimOP::TransformScale(_, _, d, _, _) => time += d,
-                AnimOP::CodeAddLines(_, _, _, d, _, _, _)
-                | AnimOP::CodeModifyLine(_, _, _, d, _, _, _)
-                | AnimOP::CodeRemoveLines(_, _, d, _, _, _) => time += d,
-                AnimOP::CodeHighlight(_, action, _) => {
+                AnimOperation::Wait(d, _) => time += d,
+                AnimOperation::TransformMovePos(_, _, d, _, _)
+                | AnimOperation::TransformMoveToObj(_, _, _, d, _, _)
+                | AnimOperation::TransformRotate(_, _, d, _, _)
+                | AnimOperation::TransformScale(_, _, d, _, _) => time += d,
+                AnimOperation::CodeAddLines(_, _, _, d, _, _, _)
+                | AnimOperation::CodeModifyLine(_, _, _, d, _, _, _)
+                | AnimOperation::CodeRemoveLines(_, _, d, _, _, _) => time += d,
+                AnimOperation::CodeHighlight(CodeHighlight(_, action, _)) => {
                     time += action.duration_and_curve().0;
                 }
-                AnimOP::PlaySound(_, _, _) => {}
-                AnimOP::Instantiate(..) | AnimOP::Current { .. } => {}
+                AnimOperation::PlaySound(_, _, _) => {}
+                AnimOperation::Instantiate(..) | AnimOperation::Current { .. } => {}
             }
             if time > op_start {
                 result.push(TimelineOp {
@@ -572,7 +574,7 @@ pub struct PreviewRenderer {
     frame_rendered: bool,
 
     timeline_ops: Vec<TimelineOp>,
-    original_animations: Vec<AnimOP>,
+    original_animations: Vec<AnimOperation>,
 
     audio_player: Option<AudioPlayer>,
     waveform: Vec<f32>,
@@ -593,6 +595,9 @@ pub struct PreviewRenderer {
 
     time_scale: f32,
     time_text_atlas: TimeTextAtlas,
+
+    hovered_op: Option<usize>,
+    hovered_sound: Option<usize>,
 }
 
 impl PreviewRenderer {
@@ -604,7 +609,7 @@ impl PreviewRenderer {
         surface_config: SurfaceConfiguration,
         camera: crate::projection::Camera,
         background_color: crate::types::Color,
-        animations: Vec<AnimOP>,
+        animations: Vec<AnimOperation>,
         fps: u32,
         text_resolution_multiplier: f32,
     ) -> Result<Self> {
@@ -681,10 +686,12 @@ impl PreviewRenderer {
             overlay_anim_type: String::new(),
             time_scale: 1.0,
             time_text_atlas,
+            hovered_op: None,
+            hovered_sound: None,
         })
     }
 
-    fn init_audio(animations: &[AnimOP], timeline_width: u32, initially_paused: bool) -> (Option<AudioPlayer>, Vec<f32>, Vec<SoundMarker>) {
+    fn init_audio(animations: &[AnimOperation], timeline_width: u32, initially_paused: bool) -> (Option<AudioPlayer>, Vec<f32>, Vec<SoundMarker>) {
         let sounds = collect_sounds_from_ops(animations);
         let sound_markers: Vec<SoundMarker> = sounds.iter().map(|s| {
             let end = if s.duration > 0.0 { Some(s.start_time + s.duration) } else { None };
@@ -979,7 +986,8 @@ impl PreviewRenderer {
                 let n = self.waveform.len();
                 // For each sound marker range, draw one rect per visible pixel column
                 // with the peak waveform value in that column's time span
-                for marker in &self.sound_markers {
+                for (si, marker) in self.sound_markers.iter().enumerate() {
+                    let is_hovered = self.hovered_sound == Some(si);
                     let end_t = marker.end.unwrap_or(marker.start + 1.0);
                     let sound_start = marker.start;
                     if end_t <= 0.0 {
@@ -997,6 +1005,7 @@ impl PreviewRenderer {
                     }
                     let px_start = visible_start.ceil() as i32;
                     let px_end = visible_end.floor() as i32;
+                    let wc = if is_hovered { [0.2, 1.0, 0.8, 0.8] } else { wave_color };
                     for px in px_start..=px_end {
                         let t0 = self.x_to_time(px as f32, w).max(sound_start);
                         let t1 = self.x_to_time((px + 1) as f32, w).min(end_t);
@@ -1021,25 +1030,27 @@ impl PreviewRenderer {
                             &mut vertices, &mut indices,
                             px as f32, waveform_center - half_h,
                             (px + 1) as f32, waveform_center + half_h,
-                            wave_color, NO_UV,
+                            wc, NO_UV,
                         );
                     }
                     // Sound start marker (blue) and end marker (red)
                     let sx = range_start_x;
                     if sx >= 0.0 && sx <= w {
+                        let start_color = if is_hovered { [0.5, 0.8, 1.0, 1.0] } else { [0.2, 0.5, 1.0, 0.9] };
                         append_rect(
                             &mut vertices, &mut indices,
                             sx - 1.0, waveform_area_top, sx + 1.0, waveform_area_bot,
-                            [0.2, 0.5, 1.0, 0.9], NO_UV,
+                            start_color, NO_UV,
                         );
                     }
                     if marker.end.is_some() {
                         let ex = range_end_x;
                         if ex >= 0.0 && ex <= w {
+                            let end_color = if is_hovered { [1.0, 0.5, 0.5, 1.0] } else { [1.0, 0.2, 0.2, 0.9] };
                             append_rect(
                                 &mut vertices, &mut indices,
                                 ex - 1.0, waveform_area_top, ex + 1.0, waveform_area_bot,
-                                [1.0, 0.2, 0.2, 0.9], NO_UV,
+                                end_color, NO_UV,
                             );
                         }
                     }
@@ -1048,13 +1059,22 @@ impl PreviewRenderer {
         }
 
         // Operation markers
-        for op in &self.timeline_ops {
+        for (i, op) in self.timeline_ops.iter().enumerate() {
             let op_start_x = self.time_to_x(op.start_time, w);
             let op_end_x = self.time_to_x(op.end_time, w);
             if op_end_x < 0.0 || op_start_x > w {
                 continue;
             }
-            let color = op_color(op.kind);
+            let mut color = op_color(op.kind);
+            let border_color: [f32; 4];
+            if self.hovered_op == Some(i) {
+                border_color = [1.0, 1.0, 1.0, 1.0];
+                color[0] = color[0] * 0.3 + 1.0 * 0.7;
+                color[1] = color[1] * 0.3 + 1.0 * 0.7;
+                color[2] = color[2] * 0.3 + 1.0 * 0.7;
+            } else {
+                border_color = [0.08, 0.08, 0.12, 1.0];
+            }
             let visible_start = op_start_x.max(0.0);
             let visible_end = op_end_x.min(w);
             if visible_end <= visible_start {
@@ -1064,7 +1084,7 @@ impl PreviewRenderer {
             append_rect(
                 &mut vertices, &mut indices,
                 visible_start, marker_top, visible_start + visible_w, marker_bot,
-                [0.08, 0.08, 0.12, 1.0], NO_UV,
+                border_color, NO_UV,
             );
             let fill_x0 = visible_start + border_w;
             let fill_x1 = (visible_start + visible_w - border_w).max(fill_x0);
@@ -1583,6 +1603,10 @@ impl PreviewRenderer {
         self.finished
     }
 
+    pub fn needs_redraw(&self) -> bool {
+        !self.frame_rendered
+    }
+
     pub fn replay(&mut self) -> Result<()> {
         self.seek_to(0.0)
     }
@@ -1650,7 +1674,7 @@ impl PreviewRenderer {
         self.time_text_atlas.dirty = true;
     }
 
-    pub fn reload(&mut self, animations: Vec<AnimOP>) -> Result<()> {
+    pub fn reload(&mut self, animations: Vec<AnimOperation>) -> Result<()> {
         let (timeline_ops, total_dur) = flatten_ops(&animations);
         self.total_frames = if total_dur > 0.0 {
             (total_dur * self.fps as f32).ceil() as u64
@@ -1700,7 +1724,7 @@ impl PreviewRenderer {
             return None;
         }
         let click_time = self.x_to_time(x, w);
-        self.timeline_ops.iter().find(|op| click_time >= op.start_time && click_time <= op.end_time)
+        self.timeline_ops.iter().rev().find(|op| click_time >= op.start_time && click_time <= op.end_time)
     }
 
     pub fn find_sound_at_x(&self, x: f32) -> Option<(f32, Option<f32>, usize, &SoundMarker)> {
@@ -1740,6 +1764,36 @@ impl PreviewRenderer {
             self.time_text_atlas.clear_overlay();
         }
         self.frame_rendered = false;
+    }
+
+    pub fn set_hovered_from_cursor(&mut self, cx: f32, cy: f32) {
+        let h = self.surface_config.height as f32;
+        let timeline_top = h - 80.0;
+        let marker_bot = h - 34.0;
+        let prev_op = self.hovered_op;
+        let prev_sound = self.hovered_sound;
+        if cy >= timeline_top && cy <= marker_bot {
+            let idx = self.timeline_ops.iter().rposition(|op| {
+                let t = self.x_to_time(cx, self.surface_config.width as f32);
+                t >= op.start_time && t <= op.end_time
+            });
+            self.hovered_op = idx;
+            self.hovered_sound = None;
+        } else if cy >= marker_bot && cy <= h {
+            let idx = self.sound_markers.iter().position(|m| {
+                let t = self.x_to_time(cx, self.surface_config.width as f32);
+                let end = m.end.unwrap_or(m.start);
+                t >= m.start && t <= end
+            });
+            self.hovered_sound = idx;
+            self.hovered_op = None;
+        } else {
+            self.hovered_op = None;
+            self.hovered_sound = None;
+        }
+        if self.hovered_op != prev_op || self.hovered_sound != prev_sound {
+            self.frame_rendered = false;
+        }
     }
 
     pub fn zoom_in(&mut self) {

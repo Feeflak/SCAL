@@ -14,7 +14,7 @@ use crate::anim_object::{
         code::{Code, CodeAnimationStyle, Syntax, theme::Theme},
     },
 };
-use crate::anim_op::{AnimOP, AnimationCurve};
+use crate::anim_op::{AnimOperation, AnimationCurve};
 use crate::types::Color;
 
 pub struct CodeWindow {
@@ -28,7 +28,7 @@ pub struct CodeWindow {
 }
 
 impl CodeWindow {
-    pub fn instantiate(&self) -> AnimOP {
+    pub fn instantiate(&self) -> AnimOperation {
         self.layout_result.instantiate()
     }
 
@@ -36,15 +36,15 @@ impl CodeWindow {
         self.background.transform()
     }
 
-    pub fn position_to(&self, to: Vec2, time: f32, curve: AnimationCurve) -> AnimOP {
+    pub fn position_to(&self, to: Vec2, time: f32, curve: AnimationCurve) -> AnimOperation {
         self.background.transform().position_to(to, time, curve)
     }
 
-    pub fn scale_to(&self, to: Vec2, time: f32, curve: AnimationCurve) -> AnimOP {
+    pub fn scale_to(&self, to: Vec2, time: f32, curve: AnimationCurve) -> AnimOperation {
         self.background.transform().scale_to(to, time, curve)
     }
 
-    pub fn rotate_to(&self, to: f32, time: f32, curve: AnimationCurve) -> AnimOP {
+    pub fn rotate_to(&self, to: f32, time: f32, curve: AnimationCurve) -> AnimOperation {
         self.background.transform().rotate_to(to, time, curve)
     }
 
@@ -54,7 +54,7 @@ impl CodeWindow {
         offset: Vec2,
         time: f32,
         curve: AnimationCurve,
-    ) -> AnimOP {
+    ) -> AnimOperation {
         self.background
             .transform()
             .position_to_object(target, offset, time, curve)
@@ -67,7 +67,7 @@ impl CodeWindow {
         anim_curve: AnimationCurve,
         duration: f32,
         style: CodeAnimationStyle,
-    ) -> AnimOP {
+    ) -> AnimOperation {
         self.code
             .add_lines(text, from_line, anim_curve, duration, style)
     }
@@ -78,7 +78,7 @@ impl CodeWindow {
         anim_curve: AnimationCurve,
         duration: f32,
         style: CodeAnimationStyle,
-    ) -> AnimOP {
+    ) -> AnimOperation {
         self.code.remove_lines(lines, anim_curve, duration, style)
     }
 
@@ -89,7 +89,7 @@ impl CodeWindow {
         anim_curve: AnimationCurve,
         duration: f32,
         style: CodeAnimationStyle,
-    ) -> AnimOP {
+    ) -> AnimOperation {
         self.code
             .modify_line(line, new_text, anim_curve, duration, style)
     }
@@ -100,7 +100,7 @@ impl CodeWindow {
         color: Color,
         duration: f32,
         curve: AnimationCurve,
-    ) -> AnimOP {
+    ) -> AnimOperation {
         self.code.highlight_lines(ranges, color, duration, curve)
     }
 
@@ -110,7 +110,7 @@ impl CodeWindow {
         color: Color,
         duration: f32,
         curve: AnimationCurve,
-    ) -> AnimOP {
+    ) -> AnimOperation {
         self.code.highlight_pattern(regex, color, duration, curve)
     }
 

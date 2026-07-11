@@ -7,7 +7,7 @@ use uuid::Uuid;
 use crate::anim_object::render::PipelineKind;
 use crate::anim_object::text::TextManager;
 use crate::anim_object::{Transform, TransformUniform};
-use crate::anim_op::{AnimOP, CurrentClosure};
+use crate::anim_op::{AnimOperation, CurrentClosure};
 use crate::renderer::{Index, Vertex};
 
 pub type MeshResult = Result<(Vec<Vertex>, Vec<Index>, PipelineKind)>;
@@ -41,11 +41,11 @@ pub type BindGroupLoader = Box<dyn Fn(&wgpu::Device, &wgpu::Queue) -> Vec<wgpu::
 pub struct AnimObj(pub Box<dyn AnimObjectTrait>);
 
 impl AnimObj {
-    pub fn instantiate(&self) -> AnimOP {
-        AnimOP::Instantiate(self.clone(), None)
+    pub fn instantiate(&self) -> AnimOperation {
+        AnimOperation::Instantiate(self.clone(), None)
     }
-    pub fn current(&self, closure: impl Fn(AnimObj) -> AnimOP + 'static + Send + Sync) -> AnimOP {
-        AnimOP::Current {
+    pub fn current(&self, closure: impl Fn(AnimObj) -> AnimOperation + 'static + Send + Sync) -> AnimOperation {
+        AnimOperation::Current {
             uuid: self.uuid(),
             closure: CurrentClosure(std::sync::Arc::new(closure)),
             source_loc: None,

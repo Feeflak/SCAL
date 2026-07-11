@@ -1,6 +1,7 @@
 use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
 
-use crate::color::Color;
+use crate::{Syntax, color::Color, highlight_specs};
 
 #[derive(Copy, Clone, Debug, Serialize, Deserialize)]
 pub struct Base16 {
@@ -22,12 +23,22 @@ impl Base16 {
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Theme {
     pub base: Base16,
+    pub syntax_specific: HashMap<Syntax, SyntaxTheme>,
 }
-
 impl Theme {
     #[must_use]
     pub fn from_base16(base: Base16) -> Self {
-        Self { base }
+        let mut syntax_specific = HashMap::new();
+
+        for (syntax, spec) in highlight_specs::all_specs() {
+            let theme = SyntaxTheme::from_base16_and_spec(base, spec);
+            syntax_specific.insert(syntax, theme);
+        }
+
+        Self {
+            base,
+            syntax_specific,
+        }
     }
 }
 
@@ -139,5 +150,48 @@ impl Default for Base16 {
                 },
             ],
         }
+    }
+}
+
+pub struct HighlightSpec {
+    pub names: Vec<String>,
+    pub indices: Vec<usize>, // indices into Base16 palette
+}
+impl HighlightSpec {
+    pub fn new(names: Vec<&str>, indices: Vec<usize>) -> Self {
+        Self {
+            indices,
+            names: names.iter().map(|s| s.to_string()).collect::<Vec<String>>(),
+        }
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct SyntaxTheme {
+    pub highlight_names: Vec<String>,
+    pub highlight_colors: Vec<Color>,
+    pub default_color: Color,
+}
+
+impl SyntaxTheme {
+    pub fn from_base16_and_spec(base: Base16, spec: HighlightSpec) -> Self {
+        let mut colors = Vec::with_capacity(spec.indices.len());
+
+        for idx in &spec.indices {
+            colors.push(base.colors[*idx]);
+        }
+
+        Self {
+            highlight_names: spec.names,
+            highlight_colors: colors,
+            default_color: base.colors[5],
+        }
+    }
+
+    pub fn color_for_name(&self, name: &str) -> Option<Color> {
+        self.highlight_names
+            .iter()
+            .position(|n| n == name)
+            .and_then(|idx| self.highlight_colors.get(idx).copied())
     }
 }

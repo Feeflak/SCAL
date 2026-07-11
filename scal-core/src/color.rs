@@ -1,7 +1,10 @@
 use serde::{Deserialize, Serialize};
 
 #[repr(C)]
-#[derive(Copy, Clone, Debug, Serialize, Deserialize, PartialEq)]
+#[derive(
+    Copy, Clone, Debug, Serialize, Deserialize, PartialEq, bytemuck::Pod, bytemuck::Zeroable,
+)]
+
 pub struct Color {
     pub r: f32,
     pub g: f32,

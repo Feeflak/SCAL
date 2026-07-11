@@ -13,6 +13,7 @@ pub mod settings;
 pub mod sfx;
 pub mod theme;
 pub mod transform;
+pub mod highlight_specs;
 
 pub use anim_obj::{
     AnimObj, CodeHandle, CodeWindowHandle, StretchMode, SubObjectHandle, Syntax, TextAlign,

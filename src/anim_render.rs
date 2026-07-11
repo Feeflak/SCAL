@@ -12,7 +12,7 @@ use wgpu::{Device, Texture};
 
 use crate::{
     BYTES_PER_PIXEL,
-    anim_op::AnimOP,
+    anim_op::AnimOperation,
     encoder::{self, EncoderComunication},
     nv12::Nv12Converter,
     readback::{self, ReadbackRing},
@@ -21,13 +21,13 @@ use crate::{
 
 #[derive(Debug)]
 pub struct AnimationState {
-    pub anim_op: AnimOP,
+    pub anim_op: AnimOperation,
     pub storage: Vec<f32>,
     pub time: Seconds,
 }
 
 impl AnimationState {
-    pub fn new(anim: AnimOP) -> Result<Self> {
+    pub fn new(anim: AnimOperation) -> Result<Self> {
         Ok(Self {
             storage: vec![],
             anim_op: anim
@@ -39,7 +39,7 @@ impl AnimationState {
 }
 pub async fn render_animations(
     queue: wgpu::Queue,
-    animations: Vec<AnimOP>,
+    animations: Vec<AnimOperation>,
     mut readback_ring: ReadbackRing,
     encoder_send: Sender<encoder::EncoderComunication>,
     device: Device,

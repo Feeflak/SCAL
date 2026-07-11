@@ -3,7 +3,7 @@ use std::ops::Range;
 use uuid::Uuid;
 
 use crate::anim_object::text::code::{
-    Code, CodeAnimationStyle, CodeHighlight, CodeHighlightAction, CodeHighlightKind,
+    Code, CodeAnimationStyle, CodeHighlight, CodeHighlightAction, CodeHighlightKind, Lines,
 };
 use crate::anim_op::{Animation, AnimationCurve};
 use crate::types::*;
@@ -450,7 +450,7 @@ pub fn highlight_fade_in(
             let obj = animator.get_object_mut(&uuid)?;
             if let Some(code) = code_mut(obj.anim_data.as_any_mut()) {
                 let highlight = match &action {
-                    CodeHighlightAction::Lines { ranges, color, .. } => CodeHighlight {
+                    CodeHighlightAction::Lines(Lines { ranges, color, .. }) => CodeHighlight {
                         color: *color,
                         kind: CodeHighlightKind::Lines {
                             ranges: ranges.clone(),

@@ -34,7 +34,7 @@ use crate::{
         render::ObjectRenderData,
         text::{TextManager, atlas::GlyphUpdateData},
     },
-    anim_op::{AnimOP, Animation},
+    anim_op::{AnimOperation, Animation},
     anim_render::AnimationState,
     projection::Camera,
     renderer::{Index, Vertex},
@@ -64,7 +64,7 @@ pub struct Animator {
     pub camera: Camera,
     pub fps: u32,
     pub anim_state: AnimationState,
-    pub animations_left: Vec<AnimOP>,
+    pub animations_left: Vec<AnimOperation>,
 
     pub objects_lookup: HashMap<Uuid, usize>,
     pub objects: Vec<Object>,
@@ -94,7 +94,7 @@ pub struct FrameAnimationOutput<'a> {
 }
 impl Animator {
     pub fn new(
-        mut animations: Vec<AnimOP>,
+        mut animations: Vec<AnimOperation>,
         fps: u32,
         camera: Camera,
         text_scale: f32,
@@ -320,7 +320,7 @@ mod tests {
     }
 
     fn make_animator() -> Animator {
-        let anim = AnimOP::Wait(0.0);
+        let anim = AnimOperation::Wait(0.0);
         let camera = Camera::new(Vec2::new(100.0, 100.0), Vec2::ZERO, 1.0);
         Animator::new(vec![anim], 60, camera, 1.0).unwrap()
     }

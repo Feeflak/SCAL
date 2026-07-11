@@ -48,7 +48,6 @@ pub fn timeline(input: TokenStream) -> TokenStream {
         let sp: proc_macro2::Span = expr.span();
         let lc: LineColumn = sp.start();
         let line = lc.line as u32;
-        let col = lc.column as u32 + 1;
 
         out.extend(quote! {
             {
@@ -56,7 +55,6 @@ pub fn timeline(input: TokenStream) -> TokenStream {
                 __op.with_location(::scal_core::SourceLoc {
                     file: file!().to_string(),
                     line: #line,
-                    col: #col,
                 })
             },
         });

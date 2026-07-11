@@ -1,4 +1,4 @@
-use crate::types::Seconds;
+use crate::{anim_op::CodeHighlight, types::Seconds};
 use anyhow::{Context, Result};
 use ffmpeg_next as ffmpeg;
 use log::debug;
@@ -385,10 +385,10 @@ pub fn compute_waveform(pcm: &[f32], num_samples: usize) -> Vec<f32> {
 
 /// Collect [`ScheduledSound`]s from a list of [`AnimOP`]s.
 /// Applies pitch variation when `pitch_variation > 0`.
-pub fn collect_sounds_from_ops(ops: &[super::anim_op::AnimOP]) -> Vec<ScheduledSound> {
-    fn end_time(op: &super::anim_op::AnimOP, t: f32, out: &mut Vec<ScheduledSound>) -> f32 {
+pub fn collect_sounds_from_ops(ops: &[super::anim_op::AnimOperation]) -> Vec<ScheduledSound> {
+    fn end_time(op: &super::anim_op::AnimOperation, t: f32, out: &mut Vec<ScheduledSound>) -> f32 {
         match op {
-            super::anim_op::AnimOP::PlaySound(sfx, delay, source_loc) => {
+            super::anim_op::AnimOperation::PlaySound(sfx, delay, source_loc) => {
                 let abs_time = t + delay;
                 let pitch = if sfx.pitch_variation > 0.0 {
                     use rand::Rng;
@@ -410,7 +410,7 @@ pub fn collect_sounds_from_ops(ops: &[super::anim_op::AnimOP]) -> Vec<ScheduledS
                 out.push(scheduled);
                 t
             }
-            super::anim_op::AnimOP::All(children, _) => {
+            super::anim_op::AnimOperation::All(children, _) => {
                 let mut max_end = t;
                 for child in children {
                     let end = end_time(child, t, out);
@@ -420,23 +420,23 @@ pub fn collect_sounds_from_ops(ops: &[super::anim_op::AnimOP]) -> Vec<ScheduledS
                 }
                 max_end
             }
-            super::anim_op::AnimOP::Sequence(children, _) => {
+            super::anim_op::AnimOperation::Sequence(children, _) => {
                 let mut time = t;
                 for child in children {
                     time = end_time(child, time, out);
                 }
                 time
             }
-            super::anim_op::AnimOP::Wait(d, _) => t + d,
-            super::anim_op::AnimOP::TransformMovePos(_, _, d, _, _)
-            | super::anim_op::AnimOP::TransformMoveToObj(_, _, _, d, _, _)
-            | super::anim_op::AnimOP::TransformRotate(_, _, d, _, _)
-            | super::anim_op::AnimOP::TransformScale(_, _, d, _, _)
-            | super::anim_op::AnimOP::CodeAddLines(_, _, _, d, _, _, _)
-            | super::anim_op::AnimOP::CodeModifyLine(_, _, _, d, _, _, _)
-            | super::anim_op::AnimOP::CodeRemoveLines(_, _, d, _, _, _) => t + d,
-            super::anim_op::AnimOP::CodeHighlight(_, action, _) => t + action.duration_and_curve().0,
-            super::anim_op::AnimOP::Instantiate(..) | super::anim_op::AnimOP::Current { .. } => t,
+            super::anim_op::AnimOperation::Wait(d, _) => t + d,
+            super::anim_op::AnimOperation::TransformMovePos(_, _, d, _, _)
+            | super::anim_op::AnimOperation::TransformMoveToObj(_, _, _, d, _, _)
+            | super::anim_op::AnimOperation::TransformRotate(_, _, d, _, _)
+            | super::anim_op::AnimOperation::TransformScale(_, _, d, _, _)
+            | super::anim_op::AnimOperation::CodeAddLines(_, _, _, d, _, _, _)
+            | super::anim_op::AnimOperation::CodeModifyLine(_, _, _, d, _, _, _)
+            | super::anim_op::AnimOperation::CodeRemoveLines(_, _, d, _, _, _) => t + d,
+            super::anim_op::AnimOperation::CodeHighlight(CodeHighlight(_, action, _)) => t + action.duration_and_curve().0,
+            super::anim_op::AnimOperation::Instantiate(..) | super::anim_op::AnimOperation::Current { .. } => t,
         }
     }
     let mut sounds = vec![];

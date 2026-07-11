@@ -3,8 +3,8 @@ pub mod highliter;
 pub mod mesh;
 pub mod theme;
 use anyhow::{Context, Result};
-use cosmic_text::Color;
 use glam::{Vec2, vec2};
+use scal_core::{AnimOP, CodeAnimationStyle, Color, Ease};
 use tree_sitter_highlight::HighlightConfiguration;
 
 use uuid::Uuid;
@@ -18,7 +18,6 @@ use crate::{
         Align,
         code::{highliter::CodeHighlighter, theme::Theme},
     },
-    anim_op::{AnimOP, AnimationCurve},
 };
 
 #[derive(Clone, Debug, Hash, PartialEq, Eq)]
@@ -105,28 +104,13 @@ pub enum CodeHighlightKind {
 
 #[derive(Clone, Debug)]
 pub struct CodeHighlight {
-    pub color: crate::types::Color,
+    pub color: Color,
     pub kind: CodeHighlightKind,
     pub progress: f32,
 }
 
-#[derive(Clone, Debug)]
-pub enum CodeHighlightAction {
-    Lines {
-        ranges: Vec<Range<usize>>,
-        color: crate::types::Color,
-        duration: f32,
-        curve: AnimationCurve,
-    },
-    Pattern {
-        regex: String,
-        color: crate::types::Color,
-        duration: f32,
-        curve: AnimationCurve,
-    },
-}
 impl CodeHighlightAction {
-    pub fn duration_and_curve(&self) -> (f32, AnimationCurve) {
+    pub fn duration_and_curve(&self) -> (f32, Ease) {
         match self {
             CodeHighlightAction::Lines {
                 duration, curve, ..
@@ -152,7 +136,7 @@ pub struct Code {
     pub dirty: bool,
     pub padding: f32,
     pub show_line_numbers: bool,
-    pub line_number_color: crate::types::Color,
+    pub line_number_color: Color,
     pub anim_reveal: f32,
     pub anim_spacing: f32,
     pub anim_line_start: usize,
@@ -163,13 +147,6 @@ pub struct Code {
     pub highlights: Vec<CodeHighlight>,
 }
 
-#[derive(Clone, Debug)]
-pub enum CodeAnimationStyle {
-    TypeWriter,
-    TypeWriterInstantResize,
-    Fold,
-}
-
 impl Code {
     pub fn instantiate(&self) -> AnimOP {
         AnimOP::Instantiate(AnimObj(Box::new(self.clone())), None)
@@ -178,9 +155,9 @@ impl Code {
     pub fn highlight_lines(
         &self,
         ranges: Vec<Range<usize>>,
-        color: crate::types::Color,
+        color: Color,
         duration: f32,
-        curve: AnimationCurve,
+        curve: Ease,
     ) -> AnimOP {
         AnimOP::CodeHighlight(
             self.id,
@@ -197,9 +174,9 @@ impl Code {
     pub fn highlight_pattern(
         &self,
         regex: String,
-        color: crate::types::Color,
+        color: Color,
         duration: f32,
-        curve: AnimationCurve,
+        curve: Ease,
     ) -> AnimOP {
         AnimOP::CodeHighlight(
             self.id,
@@ -222,7 +199,7 @@ impl Code {
         &self,
         text: &str,
         from_line: usize,
-        anim_curve: AnimationCurve,
+        anim_curve: Ease,
         duration: f32,
         style: CodeAnimationStyle,
     ) -> AnimOP {
@@ -241,7 +218,7 @@ impl Code {
         &self,
         line: u32,
         new_text: String,
-        anim_curve: AnimationCurve,
+        anim_curve: Ease,
         duration: f32,
         style: CodeAnimationStyle,
     ) -> AnimOP {
@@ -251,7 +228,7 @@ impl Code {
     pub fn remove_lines(
         &self,
         lines: std::ops::Range<u32>,
-        anim_curve: AnimationCurve,
+        anim_curve: Ease,
         duration: f32,
         style: CodeAnimationStyle,
     ) -> AnimOP {
@@ -280,7 +257,7 @@ impl Code {
             dirty: true,
             padding,
             show_line_numbers: false,
-            line_number_color: crate::types::Color::new(0.5, 0.5, 0.5, 0.6),
+            line_number_color: Color::new(0.5, 0.5, 0.5, 0.6),
             anim_reveal: 1.0,
             anim_spacing: 0.0,
             anim_line_start: 0,

@@ -8,7 +8,7 @@ use crate::anim_object::{
     render::PipelineKind,
     text::TextManager,
 };
-use crate::anim_op::AnimOP;
+use crate::anim_op::AnimOperation;
 use crate::types::Color;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -184,11 +184,11 @@ pub struct LayoutResult {
     pub container: AnimObj,
     pub items: Vec<AnimObj>,
     pub nested: Vec<LayoutResult>,
-    nested_ops: Vec<AnimOP>,
+    nested_ops: Vec<AnimOperation>,
 }
 
 impl LayoutResult {
-    pub fn instantiate(&self) -> AnimOP {
+    pub fn instantiate(&self) -> AnimOperation {
         let mut ops = Vec::new();
         ops.push(self.background.clone().instantiate());
         ops.push(self.container.clone().instantiate());
@@ -202,10 +202,10 @@ impl LayoutResult {
             }
         }
         ops.extend(self.nested_ops.iter().cloned());
-        AnimOP::All(ops, None)
+        AnimOperation::All(ops, None)
     }
 
-    pub fn instantiate_children(&self) -> AnimOP {
+    pub fn instantiate_children(&self) -> AnimOperation {
         let mut ops = Vec::new();
         ops.push(self.container.clone().instantiate());
         for item in &self.items {
@@ -218,7 +218,7 @@ impl LayoutResult {
             }
         }
         ops.extend(self.nested_ops.iter().cloned());
-        AnimOP::All(ops, None)
+        AnimOperation::All(ops, None)
     }
 }
 
@@ -503,7 +503,7 @@ pub fn layout_with_ids(
         }
     }
 
-    let nested_ops: Vec<AnimOP> = nested_layouts
+    let nested_ops: Vec<AnimOperation> = nested_layouts
         .iter()
         .map(|n| n.instantiate_children())
         .collect();

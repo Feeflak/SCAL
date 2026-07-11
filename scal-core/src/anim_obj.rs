@@ -246,7 +246,7 @@ pub enum TextAlign {
     Right,
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Hash, Eq)]
 pub enum Syntax {
     Rust,
     Nix,

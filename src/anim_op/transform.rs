@@ -1,10 +1,10 @@
 use glam::{Vec2, vec3};
+use scal_core::{Ease, Seconds};
 use uuid::Uuid;
 
 use crate::anim_op::{Animation, AnimationCurve};
-use crate::types::*;
 
-pub fn move_pos(uuid: Uuid, target: Vec2, duration: Seconds, curve: AnimationCurve) -> Animation {
+pub fn move_pos(uuid: Uuid, target: Vec2, duration: Seconds, curve: Ease) -> Animation {
     Animation::new(
         duration,
         curve,

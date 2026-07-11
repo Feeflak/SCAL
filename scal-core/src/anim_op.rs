@@ -1,3 +1,4 @@
+use std::fmt::Display;
 use std::ops::Range;
 
 use glam::Vec2;
@@ -10,11 +11,23 @@ use crate::ease::Ease;
 use crate::seconds::Seconds;
 use crate::sfx::Sfx;
 
+#[derive(Clone)]
+pub struct CurrentClosure(pub std::sync::Arc<dyn Fn(AnimObj) -> AnimOP + Send + Sync>);
+impl std::fmt::Debug for CurrentClosure {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("CurrentClosure").finish_non_exhaustive()
+    }
+}
+
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct SourceLoc {
     pub file: String,
     pub line: u32,
-    pub col: u32,
+}
+impl Display for SourceLoc {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "at {}:{}", self.file, self.line)
+    }
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -98,6 +111,24 @@ pub enum CodeHighlightAction {
         duration: Seconds,
         curve: Ease,
     },
+}
+impl CodeHighlightAction {
+    pub fn duration_and_curve(&self) -> (Seconds, Ease) {
+        match self {
+            CodeHighlightAction::Lines {
+                ranges: _,
+                color: _,
+                duration,
+                curve,
+            } => (*duration, *curve),
+            CodeHighlightAction::Pattern {
+                regex: _,
+                color: _,
+                duration,
+                curve,
+            } => (*duration, *curve),
+        }
+    }
 }
 
 pub trait IntoAnimOp {

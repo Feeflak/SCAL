@@ -1,9 +1,29 @@
-mod preview;
+pub mod anim_object;
+pub mod anim_op;
+mod anim_render;
+pub mod animator;
+pub mod audio_player;
+pub mod conversion;
+pub mod encoder;
+pub mod nv12;
+pub mod preview;
+pub mod projection;
+mod readback;
+pub mod renderer;
+pub mod sfx;
+pub mod types;
+
+use crate::anim_op::AnimOperation;
+use crate::conversion::convert_anim_ops;
+use crate::sfx::{AudioEngine, ScheduledSound};
+use anyhow::{Context, Result, bail};
+use log::{debug, info};
+
+pub use scal_core::{self, Color, Ease, Seconds as CoreSeconds};
 
 use std::path::PathBuf;
 
-use anyhow::{Context, Result, bail};
-use scal_core::{EncodingSettings, RenderingSettings};
+use scal_core::{CodecType, EncodingSettings, Project, RenderingSettings, Seconds, Sfx};
 use tokio::runtime::Handle;
 
 #[derive(serde::Deserialize, Clone)]
@@ -151,11 +171,198 @@ async fn run_render() -> Result<()> {
     );
 
     let handle = Handle::current();
-    scal::render_project(&handle, encoding, rendering, project)
+    render_project(&handle, encoding, rendering, project)
         .await
         .context("Failed to render project")?;
 
     log::info!("Render complete!");
 
     Ok(())
+}
+
+const BYTES_PER_PIXEL: u32 = 4; //RGBA
+async fn run_loop(
+    tokio_handle: &tokio::runtime::Handle,
+    encoding_settings: EncodingSettings,
+    rendering_settings: RenderingSettings,
+    project: Project,
+    mut animations: Vec<AnimOperation>,
+) -> Result<()> {
+    fn op_end_time(
+        op: &AnimOperation,
+        start_time: Seconds,
+        out: &mut Vec<(Sfx, Seconds, Option<scal_core::SourceLoc>)>,
+    ) -> Seconds {
+        match op {
+            AnimOperation::PlaySound(sfx, video_delay, source_loc) => {
+                let abs_time = start_time + video_delay;
+                debug!(
+                    "audio: {} at abs_time={}, seek={}",
+                    sfx.path, abs_time, sfx.time_offset
+                );
+                out.push((sfx.clone(), abs_time, source_loc.clone()));
+                start_time
+            }
+            AnimOperation::All(children, _) => {
+                let mut max_end = start_time;
+                for child in children {
+                    let end = op_end_time(child, start_time, out);
+                    if end > max_end {
+                        max_end = end;
+                    }
+                }
+                max_end
+            }
+            AnimOperation::Sequence(children, _) => {
+                let mut t = start_time;
+                for child in children {
+                    t = op_end_time(child, t, out);
+                }
+                t
+            }
+            AnimOperation::Wait(dur, _)
+            | AnimOperation::CodeAddLines(_, _, _, dur, _, _, _)
+            | AnimOperation::CodeModifyLine(_, _, _, dur, _, _, _)
+            | AnimOperation::CodeRemoveLines(_, _, dur, _, _, _)
+            | AnimOperation::TransformMovePos(_, _, dur, _, _)
+            | AnimOperation::TransformMoveToObj(_, _, _, dur, _, _)
+            | AnimOperation::TransformRotate(_, _, dur, _, _)
+            | AnimOperation::TransformScale(_, _, dur, _, _) => start_time + dur,
+            AnimOperation::CodeHighlight(_, action, _) => {
+                start_time + action.duration_and_curve().0
+            }
+            AnimOperation::Instantiate(..) => start_time,
+        }
+    }
+
+    let mut sfx_sounds: Vec<(Sfx, Seconds, Option<scal_core::SourceLoc>)> = vec![];
+    let mut time = 0.0;
+    for op in &animations {
+        time = op_end_time(op, time, &mut sfx_sounds);
+    }
+    debug!(
+        "collect_sounds total: {}, total_dur={}",
+        sfx_sounds.len(),
+        time
+    );
+
+    let scheduled: Vec<ScheduledSound> = sfx_sounds
+        .into_iter()
+        .map(|(s, abs_start_time, source_loc_opt)| {
+            let pitch_var = if s.pitch_variation > 0.0 {
+                use rand::Rng;
+                let mut rng = rand::thread_rng();
+                let variation = rng.gen_range(-s.pitch_variation..s.pitch_variation);
+                s.pitch * (1.0 + variation)
+            } else {
+                s.pitch
+            };
+            let ss = ScheduledSound {
+                path: s.path,
+                volume: s.volume,
+                pitch: pitch_var,
+                start_time: abs_start_time,
+                seek_offset: s.time_offset,
+                duration: s.duration,
+                source_loc: source_loc_opt,
+            };
+            debug!(
+                "ScheduledSound: path={}, start_time={}, seek={}, duration={}, pitch={}",
+                ss.path, ss.start_time, ss.seek_offset, ss.duration, ss.pitch
+            );
+            ss
+        })
+        .collect();
+    let audio_engine = if scheduled.is_empty() {
+        None
+    } else {
+        Some(AudioEngine::new(scheduled))
+    };
+
+    animations.reverse();
+    info!("Starting rendering loop...");
+    if !(rendering_settings.width * 4).is_multiple_of(256) {
+        bail!("Wgpu needs the bytes_per_row(width * 4) value to be multiple of 256");
+    }
+    let codec_type = encoding_settings.codec_type;
+    let use_nv12 = matches!(codec_type, CodecType::H264 | CodecType::H264Nvenc);
+    let pixel_buffer_size = if use_nv12 {
+        (rendering_settings.width * rendering_settings.height * 3 / 2) as usize
+    } else {
+        (rendering_settings.width * rendering_settings.height * BYTES_PER_PIXEL) as usize
+    };
+    let instance = wgpu::Instance::default();
+
+    let adapter = instance
+        .request_adapter(&wgpu::RequestAdapterOptions::default())
+        .await
+        .context("failed to request wgpu adapter")?;
+
+    info!(
+        "Adapter: {:?} (backend: {:?})",
+        adapter.get_info().name,
+        adapter.get_info().backend
+    );
+
+    let (device, queue) = adapter
+        .request_device(&wgpu::DeviceDescriptor::default())
+        .await
+        .context("failed to request wgpu device")?;
+    readback::init_buffers(rendering_settings.buffer_count, pixel_buffer_size, &device)
+        .context("while initializing buffers")?;
+    let (renderer_send, renderer_rec) =
+        tokio::sync::mpsc::channel(rendering_settings.buffer_count as usize);
+    for i in 0..rendering_settings.buffer_count as usize {
+        renderer_send.send(i).await.unwrap();
+    }
+    let (encoder_send, encoder_rec) =
+        tokio::sync::mpsc::channel(rendering_settings.buffer_count as usize);
+    encoder::start_encoding_task(
+        encoding_settings,
+        tokio_handle,
+        rendering_settings,
+        encoder_rec,
+        renderer_send,
+        audio_engine,
+    )
+    .context("while initializing the encoder")?;
+    anim_render::render_animations(
+        queue,
+        animations,
+        readback::ReadbackRing::new(renderer_rec),
+        encoder_send,
+        device,
+        rendering_settings,
+        project.scene_settings,
+        codec_type,
+    )
+    .await
+    .context("while rendering the animation")?;
+
+    Ok(())
+}
+
+pub async fn render_project(
+    tokio_handle: &tokio::runtime::Handle,
+    core_encoding: scal_core::EncodingSettings,
+    core_rendering: scal_core::RenderingSettings,
+    project: scal_core::Project,
+) -> Result<()> {
+    let encoding = EncodingSettings {
+        output_path: core_encoding.output_path,
+        codec_type: core_encoding.codec_type,
+    };
+
+    let rendering = RenderingSettings {
+        width: core_rendering.width,
+        height: core_rendering.height,
+        fps: core_rendering.fps,
+        buffer_count: core_rendering.buffer_count,
+        text_resolution_multiplier: core_rendering.text_resolution_multiplier,
+    };
+
+    let default_theme = project.scene_settings.default_theme.clone();
+    let animations = convert_anim_ops(project.timeline.clone(), &default_theme)?;
+
+    run_loop(tokio_handle, encoding, rendering, project, animations).await
 }
