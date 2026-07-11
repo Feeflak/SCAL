@@ -172,7 +172,7 @@ pub enum CodeAnimationStyle {
 
 impl Code {
     pub fn instantiate(&self) -> AnimOP {
-        AnimOP::Instantiate(AnimObj(Box::new(self.clone())))
+        AnimOP::Instantiate(AnimObj(Box::new(self.clone())), None)
     }
 
     pub fn highlight_lines(
@@ -190,6 +190,7 @@ impl Code {
                 duration,
                 curve,
             },
+            None,
         )
     }
 
@@ -208,6 +209,7 @@ impl Code {
                 duration,
                 curve,
             },
+            None,
         )
     }
 
@@ -231,6 +233,7 @@ impl Code {
             duration,
             anim_curve,
             style,
+            None,
         )
     }
 
@@ -242,7 +245,7 @@ impl Code {
         duration: f32,
         style: CodeAnimationStyle,
     ) -> AnimOP {
-        AnimOP::CodeModifyLine(self.id, line, new_text, duration, anim_curve, style)
+        AnimOP::CodeModifyLine(self.id, line, new_text, duration, anim_curve, style, None)
     }
 
     pub fn remove_lines(
@@ -252,7 +255,7 @@ impl Code {
         duration: f32,
         style: CodeAnimationStyle,
     ) -> AnimOP {
-        AnimOP::CodeRemoveLines(self.id, lines, duration, anim_curve, style)
+        AnimOP::CodeRemoveLines(self.id, lines, duration, anim_curve, style, None)
     }
     pub fn new(
         text: String,

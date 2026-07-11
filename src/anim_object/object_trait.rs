@@ -42,12 +42,13 @@ pub struct AnimObj(pub Box<dyn AnimObjectTrait>);
 
 impl AnimObj {
     pub fn instantiate(&self) -> AnimOP {
-        AnimOP::Instantiate(self.clone())
+        AnimOP::Instantiate(self.clone(), None)
     }
     pub fn current(&self, closure: impl Fn(AnimObj) -> AnimOP + 'static + Send + Sync) -> AnimOP {
         AnimOP::Current {
             uuid: self.uuid(),
             closure: CurrentClosure(std::sync::Arc::new(closure)),
+            source_loc: None,
         }
     }
     pub fn current_world_uniform(&self) -> Result<TransformUniform> {

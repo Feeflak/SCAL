@@ -294,7 +294,27 @@ impl ApplicationHandler for PreviewState {
                     window.request_redraw();
                 }
             }
-            WindowEvent::KeyboardInput { ref event, .. }
+                WindowEvent::MouseWheel { delta, .. } => {
+                    let ctrl = self.modifiers
+                        .as_ref()
+                        .map_or(false, |m| m.state().intersects(winit::keyboard::ModifiersState::CONTROL));
+                    if ctrl {
+                        let y = match delta {
+                            winit::event::MouseScrollDelta::LineDelta(_, y) => y,
+                            winit::event::MouseScrollDelta::PixelDelta(pos) => pos.y as f32 / 10.0,
+                        };
+                        if y > 0.0 {
+                            preview.zoom_in();
+                        } else if y < 0.0 {
+                            preview.zoom_out();
+                        }
+                        self.needs_render = true;
+                        if let Some(ref window) = self.window {
+                            window.request_redraw();
+                        }
+                    }
+                }
+                WindowEvent::KeyboardInput { ref event, .. }
                 if event.state == winit::event::ElementState::Pressed =>
             {
                 handle_keyboard(event, preview, self.modifiers);
@@ -321,8 +341,25 @@ impl ApplicationHandler for PreviewState {
                 ..
             } => {
                 self.mouse_down = true;
-                if seek_on_timeline(preview, self.window_size, self.cursor_pos) {
+                let was_on_timeline = seek_on_timeline(preview, self.window_size, self.cursor_pos);
+                let info = click_on_op_marker(preview, self.window_size, self.cursor_pos)
+                    .or_else(|| click_on_sound_marker(preview, self.window_size, self.cursor_pos));
+                if let Some(ref info) = info {
+                    preview.set_selected_op_info(Some(info.clone()));
                     if let Some(ref window) = self.window {
+                        window.set_title(&format!("SCAL Preview - {}", info));
+                        window.request_redraw();
+                    }
+                } else if was_on_timeline {
+                    preview.set_selected_op_info(None);
+                    if let Some(ref window) = self.window {
+                        window.set_title("SCAL Preview");
+                        window.request_redraw();
+                    }
+                } else {
+                    preview.set_selected_op_info(None);
+                    if let Some(ref window) = self.window {
+                        window.set_title("SCAL Preview");
                         window.request_redraw();
                     }
                 }
@@ -352,11 +389,9 @@ fn seek_on_timeline(preview: &mut PreviewRenderer, window_size: (u32, u32), curs
     let (ww, wh) = window_size;
     if ww > 0 && wh > 0 {
         let (cx, cy) = cursor_pos;
-        let timeline_top = wh as f64 - 48.0;
+        let timeline_top = wh as f64 - 80.0;
         if cy >= timeline_top && cy <= wh as f64 {
-            let click_ratio = (cx / ww as f64).clamp(0.0, 1.0);
-            let total_dur = preview.total_duration();
-            let seek_time = click_ratio as f32 * total_dur;
+            let seek_time = preview.screen_x_to_time(cx as f32);
             if let Err(e) = preview.seek_to(seek_time) {
                 log::error!("Seek error: {e}");
             }
@@ -364,6 +399,48 @@ fn seek_on_timeline(preview: &mut PreviewRenderer, window_size: (u32, u32), curs
         }
     }
     false
+}
+
+fn click_on_op_marker(preview: &PreviewRenderer, window_size: (u32, u32), cursor_pos: (f64, f64)) -> Option<String> {
+    let (ww, wh) = window_size;
+    if ww == 0 || wh == 0 {
+        return None;
+    }
+    let (cx, cy) = cursor_pos;
+    let h = wh as f32;
+    let marker_top = h - 44.0;
+    let marker_bot = marker_top + 20.0;
+    if cy as f32 >= marker_top && cy as f32 <= marker_bot {
+        if let Some(op) = preview.find_op_at_x(cx as f32) {
+            let info = match op.source_loc {
+                Some(ref loc) => format!("{} @ {}:{},{}", op.label, loc.file, loc.line, loc.col),
+                None => format!("{} (no source)", op.label),
+            };
+            log::info!("Op: {}", info);
+            return Some(info);
+        }
+    }
+    None
+}
+
+fn click_on_sound_marker(preview: &PreviewRenderer, window_size: (u32, u32), cursor_pos: (f64, f64)) -> Option<String> {
+    let (ww, wh) = window_size;
+    if ww == 0 || wh == 0 {
+        return None;
+    }
+    let (cx, cy) = cursor_pos;
+    let h = wh as f32;
+    let waveform_area_top = h - 20.0;
+    let waveform_area_bot = h - 4.0;
+    if cy as f32 >= waveform_area_top && cy as f32 <= waveform_area_bot {
+        if let Some((start, end, _idx)) = preview.find_sound_at_x(cx as f32) {
+            let end_str = end.map_or("?".to_string(), |e| format!("{:.2}s", e));
+            let info = format!("SFX: {:.2}s to {}", start, end_str);
+            log::info!("Sound: {}", info);
+            return Some(info);
+        }
+    }
+    None
 }
 
 fn seek_by_seconds(preview: &mut PreviewRenderer, offset: f32) {
@@ -436,6 +513,12 @@ fn handle_keyboard(
             if let Err(e) = preview.seek_to(preview.total_duration()) {
                 log::error!("Seek error: {e}");
             }
+        }
+        Key::Character(c) if c == "j" || c == "J" => {
+            preview.zoom_in();
+        }
+        Key::Character(c) if c == "k" || c == "K" => {
+            preview.zoom_out();
         }
         Key::Character(c) if c == "r" || c == "R" => {
             // Manual reload triggered by watcher

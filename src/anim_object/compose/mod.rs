@@ -202,7 +202,7 @@ impl LayoutResult {
             }
         }
         ops.extend(self.nested_ops.iter().cloned());
-        AnimOP::All(ops)
+        AnimOP::All(ops, None)
     }
 
     pub fn instantiate_children(&self) -> AnimOP {
@@ -218,7 +218,7 @@ impl LayoutResult {
             }
         }
         ops.extend(self.nested_ops.iter().cloned());
-        AnimOP::All(ops)
+        AnimOP::All(ops, None)
     }
 }
 

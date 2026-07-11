@@ -21,11 +21,11 @@ impl std::fmt::Debug for CurrentClosure {
 
 #[derive(Clone, Debug)]
 pub enum AnimOP {
-    Instantiate(AnimObj),
-    TransformMovePos(Uuid, Vec2, Seconds, AnimationCurve),
-    TransformMoveToObj(Uuid, Uuid, Vec2, Seconds, AnimationCurve),
-    TransformRotate(Uuid, f32, Seconds, AnimationCurve),
-    TransformScale(Uuid, Vec2, Seconds, AnimationCurve),
+    Instantiate(AnimObj, Option<scal_core::SourceLoc>),
+    TransformMovePos(Uuid, Vec2, Seconds, AnimationCurve, Option<scal_core::SourceLoc>),
+    TransformMoveToObj(Uuid, Uuid, Vec2, Seconds, AnimationCurve, Option<scal_core::SourceLoc>),
+    TransformRotate(Uuid, f32, Seconds, AnimationCurve, Option<scal_core::SourceLoc>),
+    TransformScale(Uuid, Vec2, Seconds, AnimationCurve, Option<scal_core::SourceLoc>),
 
     CodeAddLines(
         Uuid,
@@ -34,6 +34,7 @@ pub enum AnimOP {
         Seconds,
         AnimationCurve,
         crate::anim_object::text::code::CodeAnimationStyle,
+        Option<scal_core::SourceLoc>,
     ),
     CodeModifyLine(
         Uuid,
@@ -42,6 +43,7 @@ pub enum AnimOP {
         Seconds,
         AnimationCurve,
         crate::anim_object::text::code::CodeAnimationStyle,
+        Option<scal_core::SourceLoc>,
     ),
     CodeRemoveLines(
         Uuid,
@@ -49,31 +51,33 @@ pub enum AnimOP {
         Seconds,
         AnimationCurve,
         crate::anim_object::text::code::CodeAnimationStyle,
+        Option<scal_core::SourceLoc>,
     ),
-    CodeHighlight(Uuid, crate::anim_object::text::code::CodeHighlightAction),
+    CodeHighlight(Uuid, crate::anim_object::text::code::CodeHighlightAction, Option<scal_core::SourceLoc>),
     Current {
         uuid: Uuid,
         closure: CurrentClosure,
+        source_loc: Option<scal_core::SourceLoc>,
     },
-    All(Vec<AnimOP>),
-    Sequence(Vec<AnimOP>),
-    Wait(Seconds),
-    PlaySound(Sfx, Seconds),
+    All(Vec<AnimOP>, Option<scal_core::SourceLoc>),
+    Sequence(Vec<AnimOP>, Option<scal_core::SourceLoc>),
+    Wait(Seconds, Option<scal_core::SourceLoc>),
+    PlaySound(Sfx, Seconds, Option<scal_core::SourceLoc>),
 }
 impl TryInto<Animation> for AnimOP {
     fn try_into(self) -> Result<Animation> {
         // let skip = Box::new(|_, _| Ok(()));
         Ok(match self {
-            AnimOP::Instantiate(anim_obj) => Animation::instant(Box::new(move |animator, _| {
+            AnimOP::Instantiate(anim_obj, _loc) => Animation::instant(Box::new(move |animator, _| {
                 debug!("Instantiate uuid={}", anim_obj.uuid());
                 animator.add_anim_object(anim_obj.clone())?;
                 Ok(())
             })),
-            AnimOP::TransformMovePos(uuid, pos, duration, curve) => {
+            AnimOP::TransformMovePos(uuid, pos, duration, curve, _loc) => {
                 debug!("TransformMovePos uuid={uuid}");
                 transform::move_pos(uuid, pos, duration, curve)
             }
-            AnimOP::TransformMoveToObj(moving_uuid, target_uuid, offset, duration, curve) => {
+            AnimOP::TransformMoveToObj(moving_uuid, target_uuid, offset, duration, curve, _loc) => {
                 debug!("TransformMoveToObj moving={moving_uuid} target={target_uuid}");
                 Animation::new(
                     duration,
@@ -100,34 +104,34 @@ impl TryInto<Animation> for AnimOP {
                     })),
                 )
             }
-            AnimOP::TransformRotate(uuid, target, duration, curve) => {
+            AnimOP::TransformRotate(uuid, target, duration, curve, _loc) => {
                 debug!("TransformRotate uuid={uuid}");
                 transform::rotate_to(uuid, target, duration, curve)
             }
-            AnimOP::TransformScale(uuid, target, duration, curve) => {
+            AnimOP::TransformScale(uuid, target, duration, curve, _loc) => {
                 debug!("TransformScale uuid={uuid}");
                 transform::scale_to(uuid, target, duration, curve)
             }
 
-            AnimOP::CodeAddLines(uuid, text, from_line, duration, curve, style) => {
+            AnimOP::CodeAddLines(uuid, text, from_line, duration, curve, style, _loc) => {
                 debug!("CodeAddLines uuid={uuid}");
                 code::add_lines(uuid, text, from_line, duration, curve, style)
             }
-            AnimOP::CodeModifyLine(uuid, line, new_text, duration, curve, style) => {
+            AnimOP::CodeModifyLine(uuid, line, new_text, duration, curve, style, _loc) => {
                 debug!("CodeModifyLine uuid={uuid}");
                 code::modify_line(uuid, line, new_text, duration, curve, style)
             }
-            AnimOP::CodeRemoveLines(uuid, lines, duration, curve, style) => {
+            AnimOP::CodeRemoveLines(uuid, lines, duration, curve, style, _loc) => {
                 debug!("CodeRemoveLines uuid={uuid}");
                 code::remove_lines(uuid, lines, duration, curve, style)
             }
-            AnimOP::CodeHighlight(uuid, action) => {
+            AnimOP::CodeHighlight(uuid, action, _loc) => {
                 let (duration, curve) = action.duration_and_curve();
                 code::highlight_fade_in(uuid, action, duration, curve)
             }
-            AnimOP::All(anim_ops) => get_all_animation(anim_ops)?,
-            AnimOP::Sequence(anim_ops) => get_sequence_animation(anim_ops)?,
-            AnimOP::Current { uuid, closure } => {
+            AnimOP::All(anim_ops, _loc) => get_all_animation(anim_ops)?,
+            AnimOP::Sequence(anim_ops, _loc) => get_sequence_animation(anim_ops)?,
+            AnimOP::Current { uuid, closure, source_loc: _ } => {
                 Animation::instant(Box::new(move |animator, _| {
                     let mut snapshot = animator.get_object(&uuid)?.anim_data.clone();
                     if let Ok(world) = animator.get_object_world_matrix(&uuid) {
@@ -143,26 +147,26 @@ impl TryInto<Animation> for AnimOP {
                     Ok(())
                 }))
             }
-            AnimOP::Wait(duration) => Animation::new(
+            AnimOP::Wait(duration, _loc) => Animation::new(
                 duration,
                 AnimationCurve::Linear,
                 Box::new(|_, _| Ok(())),
                 Some(Box::new(|_, _, _| Ok(()))),
             ),
-            AnimOP::PlaySound(_, _) => Animation::instant(Box::new(|_, _| Ok(()))),
+            AnimOP::PlaySound(_, _, _) => Animation::instant(Box::new(|_, _| Ok(()))),
         })
     }
 
     type Error = anyhow::Error;
 }
 pub fn play(sfx: Sfx, video_delay: Seconds) -> AnimOP {
-    AnimOP::PlaySound(sfx, video_delay)
+    AnimOP::PlaySound(sfx, video_delay, None)
 }
 pub fn sequence(ops: Vec<AnimOP>) -> AnimOP {
-    AnimOP::Sequence(ops)
+    AnimOP::Sequence(ops, None)
 }
 pub fn all(ops: Vec<AnimOP>) -> AnimOP {
-    AnimOP::All(ops)
+    AnimOP::All(ops, None)
 }
 pub fn get_sequence_animation(ops: Vec<AnimOP>) -> Result<Animation> {
     let mut child_durations: Vec<f32> = Vec::with_capacity(ops.len());

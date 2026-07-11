@@ -2,17 +2,6 @@ use glam::{Vec2, vec2};
 use scal_core::prelude::*;
 
 const WINDOW: Vec2 = vec2(1920., 1080.);
-const SOURCE: &str = "fn main() {\n    println!(\"Hello, world!\");\n}\n";
-const NEW_LINES: &str = r"
-fn fib(n: u32) -> u32 {
-    match n {
-        0 => 0,
-        1 => 1,
-        _ => fib(n - 1) + fib(n - 2),
-    }
-}
-";
-
 #[scal_ipc::main]
 fn main() -> Project {
     let theme = Theme::from_base16(Base16::from_hex([
@@ -20,16 +9,18 @@ fn main() -> Project {
         0xf6955b, 0xd7a65f, 0x95c561, 0x38a89d, 0x7199ee, 0xa485dd, 0x773440,
     ]));
 
+    const CW_WIDTH: f32 = 800.;
+    const CW_HEIGHT: f32 = 600.;
+
     let cw = code_window()
-        .source(SOURCE)
+        .source("fn main() {\n    println!(\"Hello, world!\");\n}\n")
         .font_family("SF Pro Display")
         .font_size(20.)
         .syntax(Syntax::Rust)
-        .theme(theme)
         .line_numbers(true)
         .title("fib.rs")
-        .width(800.)
-        .height(600.)
+        .width(CW_WIDTH)
+        .height(CW_HEIGHT)
         .title_font_size(25.)
         .background_color(Color::new(0.15, 0.15, 0.2, 1.))
         .pos(WINDOW / 2.)
@@ -47,22 +38,53 @@ fn main() -> Project {
     Project {
         scene_settings: SceneSettings {
             background_color: Color::new(0.8, 0.8, 0.8, 0.),
-            camera: Camera::new(WINDOW, Vec2::ZERO, 1.),
-            default_theme: Theme::default(),
+            camera: Camera::new(Vec2::new(1920., 1080.), Vec2::ZERO, 1.),
+            default_theme: theme,
         },
+        // This is the actual animation sequence
         timeline: timeline![
             cw.instantiate(),
             pointer.instantiate(),
-            wait(1.s()),
-            cw.add_lines().str(NEW_LINES).from_line(4).over(5.s()),
-            wait(1.s()),
+            wait(0.5.s()),
+            parallel![
+                cw.add_lines()
+                    .str(
+                        r"
+fn fib(n: u32) -> u32 {
+    match n {
+        0 => 0,
+        1 => 1,
+        _ => fib(n - 1) + fib(n - 2),
+    }
+}
+                "
+                    )
+                    .over(5.s())
+                    .style(CodeAnimationStyle::TypeWriterInstantResize),
+            ],
+            wait(0.5.s()),
             pointer
                 .transform
                 .position()
                 .object(cw.close_button())
-                .to(Vec2::new(15., 15.))
+                .to(vec2(15., 15.))
                 .over(0.5.s())
                 .ease(Ease::InOutCubic),
+            cw.close_button().scale().to(Vec2::ONE * 0.8).over(0.3.s()),
+            cw.close_button().scale().to(Vec2::ONE).over(0.3.s()),
+            parallel![
+                cw.transform
+                    .scale()
+                    .to(Vec2::ZERO)
+                    .over(0.5)
+                    .ease(Ease::OutCubic),
+                cw.transform
+                    .position()
+                    .to((WINDOW - vec2(CW_WIDTH, CW_HEIGHT)) / 2.)
+                    .over(0.5)
+                    .ease(Ease::OutCubic),
+            ],
+            wait(0.5.s()),
         ],
     }
 }

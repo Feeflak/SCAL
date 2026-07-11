@@ -156,11 +156,11 @@ pub fn svg(
 }
 
 pub fn wait(time: Seconds) -> AnimOP {
-    AnimOP::Wait(time)
+    AnimOP::Wait(time, None)
 }
 impl From<Vec<AnimOP>> for AnimOP {
     fn from(value: Vec<AnimOP>) -> Self {
-        AnimOP::All(value)
+        AnimOP::All(value, None)
     }
 }
 #[derive(Clone, Debug, Copy)]
@@ -189,7 +189,7 @@ impl Transform {
         self.world_uniform = None;
     }
     pub fn position_to(&self, to: Vec2, time: Seconds, curve: AnimationCurve) -> AnimOP {
-        AnimOP::TransformMovePos(self.uuid, to, time, curve)
+        AnimOP::TransformMovePos(self.uuid, to, time, curve, None)
     }
     pub fn position_to_object(
         &self,
@@ -198,13 +198,13 @@ impl Transform {
         time: Seconds,
         curve: AnimationCurve,
     ) -> AnimOP {
-        AnimOP::TransformMoveToObj(self.uuid, target.uuid(), offset, time, curve)
+        AnimOP::TransformMoveToObj(self.uuid, target.uuid(), offset, time, curve, None)
     }
     pub fn rotate_to(&self, to: f32, time: Seconds, curve: AnimationCurve) -> AnimOP {
-        AnimOP::TransformRotate(self.uuid, to, time, curve)
+        AnimOP::TransformRotate(self.uuid, to, time, curve, None)
     }
     pub fn scale_to(&self, to: Vec2, time: Seconds, curve: AnimationCurve) -> AnimOP {
-        AnimOP::TransformScale(self.uuid, to, time, curve)
+        AnimOP::TransformScale(self.uuid, to, time, curve, None)
     }
 }
 

@@ -2,7 +2,6 @@ use glam::{Vec2, vec2};
 use scal_core::prelude::*;
 
 const WINDOW: Vec2 = vec2(1920., 1080.);
-const SOURCE: &str = "fn main() {\n    println!(\"Hello, world!\");\n}\n";
 #[scal_ipc::main]
 fn main() -> Project {
     let typing = sfx()
@@ -30,7 +29,7 @@ fn main() -> Project {
     const CW_HEIGHT: f32 = 600.;
 
     let cw = code_window()
-        .source(SOURCE)
+        .source("fn main() {\n    println!(\"Hello, world!\");\n}\n")
         .font_family("SF Pro Display")
         .font_size(20.)
         .syntax(Syntax::Rust)
