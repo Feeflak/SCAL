@@ -34,6 +34,10 @@
 
             clang
             llvmPackages.libclang
+
+            alsa-lib
+            alsa-lib.dev
+            libpulseaudio
           ];
           shellHook = ''
             export LIBCLANG_PATH="${pkgs.llvmPackages.libclang.lib}/lib"
@@ -47,8 +51,12 @@
                 pkgs.xorg.libXi
                 pkgs.xorg.libXrandr
                 pkgs.xorg.libxcb
+                pkgs.alsa-lib
+                pkgs.libpulseaudio
               ]
             }:$LD_LIBRARY_PATH"
+
+            export PKG_CONFIG_PATH="${pkgs.alsa-lib.dev}/lib/pkgconfig:$PKG_CONFIG_PATH"
           '';
           nativeBuildInputs = with pkgs; [
             pkg-config

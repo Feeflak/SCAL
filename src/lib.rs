@@ -184,6 +184,7 @@ pub use scal_core::{self, Color, Ease, Seconds as CoreSeconds};
 pub mod anim_object;
 pub mod anim_op;
 mod anim_render;
+pub mod audio_player;
 pub mod animator;
 pub mod encoder;
 pub mod nv12;

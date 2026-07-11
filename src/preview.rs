@@ -2,6 +2,8 @@ use std::collections::HashMap;
 
 use anyhow::{Context, Result};
 use wgpu::util::DeviceExt;
+use crate::sfx::{AudioEngine, collect_sounds_from_ops, compute_waveform};
+use crate::audio_player::AudioPlayer;
 use wgpu::{
     BlendComponent, BlendFactor, BlendOperation, BlendState, ColorTargetState, ColorWrites,
     CommandEncoderDescriptor, CurrentSurfaceTexture, FragmentState, LoadOp, MultisampleState,
@@ -172,6 +174,9 @@ pub struct PreviewRenderer {
     timeline_ops: Vec<TimelineOp>,
     original_animations: Vec<AnimOP>,
 
+    audio_player: Option<AudioPlayer>,
+    waveform: Vec<f32>,
+
     ui_pipeline: RenderPipeline,
     ui_bind_group_layout: wgpu::BindGroupLayout,
     ui_uniform_buffer: wgpu::Buffer,
@@ -223,6 +228,10 @@ impl PreviewRenderer {
         let (ui_pipeline, ui_bind_group_layout, ui_uniform_buffer) =
             Self::create_ui_pipeline(&device)?;
 
+        // Set up audio (starts paused; unpaused on first frame advance so
+        // audio and video begin at the same wall‑clock time).
+        let (audio_player, waveform) = Self::init_audio(&animations, surface_config.width, true);
+
         Ok(PreviewRenderer {
             device,
             queue,
@@ -243,6 +252,8 @@ impl PreviewRenderer {
             frame_rendered: false,
             timeline_ops,
             original_animations: animations,
+            audio_player,
+            waveform,
             ui_pipeline,
             ui_bind_group_layout,
             ui_uniform_buffer,
@@ -250,6 +261,36 @@ impl PreviewRenderer {
             ui_index_buffer: None,
             ui_index_count: 0,
         })
+    }
+
+    fn init_audio(animations: &[AnimOP], timeline_width: u32, initially_paused: bool) -> (Option<AudioPlayer>, Vec<f32>) {
+        let sounds = collect_sounds_from_ops(animations);
+        if sounds.is_empty() {
+            return (None, vec![]);
+        }
+        let engine = AudioEngine::new(sounds);
+        let pcm = match engine.mix() {
+            Ok(pcm) => pcm,
+            Err(e) => {
+                log::error!("failed to mix audio for preview: {e}");
+                return (None, vec![]);
+            }
+        };
+        if pcm.is_empty() {
+            return (None, vec![]);
+        }
+        let waveform = compute_waveform(&pcm, timeline_width.max(1) as usize);
+        let player = match AudioPlayer::new(pcm, crate::sfx::OUTPUT_SAMPLE_RATE) {
+            Ok(p) => {
+                p.set_paused(initially_paused);
+                Some(p)
+            }
+            Err(e) => {
+                log::error!("failed to create audio player: {e}");
+                return (None, waveform);
+            }
+        };
+        (player, waveform)
     }
 
     fn create_ui_pipeline(
@@ -393,6 +434,37 @@ impl PreviewRenderer {
         let bg_color = [0.05, 0.05, 0.1, 0.85];
         append_rect(&mut vertices, &mut indices, 0.0, timeline_top, w, timeline_bottom, bg_color);
 
+        // Audio waveform – map audio time to animation timeline time.
+        if !self.waveform.is_empty() {
+            let waveform_area_top = timeline_top + 22.0;
+            let waveform_area_bot = timeline_bottom - 4.0;
+            let waveform_center = (waveform_area_top + waveform_area_bot) / 2.0;
+            let waveform_scale = (waveform_area_bot - waveform_area_top) / 2.0;
+            let wave_color = [0.2, 0.9, 0.7, 0.4];
+            let audio_total = self
+                .audio_player
+                .as_ref()
+                .map_or(0.0, |p| p.total_duration());
+            if audio_total > 0.0 {
+                let waveform_w = (audio_total / total_dur).min(1.0) * w;
+                let n = self.waveform.len().min(w as usize);
+                let step = waveform_w / n.max(1) as f32;
+                for (i, &amp) in self.waveform.iter().enumerate().take(n) {
+                    let x = i as f32 * step;
+                    let half_h = (amp * waveform_scale).max(1.0);
+                    append_rect(
+                        &mut vertices,
+                        &mut indices,
+                        x,
+                        waveform_center - half_h,
+                        x + step.max(1.0),
+                        waveform_center + half_h,
+                        wave_color,
+                    );
+                }
+            }
+        }
+
         // Operation markers
         for op in &self.timeline_ops {
             let op_start_x = (op.start_time / total_dur) * w;
@@ -481,6 +553,13 @@ impl PreviewRenderer {
                     }
 
                     let scene = data.scene;
+
+                    // Unpause audio on first frame advance so both start together
+                    if self.current_frame == 1 {
+                        if let Some(ref player) = self.audio_player {
+                            player.set_paused(false);
+                        }
+                    }
 
                     // Acquire surface texture
                     let frame = match self.surface.get_current_texture() {
@@ -723,6 +802,11 @@ impl PreviewRenderer {
         }
 
         self.animator = animator;
+
+        if let Some(ref player) = self.audio_player {
+            player.seek_to(self.current_time());
+        }
+
         Ok(())
     }
 
@@ -749,6 +833,9 @@ impl PreviewRenderer {
     pub fn toggle_pause(&mut self) {
         self.paused = !self.paused;
         self.frame_rendered = false;
+        if let Some(ref player) = self.audio_player {
+            player.set_paused(self.paused);
+        }
     }
 
     pub fn set_paused(&mut self, paused: bool) {
@@ -756,6 +843,9 @@ impl PreviewRenderer {
         self.paused = paused;
         if was != paused {
             self.frame_rendered = false;
+        }
+        if let Some(ref player) = self.audio_player {
+            player.set_paused(paused);
         }
     }
 
@@ -773,6 +863,9 @@ impl PreviewRenderer {
 
     pub fn step_forward(&mut self) -> Result<bool> {
         self.paused = true;
+        if let Some(ref player) = self.audio_player {
+            player.set_paused(true);
+        }
         if self.current_frame < self.total_frames {
             let frame_data = self.animator.animate_next_frame()
                 .context("while stepping forward")?;
@@ -793,6 +886,9 @@ impl PreviewRenderer {
                 }
             }
             self.frame_rendered = false;
+            if let Some(ref player) = self.audio_player {
+                player.seek_to(self.current_time());
+            }
             Ok(true)
         } else {
             Ok(false)
@@ -802,6 +898,9 @@ impl PreviewRenderer {
     pub fn step_backward(&mut self) -> Result<()> {
         self.paused = true;
         self.frame_rendered = false;
+        if let Some(ref player) = self.audio_player {
+            player.set_paused(true);
+        }
         if self.current_frame > 0 {
             let target = self.current_frame.saturating_sub(2); // -2 because current starts at 1 after advance
             self.seek_to((target as f32 / self.fps as f32).max(0.0))?;
@@ -815,6 +914,11 @@ impl PreviewRenderer {
         self.surface_config.width = width;
         self.surface_config.height = height;
         self.surface.configure(&self.device, &self.surface_config);
+
+        // Recompute waveform for new width
+        if let Some(ref player) = self.audio_player {
+            self.waveform = compute_waveform(player.buffer(), width.max(1) as usize);
+        }
     }
 
     pub fn reload(&mut self, animations: Vec<AnimOP>) -> Result<()> {
@@ -840,6 +944,11 @@ impl PreviewRenderer {
             self.camera,
             self.text_resolution_multiplier,
         )?;
+
+        // Re-init audio (starts paused; unpaused on first frame advance)
+        let (audio_player, waveform) = Self::init_audio(&self.original_animations, self.surface_config.width, true);
+        self.audio_player = audio_player;
+        self.waveform = waveform;
 
         Ok(())
     }

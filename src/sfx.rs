@@ -357,6 +357,94 @@ mod tests {
     }
 }
 
+/// Downsample PCM stereo data to `num_samples` amplitude values (0.0–1.0).
+/// Each output value is the peak absolute amplitude in its corresponding time slice.
+pub fn compute_waveform(pcm: &[f32], num_samples: usize) -> Vec<f32> {
+    if pcm.is_empty() || num_samples == 0 {
+        return vec![];
+    }
+    let total_frames = pcm.len() / 2;
+    let mut waveform = Vec::with_capacity(num_samples);
+    for i in 0..num_samples {
+        let start_frame = (i as f64 * total_frames as f64 / num_samples as f64) as usize;
+        let end_frame = ((i + 1) as f64 * total_frames as f64 / num_samples as f64) as usize;
+        let mut peak = 0.0_f32;
+        for f in start_frame..end_frame.min(total_frames) {
+            let l = pcm[f * 2].abs();
+            let r = pcm[f * 2 + 1].abs();
+            let max = l.max(r);
+            if max > peak {
+                peak = max;
+            }
+        }
+        waveform.push(peak);
+    }
+    waveform
+}
+
+/// Collect [`ScheduledSound`]s from a list of [`AnimOP`]s.
+/// Applies pitch variation when `pitch_variation > 0`.
+pub fn collect_sounds_from_ops(ops: &[super::anim_op::AnimOP]) -> Vec<ScheduledSound> {
+    fn end_time(op: &super::anim_op::AnimOP, t: f32, out: &mut Vec<ScheduledSound>) -> f32 {
+        match op {
+            super::anim_op::AnimOP::PlaySound(sfx, delay) => {
+                let abs_time = t + delay;
+                let pitch = if sfx.pitch_variation > 0.0 {
+                    use rand::Rng;
+                    let mut rng = rand::thread_rng();
+                    let variation = rng.gen_range(-sfx.pitch_variation..sfx.pitch_variation);
+                    sfx.pitch * (1.0 + variation)
+                } else {
+                    sfx.pitch
+                };
+                let scheduled = ScheduledSound {
+                    path: sfx.path.clone(),
+                    volume: sfx.volume,
+                    pitch,
+                    start_time: abs_time,
+                    seek_offset: sfx.time_offset,
+                    duration: sfx.duration,
+                };
+                out.push(scheduled);
+                t
+            }
+            super::anim_op::AnimOP::All(children) => {
+                let mut max_end = t;
+                for child in children {
+                    let end = end_time(child, t, out);
+                    if end > max_end {
+                        max_end = end;
+                    }
+                }
+                max_end
+            }
+            super::anim_op::AnimOP::Sequence(children) => {
+                let mut time = t;
+                for child in children {
+                    time = end_time(child, time, out);
+                }
+                time
+            }
+            super::anim_op::AnimOP::Wait(d) => t + d,
+            super::anim_op::AnimOP::TransformMovePos(_, _, d, _)
+            | super::anim_op::AnimOP::TransformMoveToObj(_, _, _, d, _)
+            | super::anim_op::AnimOP::TransformRotate(_, _, d, _)
+            | super::anim_op::AnimOP::TransformScale(_, _, d, _)
+            | super::anim_op::AnimOP::CodeAddLines(_, _, _, d, _, _)
+            | super::anim_op::AnimOP::CodeModifyLine(_, _, _, d, _, _)
+            | super::anim_op::AnimOP::CodeRemoveLines(_, _, d, _, _) => t + d,
+            super::anim_op::AnimOP::CodeHighlight(_, action) => t + action.duration_and_curve().0,
+            super::anim_op::AnimOP::Instantiate(_) | super::anim_op::AnimOP::Current { .. } => t,
+        }
+    }
+    let mut sounds = vec![];
+    let mut t = 0.0;
+    for op in ops {
+        t = end_time(op, t, &mut sounds);
+    }
+    sounds
+}
+
 fn apply_pitch_and_volume(samples: Vec<f32>, pitch: f32, volume: f32) -> Vec<f32> {
     if (pitch - 1.0).abs() < f32::EPSILON && (volume - 1.0).abs() < f32::EPSILON {
         return samples;

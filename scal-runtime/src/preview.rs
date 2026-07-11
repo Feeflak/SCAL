@@ -99,6 +99,7 @@ fn run_event_loop(config: AnimationConfig, reload_rx: watch::Receiver<bool>) -> 
             cursor_pos: (0.0, 0.0),
             mouse_down: false,
             last_seek_time: std::time::Instant::now(),
+            last_frame_advance: std::time::Instant::now(),
             modifiers: None,
             reload_rx: reload_rx.clone(),
             device: None,
@@ -123,6 +124,7 @@ struct PreviewState {
     cursor_pos: (f64, f64),
     mouse_down: bool,
     last_seek_time: std::time::Instant,
+    last_frame_advance: std::time::Instant,
     modifiers: Option<winit::event::Modifiers>,
     reload_rx: watch::Receiver<bool>,
     device: Option<std::sync::Arc<wgpu::Device>>,
@@ -264,15 +266,28 @@ impl ApplicationHandler for PreviewState {
                     }
                 }
 
-                match preview.advance_render_present() {
-                    Ok(more) => {
-                        if !more {
-                            // Replay on finish
-                            let _ = preview.replay();
+                // Clamp advance rate to the configured FPS so animation timing
+                // matches wall clock (and stays in sync with audio).
+                let should_advance = if preview.is_finished() || preview.is_paused() {
+                    true
+                } else {
+                    let now = std::time::Instant::now();
+                    let frame_dt = std::time::Duration::from_secs_f64(1.0 / preview.fps() as f64);
+                    now - self.last_frame_advance >= frame_dt
+                };
+
+                if should_advance {
+                    self.last_frame_advance = std::time::Instant::now();
+                    match preview.advance_render_present() {
+                        Ok(more) => {
+                            if !more {
+                                // Replay on finish
+                                let _ = preview.replay();
+                            }
                         }
-                    }
-                    Err(e) => {
-                        log::error!("Render error: {e:#}");
+                        Err(e) => {
+                            log::error!("Render error: {e:#}");
+                        }
                     }
                 }
                 if let Some(ref window) = self.window {
