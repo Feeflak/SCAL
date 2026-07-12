@@ -1,9 +1,15 @@
 [package]
 name = "scal-ipc"
-version = "0.1.0"
-edition = "2024"
+readme = "../readme.md"
+description = "Contains code needed for ipc communication beetween the user animation and the SCAL runtime."
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+keywords.workspace = true
+authors.workspace = true
 
 [dependencies]
-scal-core = { path = "../scal-core" }
-scal-ipc-macros = { path = "../scal-ipc-macros" }
+scal-core.workspace = true
+scal-ipc-macros.workspace = true
 bincode = "1.3"

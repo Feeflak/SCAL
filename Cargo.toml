@@ -1,3 +1,15 @@
+
+[workspace.package]
+version = "1.0.0"
+edition = "2024"
+license = "MIT"
+keywords = ["graphics"]
+repository = "https://github.com/Feeflak/SCAL"
+authors = ["feeflak"]
+
+[workspace.dependencies]
+scal-ipc-macros = { path = "scal-ipc-macros", version = "1.0.0"}
+scal-core = { path = "scal-core", version = "1.0.0" }
 [workspace]
 members = [
         "scal-core",
