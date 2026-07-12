@@ -83,7 +83,14 @@ pub async fn render_animations(
         view_formats: &[],
     });
 
-    let use_nv12 = matches!(codec_type, CodecType::H264 | CodecType::H264Nvenc);
+    let use_nv12 = matches!(
+        codec_type,
+        CodecType::H264
+            | CodecType::H264Nvenc
+            | CodecType::H264Amf
+            | CodecType::H264Qsv
+            | CodecType::H264Videotoolbox
+    );
     let nv12 = if use_nv12 {
         Some(Nv12Converter::new(
             &device,

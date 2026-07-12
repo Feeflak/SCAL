@@ -110,6 +110,9 @@ async fn run_render() -> Result<()> {
     let codec_type = match config.encoding.codec_type.to_uppercase().as_str() {
         "H264" => scal_core::CodecType::H264,
         "H264NVENC" => scal_core::CodecType::H264Nvenc,
+        "H264AMF" => scal_core::CodecType::H264Amf,
+        "H264QSV" => scal_core::CodecType::H264Qsv,
+        "H264VIDEOTOOLBOX" => scal_core::CodecType::H264Videotoolbox,
         "PRORES" => scal_core::CodecType::PRORES,
         other => bail!("Unknown codec type: {other}"),
     };
@@ -285,7 +288,14 @@ async fn run_loop(
         bail!("Wgpu needs the bytes_per_row(width * 4) value to be multiple of 256");
     }
     let codec_type = encoding_settings.codec_type;
-    let use_nv12 = matches!(codec_type, CodecType::H264 | CodecType::H264Nvenc);
+    let use_nv12 = matches!(
+        codec_type,
+        CodecType::H264
+            | CodecType::H264Nvenc
+            | CodecType::H264Amf
+            | CodecType::H264Qsv
+            | CodecType::H264Videotoolbox
+    );
     let pixel_buffer_size = if use_nv12 {
         (rendering_settings.width * rendering_settings.height * 3 / 2) as usize
     } else {

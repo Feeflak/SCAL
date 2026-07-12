@@ -79,7 +79,14 @@ impl Encoder {
         ffmpeg::init()?;
 
         let is_nvenc = matches!(settings.codec_type, CodecType::H264Nvenc);
-        let use_nv12 = matches!(settings.codec_type, CodecType::H264 | CodecType::H264Nvenc);
+        let use_nv12 = matches!(
+            settings.codec_type,
+            CodecType::H264
+                | CodecType::H264Nvenc
+                | CodecType::H264Amf
+                | CodecType::H264Qsv
+                | CodecType::H264Videotoolbox
+        );
 
         let global_header = output
             .format()
@@ -88,6 +95,9 @@ impl Encoder {
 
         let encoder_name: &str = match settings.codec_type {
             CodecType::H264Nvenc => "h264_nvenc",
+            CodecType::H264Amf => "h264_amf",
+            CodecType::H264Qsv => "h264_qsv",
+            CodecType::H264Videotoolbox => "h264_videotoolbox",
             CodecType::H264 => "libx264",
             CodecType::PRORES => "prores",
         };

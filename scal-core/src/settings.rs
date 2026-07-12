@@ -21,5 +21,8 @@ pub struct EncodingSettings {
 pub enum CodecType {
     H264,
     H264Nvenc,
+    H264Amf,
+    H264Qsv,
+    H264Videotoolbox,
     PRORES,
 }
