@@ -62,8 +62,8 @@ fn convert_anim_op(
         scal_core::AnimOP::CodeRemoveLines(u, r, d, e, s, loc) => {
             AnimOperation::CodeRemoveLines(u, r, d, e, s, loc)
         }
-        scal_core::AnimOP::CodeHighlight(_, _, _) => {
-            bail!("CodeHighlight conversion not yet implemented")
+        scal_core::AnimOP::CodeHighlight(u, action, loc) => {
+            AnimOperation::CodeHighlight(u, action, loc)
         }
     })
 }

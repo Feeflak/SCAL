@@ -72,6 +72,11 @@ fn main() -> Project {
                 .str(NEW_LINES)
                 .over(5.s())
                 .style(TypeWriter),
+            code.highlight()
+                .lines(3..6)
+                .color(Color::new(1.0, 1.0, 0.0, 0.3))
+                .over(1.s())
+                .ease(Ease::InOutCubic),
             wait(500.ms()),
             code.add_lines()
                 .from_line(5)
