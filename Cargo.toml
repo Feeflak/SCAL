@@ -8,7 +8,7 @@ repository = "https://github.com/Feeflak/SCAL"
 authors = ["feeflak"]
 
 [workspace.dependencies]
-scal-ipc-macros = { path = "scal-ipc-macros", version = "1.0.0"}
+scal-ipc-macros = { path = "scal-ipc-macros", version = "1.0.1"}
 scal-core = { path = "scal-core", version = "1.0.0" }
 [workspace]
 members = [
