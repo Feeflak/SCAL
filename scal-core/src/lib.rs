@@ -1,13 +1,12 @@
 #![warn(missing_docs)]
 #![warn(clippy::pedantic)]
 #![warn(clippy::nursery)]
-//! ### Easy animation system centered around code.   
-//! // TODO: Preview Window Gif
+//! ### Easy animation system focused on code.   
 //!
 //! # Example
 //! start by creating a new rust app and import 3 crates:
 //! ``` toml
-//! /// /Cargol.toml
+//! # /Cargol.toml
 //! [dependencies]
 //! # contains functions and types for defining animations
 //! # that will be sent to the scal-runtime for rendering/preview.
@@ -118,7 +117,7 @@
 //! ```
 //! Basic animation output config.
 //! ``` toml
-//! /// /Config.toml
+//! # /Config.toml
 //! [animation]
 //! binary = "cargo run"
 //!
@@ -135,13 +134,13 @@
 //! make sure that you have installed required system dependencies:
 //!
 //! - Ubuntu/Debian:
-//! sudo apt install ffmpeg libwayland-dev libxkbcommon-dev libx11-dev libxcursor-dev libxi-dev libxrandr-dev libxcb1-dev libasound2-dev libpulse-dev
+//! ``sudo apt install ffmpeg libwayland-dev libxkbcommon-dev libx11-dev libxcursor-dev libxi-dev libxrandr-dev libxcb1-dev libasound2-dev libpulse-dev``
 //!
 //! - Arch:
-//! sudo pacman -S ffmpeg wayland libxkbcommon libx11 libxcursor libxi libxrandr libxcb alsa-lib libpulse
+//! ``sudo pacman -S ffmpeg wayland libxkbcommon libx11 libxcursor libxi libxrandr libxcb alsa-lib libpulse``
 //!
 //! - Fedora:
-//! sudo dnf install ffmpeg-devel wayland-devel libxkbcommon-devel libX11-devel libXcursor-devel libXi-devel libXrandr-devel libxcb-devel alsa-lib-devel pulseaudio-libs-devel
+//! ``sudo dnf install ffmpeg-devel wayland-devel libxkbcommon-devel libX11-devel libXcursor-devel libXi-devel libXrandr-devel libxcb-devel alsa-lib-devel pulseaudio-libs-devel``
 //!
 //! - NixOS:
 //! download flake file:
@@ -161,25 +160,51 @@
 //! ...
 //! ❯ ffplay ./test.mov
 //! ```
-//! // TODO: Animation Gif
-//!
 //! # Features
 //!
 //! ## High Quality Animations of Code with Ease.
+//! First party support for code modification animations, syntax highlighting, custom color schemes, and glyphs.
+//! Supports syntax highlighting for most popular languages using Tree-sitter.
+//! Use standard [Base16 color schemes](https://github.com/tinted-theming/schemes) to configure
+//! syntax highlighting.
 //!
 //! ## Hot Reloading Animation Preview
 //!
+//! Supports preview view with a timeline that automatically reloads upon animation code change.
+//! Audio waveform display support in timeline.
+//! You can click on individual animation operations or sound fx to display what type of animation
+//! they are, and where they are located in the animation source code.
+//!
 //! ## LSP
+//! Thanks to the powerful rust LSP you can read documentation from your editor.
 //!
 //! ## Examples
 //!
-//! ## Simple Syntax
+//! If you want to see features of this project you can look at the example directory.
+//!
+//! ## Clear Syntax
+//! you instantly know what every function does.
+//!
+//! ```
+//! let typing = sfx()
+//!     .path("./keeb.wav")
+//!     .volume(5.)
+//!     .pitch(1.)
+//!     .skip_time(0.)
+//!     .duration(5.)
+//!     .pitch_variation(0.05);
+//! ```
 //!
 //! ## Fast Render Times
-//!
-//!
+//! Using FFmpeg supports hardware H264 encoding for most popular GPU brands- nvidia, intel, apple(I
+//! only have nvidia gpu-s so tests on other platforms are needed)
+//! Uses WGPU to efficiently render scenes.  
 //! ## Multi-platform
+//! Works on all platforms(Linux, Mac, Windows)
+//! (I only have NixOS systems so testing on other platforms is needed)
 //!
+//! ## Audio System
+//! Uses FFmpeg for audio encoding and [cpal](https://github.com/RustAudio/cpal) for preview audio, to deliver stable audio system.
 //!
 //! # Installing Scala Runtime
 //! ## Distro Package
@@ -253,7 +278,7 @@
 //!
 //! ---
 //!
-//! ## #Fedora
+//! ### Fedora
 //!
 //! Install the required packages:
 //!
@@ -382,7 +407,7 @@
 //! ```
 //! 3.  basic animation output config
 //! ``` toml
-//! /// /Config.toml
+//! # /Config.toml
 //! [animation]
 //! binary = "cargo run"
 //!
@@ -470,6 +495,7 @@
 //!     }
 //! }
 //! ```
+//!
 //!
 
 pub mod anim;
