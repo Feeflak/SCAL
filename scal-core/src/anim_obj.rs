@@ -4,7 +4,9 @@ use glam::Vec2;
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
-use crate::anim_builders::{CodeAddLinesBuilder, CodeModifyLineBuilder, CodeRemoveLinesBuilder};
+use crate::anim_builders::{
+    CodeAddLinesBuilder, CodeHighlightBuilder, CodeModifyLineBuilder, CodeRemoveLinesBuilder,
+};
 use crate::anim_op::{AnimOP, CodeAnimationStyle};
 use crate::color::Color;
 use crate::ease::Ease;
@@ -221,6 +223,26 @@ impl CodeHandle {
         }
     }
 
+    /// Returns a builder for an animation of highlighting code by line range or regex pattern.
+    /// ```
+    ///                code.highlight()
+    ///                    .lines(3..6)
+    ///                    .color(Color::new(1.0, 1.0, 0.0, 0.3))
+    ///                    .over(1.s())
+    ///                    .ease(Ease::InOutCubic),
+    /// ```
+    #[must_use]
+    pub fn highlight(&self) -> CodeHighlightBuilder {
+        CodeHighlightBuilder {
+            uuid: self.0.id,
+            ranges: Vec::new(),
+            regex: None,
+            color: Color::new(1.0, 1.0, 0.0, 0.3),
+            duration: 1.0,
+            ease: Ease::Linear,
+        }
+    }
+
     /// Returns a builder for an animation of removing lines form a code block.
     /// ```
     ///                code.remove_lines()
@@ -324,6 +346,31 @@ impl CodeWindowHandle {
             duration: 1.0,
             ease: Ease::Linear,
             style: CodeAnimationStyle::TypeWriter,
+        }
+    }
+
+    /// Returns a builder for an animation of highlighting code by line range or regex pattern.
+    /// ```
+    ///                cw.highlight()
+    ///                    .lines(3..6)
+    ///                    .color(Color::new(1.0, 1.0, 0.0, 0.3))
+    ///                    .over(1.s())
+    ///                    .ease(Ease::InOutCubic),
+    /// ```
+    #[must_use]
+    pub fn highlight(&self) -> CodeHighlightBuilder {
+        let code_id = if let AnimObjKind::CodeWindow { code_id, .. } = &self.0.kind {
+            *code_id
+        } else {
+            self.0.id
+        };
+        CodeHighlightBuilder {
+            uuid: code_id,
+            ranges: Vec::new(),
+            regex: None,
+            color: Color::new(1.0, 1.0, 0.0, 0.3),
+            duration: 1.0,
+            ease: Ease::Linear,
         }
     }
 

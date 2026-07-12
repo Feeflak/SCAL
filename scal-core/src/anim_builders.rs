@@ -2,7 +2,9 @@ use std::ops::Range;
 
 use uuid::Uuid;
 
-use crate::{AnimOP, CodeAnimationStyle, Ease, IntoAnimOp, Sfx, Time};
+use crate::{
+    AnimOP, CodeAnimationStyle, CodeHighlightAction, Color, Ease, IntoAnimOp, Sfx, Time,
+};
 
 /// Builder for an animation of adding code lines to the code block.
 /// ```
@@ -201,6 +203,91 @@ impl IntoAnimOp for CodeRemoveLinesBuilder {
 }
 
 
+
+/// Builder for an animation of highlighting code by line range or regex pattern.
+/// ```
+///                code.highlight()
+///                    .lines(3..6)
+///                    .color(Color::new(1.0, 1.0, 0.0, 0.3))
+///                    .over(1.s())
+///                    .ease(Ease::InOutCubic),
+/// ```
+///
+/// Or with a regex pattern:
+/// ```
+///                code.highlight()
+///                    .pattern(r"fn \w+\(")
+///                    .color(Color::new(0.0, 1.0, 0.0, 0.3))
+///                    .over(1.s()),
+/// ```
+pub struct CodeHighlightBuilder {
+    pub(crate) uuid: Uuid,
+    pub(crate) ranges: Vec<Range<usize>>,
+    pub(crate) regex: Option<String>,
+    pub(crate) color: Color,
+    pub(crate) duration: Time,
+    pub(crate) ease: Ease,
+}
+
+impl CodeHighlightBuilder {
+    #[must_use]
+    /// Highlight a range of lines (can be called multiple times for multiple ranges)
+    pub fn lines(mut self, range: Range<usize>) -> Self {
+        self.ranges.push(range);
+        self
+    }
+    #[must_use]
+    /// Highlight lines matching a regex pattern
+    pub fn pattern(mut self, regex: impl Into<String>) -> Self {
+        self.regex = Some(regex.into());
+        self
+    }
+    #[must_use]
+    /// Color of the highlight overlay
+    pub fn color(mut self, color: Color) -> Self {
+        self.color = color;
+        self
+    }
+    #[must_use]
+    /// Duration of the highlight animation
+    pub fn over(mut self, duration: Time) -> Self {
+        self.duration = duration;
+        self
+    }
+    #[must_use]
+    /// Ease function for the highlight animation
+    pub fn ease(mut self, ease: Ease) -> Self {
+        self.ease = ease;
+        self
+    }
+}
+
+impl From<CodeHighlightBuilder> for AnimOP {
+    fn from(b: CodeHighlightBuilder) -> Self {
+        let action = if let Some(regex) = b.regex {
+            CodeHighlightAction::Pattern {
+                regex,
+                color: b.color,
+                duration: b.duration,
+                curve: b.ease,
+            }
+        } else {
+            CodeHighlightAction::Lines {
+                ranges: b.ranges,
+                color: b.color,
+                duration: b.duration,
+                curve: b.ease,
+            }
+        };
+        Self::CodeHighlight(b.uuid, action, None)
+    }
+}
+
+impl IntoAnimOp for CodeHighlightBuilder {
+    fn into_anim_op(self) -> AnimOP {
+        self.into()
+    }
+}
 
 /// Builder for an animation of playing a sound effect.
 /// ```
