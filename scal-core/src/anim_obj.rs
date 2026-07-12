@@ -363,99 +363,105 @@ impl CodeWindowHandle {
         }
     }
 
-    fn sub_handle(&self, field_id: Uuid) -> SubObjectHandle {
-        SubObjectHandle(field_id)
-    }
 
-    pub fn close_button(&self) -> SubObjectHandle {
         if let AnimObjKind::CodeWindow { close_btn_id, .. } = &self.0.kind {
-            self.sub_handle(*close_btn_id)
+            CircleHandle(*close_btn_id)
         } else {
-            SubObjectHandle(self.0.id)
+            CircleHandle(self.0.id)
         }
     }
-    pub fn minimize_button(&self) -> SubObjectHandle {
         if let AnimObjKind::CodeWindow {
             minimize_btn_id, ..
         } = &self.0.kind
         {
-            self.sub_handle(*minimize_btn_id)
+            CircleHandle(*minimize_btn_id)
         } else {
-            SubObjectHandle(self.0.id)
+            CircleHandle(self.0.id)
         }
     }
-    pub fn maximize_button(&self) -> SubObjectHandle {
         if let AnimObjKind::CodeWindow {
             maximize_btn_id, ..
         } = &self.0.kind
         {
-            self.sub_handle(*maximize_btn_id)
+            CircleHandle(*maximize_btn_id)
         } else {
-            SubObjectHandle(self.0.id)
+            CircleHandle(self.0.id)
         }
     }
-    pub fn title_text(&self) -> SubObjectHandle {
+    pub const fn title_text(&self) -> TextHandle {
         if let AnimObjKind::CodeWindow { title_id, .. } = &self.0.kind {
-            self.sub_handle(*title_id)
+            TextHandle(*title_id)
         } else {
-            SubObjectHandle(self.0.id)
+            TextHandle(self.0.id)
         }
     }
-    pub fn window_background(&self) -> SubObjectHandle {
-        SubObjectHandle(self.0.id)
+    pub const fn window_background(&self) -> RectangleHandle {
+        RectangleHandle(self.0.id)
     }
-    pub fn container(&self) -> SubObjectHandle {
+    pub const fn container(&self) -> RectangleHandle {
         if let AnimObjKind::CodeWindow { container_id, .. } = &self.0.kind {
-            self.sub_handle(*container_id)
+            RectangleHandle(*container_id)
         } else {
-            SubObjectHandle(self.0.id)
+            RectangleHandle(self.0.id)
         }
     }
-    pub fn title_bar_background(&self) -> SubObjectHandle {
+    pub const fn title_bar_background(&self) -> RectangleHandle {
         if let AnimObjKind::CodeWindow {
             title_bar_bg_id, ..
         } = &self.0.kind
         {
-            self.sub_handle(*title_bar_bg_id)
+            RectangleHandle(*title_bar_bg_id)
         } else {
-            SubObjectHandle(self.0.id)
+            RectangleHandle(self.0.id)
         }
     }
 }
 
-pub struct SubObjectHandle(pub Uuid);
-
-impl From<SubObjectHandle> for Uuid {
-    fn from(h: SubObjectHandle) -> Uuid {
-        h.0
-    }
+macro_rules! impl_handle {
+    ($type:ty) => {
+        impl $type {
+            pub fn position(&self) -> crate::transform::PositionBuilder {
+                crate::transform::PositionBuilder {
+                    uuid: self.0,
+                    target: None,
+                    object: None,
+                    duration: 1.0,
+                    ease: Ease::Linear,
+                }
+            }
+            pub fn scale(&self) -> crate::transform::ScaleBuilder {
+                crate::transform::ScaleBuilder {
+                    uuid: self.0,
+                    target: None,
+                    object: None,
+                    duration: 1.0,
+                    ease: Ease::Linear,
+                }
+            }
+            pub fn rotation(&self) -> crate::transform::RotateBuilder {
+                crate::transform::RotateBuilder {
+                    uuid: self.0,
+                    target: None,
+                    duration: 1.0,
+                    ease: Ease::Linear,
+                }
+            }
+        }
+        impl From<$type> for Uuid {
+            fn from(h: $type) -> Uuid {
+                h.0
+            }
+        }
+    };
 }
 
-impl SubObjectHandle {
-    pub fn position(&self) -> crate::transform::PositionBuilder {
-        crate::transform::PositionBuilder {
-            uuid: self.0,
-            target: None,
-            object: None,
-            duration: 1.0,
-            ease: Ease::Linear,
-        }
-    }
-    pub fn scale(&self) -> crate::transform::ScaleBuilder {
-        crate::transform::ScaleBuilder {
-            uuid: self.0,
-            target: None,
-            object: None,
-            duration: 1.0,
-            ease: Ease::Linear,
-        }
-    }
-    pub fn rotation(&self) -> crate::transform::RotateBuilder {
-        crate::transform::RotateBuilder {
-            uuid: self.0,
-            target: None,
-            duration: 1.0,
-            ease: Ease::Linear,
-        }
-    }
-}
+/// Handle to a Circle sub-object of a code window, for use in animation builders.
+pub struct CircleHandle(pub Uuid);
+/// Handle to a Text sub-object of a code window, for use in animation builders.
+pub struct TextHandle(pub Uuid);
+/// Handle to a Rectangle sub-object of a code window, for use in animation builders.
+pub struct RectangleHandle(pub Uuid);
+
+impl_handle!(CircleHandle);
+impl_handle!(TextHandle);
+impl_handle!(RectangleHandle);
