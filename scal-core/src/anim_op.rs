@@ -1,3 +1,6 @@
+#![allow(missing_docs)]
+//! Module With internal type for representing animations + some useful stuff for it
+
 use std::fmt::Display;
 use std::ops::Range;
 
@@ -32,7 +35,7 @@ impl Display for SourceLoc {
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub enum AnimOP {
-    Instantiate(AnimObj, Option<SourceLoc>),
+    Instantiate(Box<AnimObj>, Option<SourceLoc>),
     TransformMovePos(Uuid, Vec2, Time, Ease, Option<SourceLoc>),
     TransformMoveToObj(Uuid, Uuid, Vec2, Time, Ease, Option<SourceLoc>),
     TransformRotate(Uuid, f32, Time, Ease, Option<SourceLoc>),
@@ -64,33 +67,34 @@ pub enum AnimOP {
         Option<SourceLoc>,
     ),
     CodeHighlight(Uuid, CodeHighlightAction, Option<SourceLoc>),
-    All(Vec<AnimOP>, Option<SourceLoc>),
-    Sequence(Vec<AnimOP>, Option<SourceLoc>),
+    All(Vec<Self>, Option<SourceLoc>),
+    Sequence(Vec<Self>, Option<SourceLoc>),
     Wait(Time, Option<SourceLoc>),
     PlaySound(Sfx, Time, Option<SourceLoc>),
 }
 
 impl AnimOP {
-    pub fn location(&self) -> Option<&SourceLoc> {
+    #[must_use]
+    pub const fn location(&self) -> Option<&SourceLoc> {
         match self {
-            AnimOP::Instantiate(_, l)
-            | AnimOP::TransformMovePos(_, _, _, _, l)
-            | AnimOP::TransformMoveToObj(_, _, _, _, _, l)
-            | AnimOP::TransformRotate(_, _, _, _, l)
-            | AnimOP::TransformScale(_, _, _, _, l)
-            | AnimOP::CodeAddLines(_, _, _, _, _, _, l)
-            | AnimOP::CodeModifyLine(_, _, _, _, _, _, l)
-            | AnimOP::CodeRemoveLines(_, _, _, _, _, l)
-            | AnimOP::CodeHighlight(_, _, l)
-            | AnimOP::All(_, l)
-            | AnimOP::Sequence(_, l)
-            | AnimOP::Wait(_, l)
-            | AnimOP::PlaySound(_, _, l) => l.as_ref(),
+            Self::Instantiate(_, l)
+            | Self::TransformMovePos(_, _, _, _, l)
+            | Self::TransformMoveToObj(_, _, _, _, _, l)
+            | Self::TransformRotate(_, _, _, _, l)
+            | Self::TransformScale(_, _, _, _, l)
+            | Self::CodeAddLines(_, _, _, _, _, _, l)
+            | Self::CodeModifyLine(_, _, _, _, _, _, l)
+            | Self::CodeRemoveLines(_, _, _, _, _, l)
+            | Self::CodeHighlight(_, _, l)
+            | Self::All(_, l)
+            | Self::Sequence(_, l)
+            | Self::Wait(_, l)
+            | Self::PlaySound(_, _, l) => l.as_ref(),
         }
     }
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
 pub enum CodeAnimationStyle {
     TypeWriter,
     TypeWriterInstantResize,
@@ -113,15 +117,16 @@ pub enum CodeHighlightAction {
     },
 }
 impl CodeHighlightAction {
-    pub fn duration_and_curve(&self) -> (Time, Ease) {
+    #[must_use]
+    pub const fn duration_and_curve(&self) -> (Time, Ease) {
         match self {
-            CodeHighlightAction::Lines {
+            Self::Lines {
                 ranges: _,
                 color: _,
                 duration,
                 curve,
-            } => (*duration, *curve),
-            CodeHighlightAction::Pattern {
+            }
+            | Self::Pattern {
                 regex: _,
                 color: _,
                 duration,
@@ -141,77 +146,24 @@ impl IntoAnimOp for AnimOP {
     }
 }
 
-impl IntoAnimOp for PlaySoundBuilder {
-    fn into_anim_op(self) -> AnimOP {
-        self.into()
-    }
-}
-
 impl AnimOP {
+    #[must_use]
     pub fn with_location(mut self, loc: SourceLoc) -> Self {
         match &mut self {
-            AnimOP::Instantiate(_, l)
-            | AnimOP::TransformMovePos(_, _, _, _, l)
-            | AnimOP::TransformMoveToObj(_, _, _, _, _, l)
-            | AnimOP::TransformRotate(_, _, _, _, l)
-            | AnimOP::TransformScale(_, _, _, _, l)
-            | AnimOP::CodeAddLines(_, _, _, _, _, _, l)
-            | AnimOP::CodeModifyLine(_, _, _, _, _, _, l)
-            | AnimOP::CodeRemoveLines(_, _, _, _, _, l)
-            | AnimOP::CodeHighlight(_, _, l)
-            | AnimOP::All(_, l)
-            | AnimOP::Sequence(_, l)
-            | AnimOP::Wait(_, l)
-            | AnimOP::PlaySound(_, _, l) => *l = Some(loc),
+            Self::Instantiate(_, l)
+            | Self::TransformMovePos(_, _, _, _, l)
+            | Self::TransformMoveToObj(_, _, _, _, _, l)
+            | Self::TransformRotate(_, _, _, _, l)
+            | Self::TransformScale(_, _, _, _, l)
+            | Self::CodeAddLines(_, _, _, _, _, _, l)
+            | Self::CodeModifyLine(_, _, _, _, _, _, l)
+            | Self::CodeRemoveLines(_, _, _, _, _, l)
+            | Self::CodeHighlight(_, _, l)
+            | Self::All(_, l)
+            | Self::Sequence(_, l)
+            | Self::Wait(_, l)
+            | Self::PlaySound(_, _, l) => *l = Some(loc),
         }
         self
     }
-
-    pub fn wait(duration: Time) -> Self {
-        AnimOP::Wait(duration, None)
-    }
-
-    pub fn play(sfx: Sfx) -> PlaySoundBuilder {
-        PlaySoundBuilder { sfx, delay: 0.0 }
-    }
-}
-
-pub fn wait(duration: Time) -> AnimOP {
-    AnimOP::Wait(duration, None)
-}
-
-pub struct PlaySoundBuilder {
-    pub(crate) sfx: Sfx,
-    pub(crate) delay: Time,
-}
-
-impl PlaySoundBuilder {
-    pub fn after(mut self, delay: Time) -> AnimOP {
-        self.delay = delay;
-        self.into()
-    }
-    pub fn delay(mut self, delay: Time) -> AnimOP {
-        self.delay = delay;
-        self.into()
-    }
-}
-
-impl From<PlaySoundBuilder> for AnimOP {
-    fn from(b: PlaySoundBuilder) -> AnimOP {
-        AnimOP::PlaySound(b.sfx, b.delay, None)
-    }
-}
-
-#[macro_export]
-macro_rules! parallel {
-    ( $( $op:expr ),* $(,)? ) => {
-        $crate::AnimOP::All($crate::timeline![ $( $op ),* ], None)
-    };
-}
-
-#[macro_export]
-macro_rules! sequence {
-    ( $( $op:expr ),* $(,)? ) => {
-        $crate::AnimOP::Sequence($crate::timeline![ $( $op ),* ], None)
-    };
 }

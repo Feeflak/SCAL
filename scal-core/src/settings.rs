@@ -1,3 +1,5 @@
+#![allow(missing_docs)]
+//! Internal settings types read from Config.toml for each animation.
 use serde::{Deserialize, Serialize};
 
 #[derive(Clone, Copy, Debug, Serialize, Deserialize)]

@@ -5,6 +5,8 @@ use serde::{Deserialize, Serialize};
     Copy, Clone, Debug, Serialize, Deserialize, PartialEq, bytemuck::Pod, bytemuck::Zeroable,
 )]
 
+/// Simple RGBA color struct with some helper functions. each field should be a 0..255 float.
+#[allow(missing_docs)]
 pub struct Color {
     pub r: f32,
     pub g: f32,
@@ -13,36 +15,84 @@ pub struct Color {
 }
 
 impl Color {
+    /// ```
+    /// Color {
+    ///     r: 0.0,
+    ///     g: 0.0,
+    ///     b: 0.0,
+    ///     a: 0.0,
+    /// }
+    /// ```
     pub const TRANSPARENT: Self = Self {
         r: 0.0,
         g: 0.0,
         b: 0.0,
         a: 0.0,
     };
+    /// ```
+    /// Color {
+    ///     r: 0.0,
+    ///     g: 0.0,
+    ///     b: 0.0,
+    ///     a: 1.0,
+    /// }
+    /// ```
     pub const BLACK: Self = Self {
         r: 0.0,
         g: 0.0,
         b: 0.0,
         a: 1.0,
     };
+    /// ```
+    /// Color {
+    ///     r: 1.0,
+    ///     g: 1.0,
+    ///     b: 1.0,
+    ///     a: 1.0,
+    /// }
+    /// ```
     pub const WHITE: Self = Self {
         r: 1.0,
         g: 1.0,
         b: 1.0,
         a: 1.0,
     };
+    /// ```
+    /// Color {
+    ///     r: 1.0,
+    ///     g: 0.0,
+    ///     b: 0.0,
+    ///     a: 1.0,
+    /// }
+    /// ```
     pub const RED: Self = Self {
         r: 1.0,
         g: 0.0,
         b: 0.0,
         a: 1.0,
     };
+    /// ```
+    /// Color {
+    ///     r: 0.0,
+    ///     g: 1.0,
+    ///     b: 0.0,
+    ///     a: 1.0,
+    /// }
+    /// ```
     pub const GREEN: Self = Self {
         r: 0.0,
         g: 1.0,
         b: 0.0,
         a: 1.0,
     };
+    /// ```
+    /// Color {
+    ///     r: 0.0,
+    ///     g: 0.0,
+    ///     b: 1.0,
+    ///     a: 1.0,
+    /// }
+    /// ```
     pub const BLUE: Self = Self {
         r: 0.0,
         g: 0.0,
@@ -51,7 +101,8 @@ impl Color {
     };
 
     #[must_use]
-    pub fn new(r: f32, g: f32, b: f32, a: f32) -> Self {
+    #[allow(missing_docs)]
+    pub const fn new(r: f32, g: f32, b: f32, a: f32) -> Self {
         Self { r, g, b, a }
     }
 }

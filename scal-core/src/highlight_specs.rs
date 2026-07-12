@@ -1,5 +1,7 @@
+#![allow(missing_docs)]
+//! Internal functions to set up highlight specs for syntax highlighting using Tree-sitter.
 use crate::{Syntax, theme::HighlightSpec};
-
+#[must_use]
 pub fn all_specs() -> Vec<(Syntax, HighlightSpec)> {
     vec![
         (Syntax::Rust, rust_spec()),
@@ -9,6 +11,7 @@ pub fn all_specs() -> Vec<(Syntax, HighlightSpec)> {
         (Syntax::Python, python_spec()),
     ]
 }
+#[must_use]
 pub fn rust_spec() -> HighlightSpec {
     HighlightSpec::new(
         vec![
@@ -90,6 +93,7 @@ pub fn rust_spec() -> HighlightSpec {
     )
 }
 
+#[must_use]
 pub fn nix_spec() -> HighlightSpec {
     HighlightSpec::new(
         vec![
@@ -124,6 +128,7 @@ pub fn nix_spec() -> HighlightSpec {
         ],
     )
 }
+#[must_use]
 pub fn python_spec() -> HighlightSpec {
     HighlightSpec::new(
         vec![
@@ -164,6 +169,7 @@ pub fn python_spec() -> HighlightSpec {
         ],
     )
 }
+#[must_use]
 pub fn js_spec() -> HighlightSpec {
     HighlightSpec::new(
         vec![
@@ -206,6 +212,7 @@ pub fn js_spec() -> HighlightSpec {
         ],
     )
 }
+#[must_use]
 pub fn zig_spec() -> HighlightSpec {
     HighlightSpec::new(
         vec![

@@ -31,13 +31,13 @@ fn convert_anim_op(
         ),
         scal_core::AnimOP::Instantiate(core_obj, loc) => {
             if let scal_core::anim_obj::AnimObjKind::CodeWindow { .. } = &core_obj.kind {
-                let mut op = build_code_window_op(core_obj, default_theme)?;
+                let mut op = build_code_window_op(*core_obj, default_theme)?;
                 if let AnimOperation::Instantiate(_, ref mut l) = op {
                     *l = loc;
                 }
                 op
             } else {
-                let render_obj = convert_core_anim_obj(core_obj, default_theme)?;
+                let render_obj = convert_core_anim_obj(*core_obj, default_theme)?;
                 AnimOperation::Instantiate(render_obj, loc)
             }
         }

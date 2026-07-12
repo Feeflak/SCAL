@@ -4,12 +4,22 @@ use std::collections::HashMap;
 use crate::{Syntax, color::Color, highlight_specs};
 
 #[derive(Copy, Clone, Debug, Serialize, Deserialize)]
+/// <https://github.com/tinted-theming/schemes/tree/spec-0.11/base16>
+#[allow(missing_docs)]
 pub struct Base16 {
     pub colors: [Color; 16],
 }
 
 impl Base16 {
     #[must_use]
+    /// <https://github.com/tinted-theming/schemes/tree/spec-0.11/base16>
+    /// Use normal hex colors and just remove # from the front and replace it with 0x
+    /// ```
+    /// let theme = Theme::from_base16(Base16::from_hex([
+    ///     0x11121d, 0x1A1B2A, 0x212234, 0x282c34, 0x4a5057, 0xa0a8cd, 0xa0a8cd, 0xa0a8cd, 0xee6d85,
+    ///     0xf6955b, 0xd7a65f, 0x95c561, 0x38a89d, 0x7199ee, 0xa485dd, 0x773440,
+    /// ]));
+    /// ```
     pub fn from_hex(hex: [u32; 16]) -> Self {
         let mut colors = [Color::BLACK; 16];
         for (i, &h) in hex.iter().enumerate() {
@@ -22,11 +32,15 @@ impl Base16 {
 /// A syntax highlighting theme, constructed from a Base16 palette.
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Theme {
+    /// <https://github.com/tinted-theming/schemes/tree/spec-0.11/base16>
     pub base: Base16,
+
+    #[allow(missing_docs)]
     pub syntax_specific: HashMap<Syntax, SyntaxTheme>,
 }
 impl Theme {
     #[must_use]
+    #[allow(missing_docs)]
     pub fn from_base16(base: Base16) -> Self {
         let mut syntax_specific = HashMap::new();
 
@@ -152,28 +166,40 @@ impl Default for Base16 {
         }
     }
 }
-
+/// Highlight specification used for syntax highlighting using Tree-sitter.
 pub struct HighlightSpec {
+    /// Names of the Tree-sitter nodes. Syntax specific
     pub names: Vec<String>,
-    pub indices: Vec<usize>, // indices into Base16 palette
+    /// indices into Base16 palette
+    pub indices: Vec<usize>,
 }
+#[allow(missing_docs)]
 impl HighlightSpec {
     pub fn new(names: Vec<&str>, indices: Vec<usize>) -> Self {
         Self {
             indices,
-            names: names.iter().map(|s| s.to_string()).collect::<Vec<String>>(),
+            names: names
+                .iter()
+                .map(std::string::ToString::to_string)
+                .collect::<Vec<String>>(),
         }
     }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+/// Syntax specific syntax highlighting theme settings
 pub struct SyntaxTheme {
+    /// Names of the Tree-sitter nodes. Syntax specific
     pub highlight_names: Vec<String>,
+    /// indices into Base16 palette
     pub highlight_colors: Vec<Color>,
+    #[allow(missing_docs)]
     pub default_color: Color,
 }
 
+#[allow(missing_docs)]
 impl SyntaxTheme {
+    #[must_use]
     pub fn from_base16_and_spec(base: Base16, spec: HighlightSpec) -> Self {
         let mut colors = Vec::with_capacity(spec.indices.len());
 
@@ -188,6 +214,7 @@ impl SyntaxTheme {
         }
     }
 
+    #[must_use]
     pub fn color_for_name(&self, name: &str) -> Option<Color> {
         self.highlight_names
             .iter()
