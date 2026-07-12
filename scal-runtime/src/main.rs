@@ -19,11 +19,11 @@ use crate::sfx::{AudioEngine, ScheduledSound};
 use anyhow::{Context, Result, bail};
 use log::{debug, info};
 
-pub use scal_core::{self, Color, Ease, Seconds as CoreSeconds};
+pub use scal_core::{self, Color, Ease, Time as CoreSeconds};
 
 use std::path::PathBuf;
 
-use scal_core::{CodecType, EncodingSettings, Project, RenderingSettings, Seconds, Sfx};
+use scal_core::{CodecType, EncodingSettings, Project, RenderingSettings, Time, Sfx};
 use tokio::runtime::Handle;
 
 #[derive(serde::Deserialize, Clone)]
@@ -190,9 +190,9 @@ async fn run_loop(
 ) -> Result<()> {
     fn op_end_time(
         op: &AnimOperation,
-        start_time: Seconds,
-        out: &mut Vec<(Sfx, Seconds, Option<scal_core::SourceLoc>)>,
-    ) -> Seconds {
+        start_time: Time,
+        out: &mut Vec<(Sfx, Time, Option<scal_core::SourceLoc>)>,
+    ) -> Time {
         match op {
             AnimOperation::PlaySound(sfx, video_delay, source_loc) => {
                 let abs_time = start_time + video_delay;
@@ -235,7 +235,7 @@ async fn run_loop(
         }
     }
 
-    let mut sfx_sounds: Vec<(Sfx, Seconds, Option<scal_core::SourceLoc>)> = vec![];
+    let mut sfx_sounds: Vec<(Sfx, Time, Option<scal_core::SourceLoc>)> = vec![];
     let mut time = 0.0;
     for op in &animations {
         time = op_end_time(op, time, &mut sfx_sounds);

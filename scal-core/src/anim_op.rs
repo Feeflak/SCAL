@@ -8,7 +8,7 @@ use uuid::Uuid;
 use crate::anim_obj::AnimObj;
 use crate::color::Color;
 use crate::ease::Ease;
-use crate::seconds::Seconds;
+use crate::seconds::Time;
 use crate::sfx::Sfx;
 
 #[derive(Clone)]
@@ -33,15 +33,15 @@ impl Display for SourceLoc {
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub enum AnimOP {
     Instantiate(AnimObj, Option<SourceLoc>),
-    TransformMovePos(Uuid, Vec2, Seconds, Ease, Option<SourceLoc>),
-    TransformMoveToObj(Uuid, Uuid, Vec2, Seconds, Ease, Option<SourceLoc>),
-    TransformRotate(Uuid, f32, Seconds, Ease, Option<SourceLoc>),
-    TransformScale(Uuid, Vec2, Seconds, Ease, Option<SourceLoc>),
+    TransformMovePos(Uuid, Vec2, Time, Ease, Option<SourceLoc>),
+    TransformMoveToObj(Uuid, Uuid, Vec2, Time, Ease, Option<SourceLoc>),
+    TransformRotate(Uuid, f32, Time, Ease, Option<SourceLoc>),
+    TransformScale(Uuid, Vec2, Time, Ease, Option<SourceLoc>),
     CodeAddLines(
         Uuid,
         String,
         usize,
-        Seconds,
+        Time,
         Ease,
         CodeAnimationStyle,
         Option<SourceLoc>,
@@ -50,7 +50,7 @@ pub enum AnimOP {
         Uuid,
         u32,
         String,
-        Seconds,
+        Time,
         Ease,
         CodeAnimationStyle,
         Option<SourceLoc>,
@@ -58,7 +58,7 @@ pub enum AnimOP {
     CodeRemoveLines(
         Uuid,
         Range<u32>,
-        Seconds,
+        Time,
         Ease,
         CodeAnimationStyle,
         Option<SourceLoc>,
@@ -66,8 +66,8 @@ pub enum AnimOP {
     CodeHighlight(Uuid, CodeHighlightAction, Option<SourceLoc>),
     All(Vec<AnimOP>, Option<SourceLoc>),
     Sequence(Vec<AnimOP>, Option<SourceLoc>),
-    Wait(Seconds, Option<SourceLoc>),
-    PlaySound(Sfx, Seconds, Option<SourceLoc>),
+    Wait(Time, Option<SourceLoc>),
+    PlaySound(Sfx, Time, Option<SourceLoc>),
 }
 
 impl AnimOP {
@@ -102,18 +102,18 @@ pub enum CodeHighlightAction {
     Lines {
         ranges: Vec<Range<usize>>,
         color: Color,
-        duration: Seconds,
+        duration: Time,
         curve: Ease,
     },
     Pattern {
         regex: String,
         color: Color,
-        duration: Seconds,
+        duration: Time,
         curve: Ease,
     },
 }
 impl CodeHighlightAction {
-    pub fn duration_and_curve(&self) -> (Seconds, Ease) {
+    pub fn duration_and_curve(&self) -> (Time, Ease) {
         match self {
             CodeHighlightAction::Lines {
                 ranges: _,
@@ -167,7 +167,7 @@ impl AnimOP {
         self
     }
 
-    pub fn wait(duration: Seconds) -> Self {
+    pub fn wait(duration: Time) -> Self {
         AnimOP::Wait(duration, None)
     }
 
@@ -176,21 +176,21 @@ impl AnimOP {
     }
 }
 
-pub fn wait(duration: Seconds) -> AnimOP {
+pub fn wait(duration: Time) -> AnimOP {
     AnimOP::Wait(duration, None)
 }
 
 pub struct PlaySoundBuilder {
     pub(crate) sfx: Sfx,
-    pub(crate) delay: Seconds,
+    pub(crate) delay: Time,
 }
 
 impl PlaySoundBuilder {
-    pub fn after(mut self, delay: Seconds) -> AnimOP {
+    pub fn after(mut self, delay: Time) -> AnimOP {
         self.delay = delay;
         self.into()
     }
-    pub fn delay(mut self, delay: Seconds) -> AnimOP {
+    pub fn delay(mut self, delay: Time) -> AnimOP {
         self.delay = delay;
         self.into()
     }

@@ -4,7 +4,7 @@ use uuid::Uuid;
 
 use crate::anim_op::{AnimOP, IntoAnimOp};
 use crate::ease::Ease;
-use crate::seconds::Seconds;
+use crate::seconds::Time;
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Transform {
@@ -70,7 +70,7 @@ pub struct PositionBuilder {
     pub(crate) uuid: Uuid,
     pub(crate) target: Option<Vec2>,
     pub(crate) object: Option<Uuid>,
-    pub(crate) duration: Seconds,
+    pub(crate) duration: Time,
     pub(crate) ease: Ease,
 }
 
@@ -87,7 +87,7 @@ impl PositionBuilder {
         self
     }
 
-    pub fn over(mut self, duration: Seconds) -> Self {
+    pub fn over(mut self, duration: Time) -> Self {
         self.duration = duration;
         self
     }
@@ -119,7 +119,7 @@ pub struct ScaleBuilder {
     pub(crate) uuid: Uuid,
     pub(crate) target: Option<Vec2>,
     pub(crate) object: Option<Uuid>,
-    pub(crate) duration: Seconds,
+    pub(crate) duration: Time,
     pub(crate) ease: Ease,
 }
 
@@ -138,7 +138,7 @@ impl ScaleBuilder {
     }
 
     #[must_use]
-    pub fn over(mut self, duration: Seconds) -> Self {
+    pub fn over(mut self, duration: Time) -> Self {
         self.duration = duration;
         self
     }
@@ -171,7 +171,7 @@ impl IntoAnimOp for ScaleBuilder {
 pub struct RotateBuilder {
     pub(crate) uuid: Uuid,
     pub(crate) target: Option<f32>,
-    pub(crate) duration: Seconds,
+    pub(crate) duration: Time,
     pub(crate) ease: Ease,
 }
 
@@ -184,7 +184,7 @@ impl RotateBuilder {
     }
 
     #[must_use]
-    pub fn over(mut self, duration: Seconds) -> Self {
+    pub fn over(mut self, duration: Time) -> Self {
         self.duration = duration;
         self
     }

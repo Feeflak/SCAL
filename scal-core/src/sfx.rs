@@ -1,15 +1,15 @@
 use serde::{Deserialize, Serialize};
 
 use crate::anim_op::PlaySoundBuilder;
-use crate::seconds::Seconds;
+use crate::seconds::Time;
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Sfx {
     pub path: String,
     pub volume: f32,
     pub pitch: f32,
-    pub time_offset: Seconds,
-    pub duration: Seconds,
+    pub time_offset: Time,
+    pub duration: Time,
     pub pitch_variation: f32,
 }
 
@@ -22,8 +22,8 @@ pub struct SfxBuilder {
     path: String,
     volume: f32,
     pitch: f32,
-    time_offset: Seconds,
-    duration: Seconds,
+    time_offset: Time,
+    duration: Time,
     pitch_variation: f32,
 }
 
@@ -57,12 +57,12 @@ impl SfxBuilder {
         self
     }
     #[must_use]
-    pub fn skip_time(mut self, t: Seconds) -> Self {
+    pub fn skip_time(mut self, t: Time) -> Self {
         self.time_offset = t;
         self
     }
     #[must_use]
-    pub fn duration(mut self, dur: Seconds) -> Self {
+    pub fn duration(mut self, dur: Time) -> Self {
         self.duration = dur;
         self
     }

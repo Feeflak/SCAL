@@ -7,7 +7,7 @@ use uuid::Uuid;
 use crate::anim_op::{AnimOP, CodeAnimationStyle, IntoAnimOp};
 use crate::color::Color;
 use crate::ease::Ease;
-use crate::seconds::Seconds;
+use crate::seconds::Time;
 use crate::theme::Theme;
 use crate::transform::Transform;
 
@@ -29,7 +29,7 @@ pub struct CodeAddLinesBuilder {
     uuid: Uuid,
     text: String,
     from_line: usize,
-    duration: Seconds,
+    duration: Time,
     ease: Ease,
     style: CodeAnimationStyle,
 }
@@ -46,7 +46,7 @@ impl CodeAddLinesBuilder {
         self
     }
     #[must_use]
-    pub fn over(mut self, duration: Seconds) -> Self {
+    pub fn over(mut self, duration: Time) -> Self {
         self.duration = duration;
         self
     }
@@ -86,7 +86,7 @@ pub struct CodeModifyLineBuilder {
     uuid: Uuid,
     line: u32,
     text: String,
-    duration: Seconds,
+    duration: Time,
     ease: Ease,
     style: CodeAnimationStyle,
 }
@@ -98,7 +98,7 @@ impl CodeModifyLineBuilder {
         self
     }
     #[must_use]
-    pub fn over(mut self, duration: Seconds) -> Self {
+    pub fn over(mut self, duration: Time) -> Self {
         self.duration = duration;
         self
     }
@@ -129,14 +129,14 @@ impl IntoAnimOp for CodeModifyLineBuilder {
 pub struct CodeRemoveLinesBuilder {
     uuid: Uuid,
     range: Range<u32>,
-    duration: Seconds,
+    duration: Time,
     ease: Ease,
     style: CodeAnimationStyle,
 }
 
 impl CodeRemoveLinesBuilder {
     #[must_use]
-    pub fn over(mut self, duration: Seconds) -> Self {
+    pub fn over(mut self, duration: Time) -> Self {
         self.duration = duration;
         self
     }

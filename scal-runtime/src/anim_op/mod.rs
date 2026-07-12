@@ -6,7 +6,7 @@ use std::ops::Range;
 use anyhow::{Context, Result};
 use glam::{Vec2, Vec4Swizzles, vec3};
 use log::debug;
-use scal_core::{CodeAnimationStyle, CodeHighlightAction, Ease, Seconds, Sfx, SourceLoc};
+use scal_core::{CodeAnimationStyle, CodeHighlightAction, Ease, Time, Sfx, SourceLoc};
 use uuid::Uuid;
 
 use crate::anim_object::object_trait::DynAnimObj;
@@ -15,15 +15,15 @@ use crate::animator::Animator;
 #[derive(Clone, Debug)]
 pub enum AnimOperation {
     Instantiate(DynAnimObj, Option<SourceLoc>),
-    TransformMovePos(Uuid, Vec2, Seconds, Ease, Option<SourceLoc>),
-    TransformMoveToObj(Uuid, Uuid, Vec2, Seconds, Ease, Option<SourceLoc>),
-    TransformRotate(Uuid, f32, Seconds, Ease, Option<SourceLoc>),
-    TransformScale(Uuid, Vec2, Seconds, Ease, Option<SourceLoc>),
+    TransformMovePos(Uuid, Vec2, Time, Ease, Option<SourceLoc>),
+    TransformMoveToObj(Uuid, Uuid, Vec2, Time, Ease, Option<SourceLoc>),
+    TransformRotate(Uuid, f32, Time, Ease, Option<SourceLoc>),
+    TransformScale(Uuid, Vec2, Time, Ease, Option<SourceLoc>),
     CodeAddLines(
         Uuid,
         String,
         usize,
-        Seconds,
+        Time,
         Ease,
         CodeAnimationStyle,
         Option<SourceLoc>,
@@ -32,7 +32,7 @@ pub enum AnimOperation {
         Uuid,
         u32,
         String,
-        Seconds,
+        Time,
         Ease,
         CodeAnimationStyle,
         Option<SourceLoc>,
@@ -40,7 +40,7 @@ pub enum AnimOperation {
     CodeRemoveLines(
         Uuid,
         Range<u32>,
-        Seconds,
+        Time,
         Ease,
         CodeAnimationStyle,
         Option<SourceLoc>,
@@ -48,8 +48,8 @@ pub enum AnimOperation {
     CodeHighlight(Uuid, CodeHighlightAction, Option<SourceLoc>),
     All(Vec<AnimOperation>, Option<SourceLoc>),
     Sequence(Vec<AnimOperation>, Option<SourceLoc>),
-    Wait(Seconds, Option<SourceLoc>),
-    PlaySound(Sfx, Seconds, Option<SourceLoc>),
+    Wait(Time, Option<SourceLoc>),
+    PlaySound(Sfx, Time, Option<SourceLoc>),
 }
 
 impl AnimOperation {
@@ -175,7 +175,7 @@ pub fn resolve_op(op: AnimOperation) -> Result<Animation> {
     })
 }
 
-pub fn play(sfx: Sfx, video_delay: Seconds) -> AnimOperation {
+pub fn play(sfx: Sfx, video_delay: Time) -> AnimOperation {
     AnimOperation::PlaySound(sfx, video_delay, None)
 }
 pub fn sequence(ops: Vec<AnimOperation>) -> AnimOperation {
