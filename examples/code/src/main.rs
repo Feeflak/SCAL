@@ -75,7 +75,7 @@ fn main() -> Project {
             code.highlight()
                 .lines(3..6)
                 .color(Color::new(1.0, 1.0, 0.0, 0.3))
-                .over(1.s())
+                .over(5.s())
                 .ease(Ease::InOutCubic),
             wait(500.ms()),
             code.add_lines()
@@ -83,6 +83,7 @@ fn main() -> Project {
                 .str("let x = 1;")
                 .over(1.s())
                 .style(TypeWriter),
+            wait(1.s()),
         ],
     }
 }
