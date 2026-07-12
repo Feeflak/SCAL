@@ -132,6 +132,27 @@
 //! output_path = "test.mov"
 //! codec_type = "H264Nvenc"
 //! ```
+//! make sure that you have installed required system dependencies:
+//!
+//! - Ubuntu/Debian:
+//! sudo apt install ffmpeg libwayland-dev libxkbcommon-dev libx11-dev libxcursor-dev libxi-dev libxrandr-dev libxcb1-dev libasound2-dev libpulse-dev
+//!
+//! - Arch:
+//! sudo pacman -S ffmpeg wayland libxkbcommon libx11 libxcursor libxi libxrandr libxcb alsa-lib libpulse
+//!
+//! - Fedora:
+//! sudo dnf install ffmpeg-devel wayland-devel libxkbcommon-devel libX11-devel libXcursor-devel libXi-devel libXrandr-devel libxcb-devel alsa-lib-devel pulseaudio-libs-devel
+//!
+//! - NixOS:
+//! download flake file:
+//! ```bash
+//! wget https://raw.githubusercontent.com/Feeflak/SCAL/refs/heads/main/flake.nix
+//! ```
+//! Set-up the environment:
+//! ```bash
+//! nix develop
+//! ```
+//!
 //! And now you can just use the scal runtime to render/preview the animation.
 //! ``` bash
 //! ❯ ls
@@ -161,228 +182,294 @@
 //!
 //!
 //! # Installing Scala Runtime
+//! ## Distro Package
+//! Sadly there are no packages currently for this app, you need to compile it from source or
+//! install using cargo.
+//! ## Nix Flake
+//! You can automatically compile from source using flakes like this:
+//!{
+//!   inputs.scal-runtime = {
+//!     url = "github:Feeflak/scal";
+//!     inputs.nixpkgs.follows = "nixpkgs";
+//!   };
+//!
+//!   outputs = { self, nixpkgs, scal-runtime, ... }: {
+//!     nixosConfigurations.my-pc = nixpkgs.lib.nixosSystem {
+//!       system = "x86_64-linux";
+//!
+//!       modules = [
+//!         ({ pkgs, ... }: {
+//!           environment.systemPackages = [
+//!             scal-runtime.packages.${pkgs.stdenv.hostPlatform.system}.default
+//!           ];
+//!         })
+//!       ];
+//!     };
+//!   };
+//! }
+//! ## Compiling From Source
+//! SCAL uses Cargo to manage all Rust dependencies automatically. Only a few native libraries must be installed manually.
+//!
+//! ## 1. Install Rust
+//!
+//! If you don't already have Rust installed:
+//!
+//! ```bash
+//!     curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
+//! ```
+//!
+//! Verify the installation:
+//!
+//! ```bash
+//! cargo --version
+//! rustc --version
+//! ```
+//!
+//! ---
+//!
+//! ## Linux
+//!
+//! ### Arch Linux
 //!
-//!SCAL uses Cargo to manage all Rust dependencies automatically. Only a few native libraries must be installed manually.
-//!
-//!## 1. Install Rust
-//!
-//!If you don't already have Rust installed:
-//!
-//!```bash
-//!curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
-//!```
-//!
-//!Verify the installation:
-//!
-//!```bash
-//!cargo --version
-//!rustc --version
-//!```
+//! Install the required packages:
+//!
+//! ```bash
+//! sudo pacman -S \
+//!     ffmpeg \
+//!     pkgconf \
+//!     clang \
+//!     llvm \
+//!     wayland \
+//!     libxkbcommon \
+//!     libx11 \
+//!     libxcursor \
+//!     libxi \
+//!     libxrandr \
+//!     libxcb \
+//!     alsa-lib \
+//!     libpulse
+//! ```
 //!
-//!---
 //!
-//!# Linux
+//! ---
 //!
-//!## Arch Linux
+//! ## #Fedora
 //!
-//!Install the required packages:
+//! Install the required packages:
 //!
-//!```bash
-//!sudo pacman -S \
-//!    rustup \
-//!    ffmpeg \
-//!    pkgconf \
-//!    clang \
-//!    llvm \
-//!    wayland \
-//!    libxkbcommon \
-//!    libx11 \
-//!    libxcursor \
-//!    libxi \
-//!    libxrandr \
-//!    libxcb \
-//!    alsa-lib \
-//!    libpulse
-//!```
+//! ```bash
+//! sudo dnf install \
+//!     ffmpeg-devel \
+//!     pkgconf-pkg-config \
+//!     clang \
+//!     llvm-devel \
+//!     wayland-devel \
+//!     libxkbcommon-devel \
+//!     libX11-devel \
+//!     libXcursor-devel \
+//!     libXi-devel \
+//!     libXrandr-devel \
+//!     libxcb-devel \
+//!     alsa-lib-devel \
+//!     pulseaudio-libs-devel
+//! ```
 //!
-//!Initialize Rust (only once):
 //!
-//!```bash
-//!rustup default stable
-//!```
+//! ---
 //!
-//!---
+//! ## Debian / Ubuntu
 //!
-//!## Fedora
+//! Install the required packages:
 //!
-//!Install the required packages:
+//! ```bash
+//! sudo apt update
 //!
-//!```bash
-//!sudo dnf install \
-//!    rustup \
-//!    ffmpeg-devel \
-//!    pkgconf-pkg-config \
-//!    clang \
-//!    llvm-devel \
-//!    wayland-devel \
-//!    libxkbcommon-devel \
-//!    libX11-devel \
-//!    libXcursor-devel \
-//!    libXi-devel \
-//!    libXrandr-devel \
-//!    libxcb-devel \
-//!    alsa-lib-devel \
-//!    pulseaudio-libs-devel
-//!```
+//! sudo apt install \
+//!     pkg-config \
+//!     ffmpeg \
+//!     clang \
+//!     libclang-dev \
+//!     libwayland-dev \
+//!     libxkbcommon-dev \
+//!     libx11-dev \
+//!     libxcursor-dev \
+//!     libxi-dev \
+//!     libxrandr-dev \
+//!     libxcb1-dev \
+//!     libasound2-dev \
+//!     libpulse-dev
+//! ```
 //!
-//!Initialize Rust:
 //!
-//!```bash
-//!rustup default stable
-//!```
+//! ---
 //!
-//!---
+//! ## NixOS
 //!
-//!## Debian / Ubuntu
+//! The repository already contains a development shell.
 //!
-//!Install the required packages:
+//! Enter it with:
 //!
-//!```bash
-//!sudo apt update
+//! ```bash
+//! nix develop
+//! ```
 //!
-//!sudo apt install \
-//!    pkg-config \
-//!    ffmpeg \
-//!    clang \
-//!    libclang-dev \
-//!    libwayland-dev \
-//!    libxkbcommon-dev \
-//!    libx11-dev \
-//!    libxcursor-dev \
-//!    libxi-dev \
-//!    libxrandr-dev \
-//!    libxcb1-dev \
-//!    libasound2-dev \
-//!    libpulse-dev
-//!```
+//! or
 //!
-//!Install Rust:
-//!
-//!```bash
-//!curl https://sh.rustup.rs -sSf | sh
-//!```
-//!
-//!---
-//!
-//!## NixOS
-//!
-//!The repository already contains a development shell.
-//!
-//!Enter it with:
-//!
-//!```bash
-//!nix develop
-//!```
-//!
-//!or
-//!
-//!```bash
-//!nix-shell
-//!```
-//!
-//!All required libraries are provided automatically.
-//!
-//!---
-//!
-//!# macOS
-//!
-//!Install Homebrew if necessary.
-//!
-//!Then install the required packages:
-//!
-//!```bash
-//!brew install \
-//!    rust \
-//!    ffmpeg \
-//!    llvm \
-//!    pkg-config
-//!```
-//!
-//!The remaining libraries required by SCAL are provided by macOS.
-//!
-//!---
-//!
-//!# Windows
-//!
-//!Install:
-//!
-//!- Rust (via rustup)
-//!- Visual Studio 2022 with the **Desktop development with C++** workload
-//!- LLVM/Clang
-//!- FFmpeg
-//!
-//!Using Winget:
-//!
-//!```powershell
-//!winget install Rustlang.Rustup
-//!
-//!winget install LLVM.LLVM
-//!
-//!winget install Gyan.FFmpeg
-//!```
-//!
-//!After installing Visual Studio Build Tools, restart your terminal.
-//!
-//!---
-//!
-//!# Building SCAL
-//!
-//!Clone the repository:
-//!
-//!```bash
-//!git clone https://github.com/<your-username>/scal.git
-//!
-//!cd scal
-//!```
-//!
-//!Build:
-//!
-//!```bash
-//!cargo build
-//!```
-//!
-//!Run:
-//!
-//!```bash
-//!cargo run
-//!```
-//!
-//!For optimized release builds:
-//!
-//!```bash
-//!cargo run --release
-//!```
-//!
-//!---
-//!
-//!# Updating
-//!
-//!Update the Rust toolchain:
-//!
-//!```bash
-//!rustup update
-//!```
-//!
-//!Update project dependencies:
-//!
-//!```bash
-//!cargo update
-//!```
-//!
-//! # Getting Started
-//! sadf.
-//! # Setting up a project
-//! sadf.
+//! ```bash
+//! nix-shell
+//! ```
+//!
+//! All required libraries are provided automatically.
+//!
+//! ---
+//!
+//! # macOS
+//!
+//! Install Homebrew if necessary.
+//!
+//! Then install the required packages:
+//!
+//! ```bash
+//! brew install \
+//!     ffmpeg \
+//!     llvm \
+//!     pkg-config
+//! ```
+//!
+//! The remaining libraries required by SCAL are provided by macOS.
+//!
+//! ---
+//!
+//! # Windows
+//!
+//! Install:
+//!
+//! - Rust (via rustup)
+//! - Visual Studio 2022 with the **Desktop development with C++** workload
+//! - LLVM/Clang
+//! - FFmpeg
+//!
+//! Using Winget:
+//!
+//! ```powershell
+//! winget install Rustlang.Rustup
+//!
+//! winget install LLVM.LLVM
+//!
+//! winget install Gyan.FFmpeg
+//! ```
+//!
+//! After installing Visual Studio Build Tools, restart your terminal.
+//!
+//! ---
+//!
+//! # Building SCAL
+//!
+//! ```bash
+//! cargo install scal-runtime
+//! ```
+//!
+//! # Setting up a new animation project
+//! 1. Init project
+//! ```bash
+//! cargo init <Name>
+//! ````
+//! 2. Add dependencies to Cargo.toml
+//! ``` toml
+//! scal-core = "<version>"
+//! scal-ipc = "<version>"
+//! glam = "0.33.2"
+//! ```
+//! 3.  basic animation output config
+//! ``` toml
+//! /// /Config.toml
+//! [animation]
+//! binary = "cargo run"
+//!
+//! [rendering]
+//! text_resolution_multiplier = 2.0
+//! width = 3840
+//! height = 2160
+//! fps = 60
+//!
+//! [encoding]
+//! output_path = "test.mov"
+//! codec_type = "H264Nvenc"
+//! ```
+//! 4. setup the ipc macro
+//! ```
+//! // /scr/main.rs
+//! #[scal_ipc::main]
+//! fn main() -> Project {
+//!     todo!()
+//! }
+//! ```
+//!
+//! That's it, you can start writing any animation you want
+//! simple example:
+//! ```
+//! // /scr/main.rs
+//! use glam::Vec2;
+//! use scal_core::prelude::*;
+//!
+//! #[scal_ipc::main]
+//! fn main() -> Project {
+//!     let rect = rectangle()
+//!         .size(Vec2::new(600., 400.))
+//!         .corner_radius(40.)
+//!         .color(Color::new(0., 0.2, 0.4, 1.))
+//!         .pos(Vec2::new(400., 540.))
+//!         .build();
+//!
+//!     let circle = circle()
+//!         .radius(200.)
+//!         .color(Color::new(0.8, 0.2, 0.2, 1.))
+//!         .pos(Vec2::new(1200., 500.))
+//!         .build();
+//!
+//!     let hex = polygon()
+//!         .radius(180.)
+//!         .sides(6)
+//!         .color(Color::new(0.2, 0.7, 0.3, 1.))
+//!         .pos(Vec2::new(800., 300.))
+//!         .build();
+//!
+//!     let triangle = polygon()
+//!         .radius(150.)
+//!         .sides(3)
+//!         .color(Color::new(0.9, 0.6, 0.1, 1.))
+//!         .pos(Vec2::new(1600., 700.))
+//!         .build();
+//!
+//!     Project {
+//!         scene_settings: SceneSettings {
+//!             background_color: Color::new(0.8, 0.8, 0.8, 1.0),
+//!             camera: Camera::new(Vec2::new(1920., 1080.), Vec2::ZERO, 1.),
+//!             default_theme: Theme::default(),
+//!         },
+//!         timeline: timeline![
+//!             rect.instantiate(),
+//!             circle.instantiate(),
+//!             hex.instantiate(),
+//!             triangle.instantiate(),
+//!             wait(1.s()),
+//!             parallel![
+//!                 triangle
+//!                     .transform
+//!                     .position()
+//!                     .to(Vec2::new(350., 800.))
+//!                     .over(1.s())
+//!                     .ease(Ease::OutBack),
+//!                 rect.transform
+//!                     .position()
+//!                     .to(Vec2::new(960., 540.))
+//!                     .over(1.s())
+//!                     .ease(Ease::InOutBack),
+//!             ],
+//!         ],
+//!     }
+//! }
+//! ```
 //!
 
 pub mod anim;

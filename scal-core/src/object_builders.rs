@@ -70,43 +70,36 @@ impl Default for SvgBuilder {
 
 #[allow(clippy::return_self_not_must_use)]
 impl SvgBuilder {
-    #[must_use]
-    /// Set the file path of the SVG
+    /// Set the filepath of the SVG
     pub fn path(mut self, path: impl Into<String>) -> Self {
         self.path = path.into();
         self
     }
-    #[must_use]
     /// Set the size of the SVG
     pub const fn size(mut self, size: Vec2) -> Self {
         self.size = size;
         self
     }
-    #[must_use]
     /// Set the tint color of the SVG
     pub const fn color(mut self, color: Color) -> Self {
         self.tint = color;
         self
     }
-    #[must_use]
     /// Set the fill color of the SVG
     pub const fn fill(mut self, color: Color) -> Self {
         self.fill = Some(color);
         self
     }
-    #[must_use]
     /// Set the stroke color of the SVG
     pub const fn stroke(mut self, color: Color) -> Self {
         self.stroke = Some(color);
         self
     }
-    #[must_use]
     /// Set the stroke width of the SVG
     pub const fn stroke_width(mut self, width: f32) -> Self {
         self.stroke_width = Some(width);
         self
     }
-    #[must_use]
     /// Set the stretch mode of the SVG
     pub const fn stretch(mut self, stretch: StretchMode) -> Self {
         self.stretch = stretch;
@@ -210,13 +203,11 @@ impl Default for CircleBuilder {
 
 #[allow(clippy::return_self_not_must_use)]
 impl CircleBuilder {
-    #[must_use]
     /// Set the radius of the circle
     pub const fn radius(mut self, radius: f32) -> Self {
         self.radius = radius;
         self
     }
-    #[must_use]
     /// Set the color of the circle
     pub const fn color(mut self, color: Color) -> Self {
         self.color = color;
@@ -238,7 +229,6 @@ impl CircleBuilder {
 
 impl_transform_methods!(CircleBuilder);
 
-#[must_use]
 pub fn code() -> CodeBuilder {
     CodeBuilder::default()
 }
@@ -274,43 +264,36 @@ impl Default for CodeBuilder {
 
 #[allow(clippy::return_self_not_must_use)]
 impl CodeBuilder {
-    #[must_use]
     /// Set the source code of the code block
     pub fn source(mut self, code: impl Into<String>) -> Self {
         self.source_code = code.into();
         self
     }
-    #[must_use]
     /// Set the font family of the code block
     pub fn font_family(mut self, family: impl Into<String>) -> Self {
         self.font_family = family.into();
         self
     }
-    #[must_use]
     /// Set the font size of the code block
     pub const fn font_size(mut self, size: f32) -> Self {
         self.font_size = size;
         self
     }
-    #[must_use]
     /// Set the syntax highlighting language of the code block
     pub const fn syntax(mut self, syntax: Syntax) -> Self {
         self.syntax = syntax;
         self
     }
-    #[must_use]
     /// Set the theme of the code block
     pub fn theme(mut self, theme: Theme) -> Self {
         self.theme = Some(theme);
         self
     }
-    #[must_use]
     /// Set the padding of the code block
     pub const fn padding(mut self, padding: f32) -> Self {
         self.padding = padding;
         self
     }
-    #[must_use]
     /// Toggle line numbers in the code block
     pub const fn line_numbers(mut self, show: bool) -> Self {
         self.show_line_numbers = show;
@@ -361,21 +344,17 @@ impl Default for PolygonBuilder {
     }
 }
 
-#[allow(clippy::return_self_not_must_use)]
 impl PolygonBuilder {
-    #[must_use]
     /// Set the radius of the polygon
     pub const fn radius(mut self, radius: f32) -> Self {
         self.radius = radius;
         self
     }
-    #[must_use]
     /// Set the number of sides of the polygon
     pub const fn sides(mut self, sides: u32) -> Self {
         self.sides = sides;
         self
     }
-    #[must_use]
     /// Set the color of the polygon
     pub const fn color(mut self, color: Color) -> Self {
         self.color = color;
@@ -423,27 +402,22 @@ impl Default for ImageBuilder {
     }
 }
 
-#[allow(clippy::return_self_not_must_use)]
 impl ImageBuilder {
-    #[must_use]
-    /// Set the file path of the image
+    /// Set the filepath of the image
     pub fn path(mut self, path: impl Into<String>) -> Self {
         self.path = path.into();
         self
     }
-    #[must_use]
     /// Set the size of the image
     pub const fn size(mut self, size: Vec2) -> Self {
         self.size = size;
         self
     }
-    #[must_use]
     /// Set the color of the image
     pub const fn color(mut self, color: Color) -> Self {
         self.color = color;
         self
     }
-    #[must_use]
     /// Set the stretch mode of the image
     pub const fn stretch(mut self, stretch: StretchMode) -> Self {
         self.stretch = stretch;
@@ -494,33 +468,27 @@ impl Default for TextBuilder {
     }
 }
 
-#[allow(clippy::return_self_not_must_use)]
 impl TextBuilder {
-    #[must_use]
     /// Set the text content
     pub fn value(mut self, value: impl Into<String>) -> Self {
         self.value = value.into();
         self
     }
-    #[must_use]
     /// Set the font family of the text
     pub fn font_family(mut self, family: impl Into<String>) -> Self {
         self.font_family = family.into();
         self
     }
-    #[must_use]
     /// Set the alignment of the text
     pub const fn alignment(mut self, align: TextAlign) -> Self {
         self.alignment = align;
         self
     }
-    #[must_use]
     /// Set the color of the text
     pub const fn color(mut self, color: Color) -> Self {
         self.color = color;
         self
     }
-    #[must_use]
     /// Set the font size of the text
     pub const fn font_size(mut self, size: f32) -> Self {
         self.font_size = size;
@@ -586,69 +554,57 @@ impl Default for CodeWindowBuilder {
     }
 }
 
-#[allow(clippy::return_self_not_must_use)]
 impl CodeWindowBuilder {
-    #[must_use]
     /// Set the source code of the code window
     pub fn source(mut self, code: impl Into<String>) -> Self {
         self.source_code = code.into();
         self
     }
-    #[must_use]
     /// Set the font family of the code window
     pub fn font_family(mut self, family: impl Into<String>) -> Self {
         self.font_family = family.into();
         self
     }
-    #[must_use]
     /// Set the font size of the code window
     pub const fn font_size(mut self, size: f32) -> Self {
         self.font_size = size;
         self
     }
-    #[must_use]
     /// Set the syntax highlighting language of the code window
     pub const fn syntax(mut self, syntax: Syntax) -> Self {
         self.syntax = syntax;
         self
     }
-    #[must_use]
     /// Set the theme of the code window
     pub fn theme(mut self, theme: Theme) -> Self {
         self.theme = Some(theme);
         self
     }
-    #[must_use]
     /// Set the title of the code window
     pub fn title(mut self, title: impl Into<String>) -> Self {
         self.title = title.into();
         self
     }
-    #[must_use]
     /// Set the title font size
     pub const fn title_font_size(mut self, size: f32) -> Self {
         self.title_font_size = size;
         self
     }
-    #[must_use]
     /// Set the width of the code window
     pub const fn width(mut self, width: f32) -> Self {
         self.width = width;
         self
     }
-    #[must_use]
     /// Set the height of the code window
     pub const fn height(mut self, height: f32) -> Self {
         self.height = height;
         self
     }
-    #[must_use]
     /// Set the background color of the code window
     pub const fn background_color(mut self, color: Color) -> Self {
         self.background_color = color;
         self
     }
-    #[must_use]
     /// Toggle line numbers in the code window
     pub const fn line_numbers(mut self, show: bool) -> Self {
         self.show_line_numbers = show;
