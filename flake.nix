@@ -3,21 +3,110 @@
 
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
-    flake-parts.url = "github:hercules-ci/flake-parts";
+    flake-utils.url = "github:numtide/flake-utils";
   };
 
   outputs =
-    inputs@{ flake-parts, ... }:
-    flake-parts.lib.mkFlake { inherit inputs; } {
-      systems = [
-        "x86_64-linux"
-        "aarch64-linux"
-        "x86_64-darwin"
-        "aarch64-darwin"
-      ];
+    {
+      self,
+      nixpkgs,
+      flake-utils,
+    }:
+    flake-utils.lib.eachDefaultSystem (
+      system:
+      let
+        pkgs = import nixpkgs {
+          inherit system;
+        };
 
-      imports = [
-        ./flake-module.nix
-      ];
-    };
+        runtime = pkgs.rustPlatform.buildRustPackage {
+          pname = "scal-runtime";
+          version = "0.1.0";
+
+          src = ./scal-runtime/.;
+
+          cargoLock.lockFile = ./Cargo.lock;
+
+          nativeBuildInputs = with pkgs; [
+            pkg-config
+            clang
+          ];
+
+          buildInputs = with pkgs; [
+            ffmpeg
+
+            wayland
+            libxkbcommon
+
+            xorg.libX11
+            xorg.libXcursor
+            xorg.libXi
+            xorg.libXrandr
+            xorg.libxcb
+
+            alsa-lib
+            libpulseaudio
+          ];
+        };
+      in
+      {
+        packages = {
+          default = runtime;
+          runtime = runtime;
+        };
+
+        apps.default = {
+          type = "app";
+          program = "${runtime}/bin/scal-runtime";
+        };
+
+        devShells.default = pkgs.mkShell {
+          packages = with pkgs; [
+            rust-analyzer
+            rustfmt
+            clippy
+            cargo
+            rustc
+
+            pkg-config
+            ffmpeg
+
+            wayland
+            libxkbcommon
+            xorg.libX11
+            xorg.libXcursor
+            xorg.libXi
+            xorg.libXrandr
+            xorg.libxcb
+
+            clang
+            llvmPackages.libclang
+
+            alsa-lib
+            alsa-lib.dev
+            libpulseaudio
+          ];
+
+          shellHook = ''
+            export LIBCLANG_PATH="${pkgs.llvmPackages.libclang.lib}/lib"
+
+            export LD_LIBRARY_PATH="${
+              pkgs.lib.makeLibraryPath [
+                pkgs.wayland
+                pkgs.libxkbcommon
+                pkgs.xorg.libX11
+                pkgs.xorg.libXcursor
+                pkgs.xorg.libXi
+                pkgs.xorg.libXrandr
+                pkgs.xorg.libxcb
+                pkgs.alsa-lib
+                pkgs.libpulseaudio
+              ]
+            }:$LD_LIBRARY_PATH"
+
+            export PKG_CONFIG_PATH="${pkgs.alsa-lib.dev}/lib/pkgconfig:$PKG_CONFIG_PATH"
+          '';
+        };
+      }
+    );
 }
