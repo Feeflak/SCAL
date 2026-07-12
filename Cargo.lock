@@ -3001,37 +3001,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "scal"
-version = "0.1.0"
-dependencies = [
- "anyhow",
- "bytemuck",
- "cosmic-text",
- "cpal",
- "ffmpeg-next",
- "glam",
- "image 0.25.10",
- "log",
- "rand 0.8.6",
- "regex",
- "resvg",
- "scal-core",
- "swash",
- "tiny-skia",
- "tokio",
- "tree-sitter",
- "tree-sitter-highlight",
- "tree-sitter-javascript",
- "tree-sitter-nix",
- "tree-sitter-python",
- "tree-sitter-rust",
- "tree-sitter-zig",
- "usvg",
- "uuid",
- "wgpu",
-]
-
-[[package]]
 name = "scal-core"
 version = "0.1.0"
 dependencies = [
