@@ -580,6 +580,9 @@ fn reload_animation(
 ) -> Result<()> {
     log::info!("Reloading animation...");
 
+    let current_time = preview.current_time();
+    let was_paused = preview.is_paused();
+
     let child = std::process::Command::new("sh")
         .arg("-c")
         .arg(binary)
@@ -615,6 +618,10 @@ fn reload_animation(
 
     let render_animations = convert_anim_ops(project.timeline, default_theme)?;
     preview.reload(render_animations)?;
+
+    let new_time = current_time.min(preview.total_duration());
+    preview.seek_to(new_time)?;
+    preview.set_paused(was_paused);
 
     log::info!("Animation reloaded successfully");
     Ok(())
