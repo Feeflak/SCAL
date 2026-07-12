@@ -421,6 +421,9 @@ impl ApplicationHandler for PreviewState {
         if self.reload_rx.has_changed().unwrap_or(false) {
             self.reload_requested = true;
         }
+        // Mark the change as seen so has_changed() doesn't keep returning true
+        // on every frame, which would cause an infinite reload loop.
+        self.reload_rx.borrow_and_update();
         if let Some(ref window) = self.window {
             window.request_redraw();
         }
@@ -632,6 +635,9 @@ fn start_file_watcher(
                         match event.kind {
                             EventKind::Create(_) | EventKind::Modify(_) | EventKind::Remove(_) => {
                                 for path in &event.paths {
+                                    if path.components().any(|c| c.as_os_str() == "target" || c.as_os_str() == ".git") {
+                                        continue;
+                                    }
                                     if path.extension().map_or(false, |ext| ext == "rs") {
                                         let _ = tx.send(true);
                                         break;
