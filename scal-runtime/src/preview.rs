@@ -327,6 +327,12 @@ impl ApplicationHandler for PreviewState {
             }
             WindowEvent::CursorMoved { position, .. } => {
                 self.cursor_pos = (position.x, position.y);
+                preview.set_hovered_from_cursor(position.x as f32, position.y as f32);
+                if !preview.frame_rendered {
+                    if let Some(ref window) = self.window {
+                        window.request_redraw();
+                    }
+                }
                 if self.mouse_down
                     && self.last_seek_time.elapsed() >= std::time::Duration::from_millis(33)
                     && seek_on_timeline(preview, self.window_size, self.cursor_pos)
@@ -393,6 +399,7 @@ impl ApplicationHandler for PreviewState {
                     }
                 } else {
                     preview.set_selected_op(None);
+                    preview.toggle_pause();
                     if let Some(ref window) = self.window {
                         window.set_title("SCAL Preview");
                         window.request_redraw();
@@ -1905,34 +1912,6 @@ impl PreviewRenderer {
                     );
                 }
             }
-        }
-
-        // Selected operation info bar
-        if self.selected_op_info.is_some() {
-            let info_bar_top = timeline_top - 20.0;
-            let info_bar_bot = timeline_top;
-            let bg = [0.1, 0.1, 0.2, 0.9];
-            append_rect(
-                &mut vertices,
-                &mut indices,
-                0.0,
-                info_bar_top,
-                w,
-                info_bar_bot,
-                bg,
-                NO_UV,
-            );
-            let indicator_color = [0.2, 0.9, 0.7, 1.0];
-            append_rect(
-                &mut vertices,
-                &mut indices,
-                2.0,
-                info_bar_top + 2.0,
-                4.0,
-                info_bar_bot - 2.0,
-                indicator_color,
-                NO_UV,
-            );
         }
 
         // Playhead
