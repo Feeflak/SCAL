@@ -37,6 +37,14 @@ macro_rules! impl_transform_methods {
     };
 }
 
+/// Create a new SVG object builder.
+/// ```
+/// svg()
+///     .path("./icon.svg")
+///     .size(Vec2::splat(60.0))
+///     .color(Color::RED)
+///     .build(),
+/// ```
 pub fn svg() -> SvgBuilder {
     SvgBuilder::default()
 }
@@ -126,6 +134,14 @@ impl SvgBuilder {
 
 impl_transform_methods!(SvgBuilder);
 
+/// Create a new rectangle object builder.
+/// ```
+/// rectangle()
+///     .size(Vec2::new(200.0, 100.0))
+///     .corner_radius(10.0)
+///     .color(Color::BLUE)
+///     .build(),
+/// ```
 pub fn rectangle() -> RectangleBuilder {
     RectangleBuilder::default()
 }
@@ -180,6 +196,13 @@ impl RectangleBuilder {
 
 impl_transform_methods!(RectangleBuilder);
 
+/// Create a new circle object builder.
+/// ```
+/// circle()
+///     .radius(75.0)
+///     .color(Color::GREEN)
+///     .build(),
+/// ```
 pub fn circle() -> CircleBuilder {
     CircleBuilder::default()
 }
@@ -229,6 +252,14 @@ impl CircleBuilder {
 
 impl_transform_methods!(CircleBuilder);
 
+/// Create a new code block object builder.
+/// ```
+/// code()
+///     .source("fn main() {\n    println!(\"hello\");\n}")
+///     .syntax(Syntax::Rust)
+///     .line_numbers(true)
+///     .build(),
+/// ```
 pub fn code() -> CodeBuilder {
     CodeBuilder::default()
 }
@@ -321,6 +352,14 @@ impl CodeBuilder {
 
 impl_transform_methods!(CodeBuilder);
 
+/// Create a new polygon object builder.
+/// ```
+/// polygon()
+///     .radius(60.0)
+///     .sides(8)
+///     .color(Color::YELLOW)
+///     .build(),
+/// ```
 pub fn polygon() -> PolygonBuilder {
     PolygonBuilder::default()
 }
@@ -377,6 +416,13 @@ impl PolygonBuilder {
 
 impl_transform_methods!(PolygonBuilder);
 
+/// Create a new image object builder.
+/// ```
+/// image()
+///     .path("./photo.png")
+///     .size(Vec2::new(320.0, 240.0))
+///     .build(),
+/// ```
 pub fn image() -> ImageBuilder {
     ImageBuilder::default()
 }
@@ -441,6 +487,14 @@ impl ImageBuilder {
 
 impl_transform_methods!(ImageBuilder);
 
+/// Create a new text object builder.
+/// ```
+/// text()
+///     .value("Hello, SCAL!")
+///     .font_size(32.0)
+///     .color(Color::WHITE)
+///     .build(),
+/// ```
 pub fn text() -> TextBuilder {
     TextBuilder::default()
 }
@@ -513,6 +567,14 @@ impl TextBuilder {
 
 impl_transform_methods!(TextBuilder);
 
+/// Create a new code window object builder.
+/// ```
+/// code_window()
+///     .source("print('hello world')")
+///     .syntax(Syntax::Python)
+///     .title("demo.py")
+///     .build(),
+/// ```
 pub fn code_window() -> CodeWindowBuilder {
     CodeWindowBuilder::default()
 }

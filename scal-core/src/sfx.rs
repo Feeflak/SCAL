@@ -23,11 +23,11 @@ pub struct Sfx {
 
 /// Create a new sound effect builder.
 /// ```
-///                sfx()
-///                    .path("./click.mp3")
-///                    .volume(0.5)
-///                    .play()
-///                    .after(0.3.s()),
+/// sfx()
+///     .path("./click.mp3")
+///     .volume(0.5)
+///     .play()
+///     .after(0.3.s()),
 /// ```
 #[must_use]
 pub fn sfx() -> SfxBuilder {
