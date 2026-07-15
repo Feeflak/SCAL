@@ -7,6 +7,7 @@ use tree_sitter_highlight::HighlightConfiguration;
 
 use uuid::Uuid;
 
+use std::collections::HashSet;
 use std::ops::Range;
 
 use crate::{
@@ -141,6 +142,7 @@ impl Code {
                 color,
                 duration,
                 curve,
+                clear: false,
             },
             None,
         )
@@ -160,6 +162,7 @@ impl Code {
                 color,
                 duration,
                 curve,
+                clear: false,
             },
             None,
         )
@@ -287,6 +290,38 @@ impl Code {
         }
 
         Ok(())
+    }
+
+    pub fn highlighted_lines(&self) -> HashSet<usize> {
+        let mut lines = HashSet::new();
+        for highlight in &self.highlights {
+            match &highlight.kind {
+                CodeHighlightKind::Lines { ranges } => {
+                    for range in ranges {
+                        for line in range.clone() {
+                            lines.insert(line);
+                        }
+                    }
+                }
+                CodeHighlightKind::Pattern { regex } => {
+                    if let Ok(re) = regex::Regex::new(regex) {
+                        for (line_idx, line_text) in self.source_code.lines().enumerate() {
+                            if re.is_match(line_text) {
+                                lines.insert(line_idx);
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        lines
+    }
+
+    pub fn max_highlight_progress(&self) -> f32 {
+        self.highlights
+            .iter()
+            .map(|h| h.progress)
+            .fold(0.0f32, f32::max)
     }
 }
 

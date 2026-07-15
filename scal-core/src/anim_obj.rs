@@ -240,6 +240,7 @@ impl CodeHandle {
             color: Color::new(1.0, 1.0, 0.0, 0.3),
             duration: 1.0,
             ease: Ease::Linear,
+            clear: false,
         }
     }
 
@@ -371,6 +372,7 @@ impl CodeWindowHandle {
             color: Color::new(1.0, 1.0, 0.0, 0.3),
             duration: 1.0,
             ease: Ease::Linear,
+            clear: false,
         }
     }
 

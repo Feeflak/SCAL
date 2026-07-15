@@ -108,12 +108,14 @@ pub enum CodeHighlightAction {
         color: Color,
         duration: Time,
         curve: Ease,
+        clear: bool,
     },
     Pattern {
         regex: String,
         color: Color,
         duration: Time,
         curve: Ease,
+        clear: bool,
     },
 }
 impl CodeHighlightAction {
@@ -125,12 +127,14 @@ impl CodeHighlightAction {
                 color: _,
                 duration,
                 curve,
+                ..
             }
             | Self::Pattern {
                 regex: _,
                 color: _,
                 duration,
                 curve,
+                ..
             } => (*duration, *curve),
         }
     }

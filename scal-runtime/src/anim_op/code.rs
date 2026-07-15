@@ -448,6 +448,13 @@ pub fn highlight_fade_in(
         move |animator: &mut crate::animator::Animator, storage: &mut Vec<f32>| {
             let obj = animator.get_object_mut(&uuid)?;
             if let Some(code) = code_mut(obj.anim_data.as_any_mut()) {
+                let clear = match &action {
+                    CodeHighlightAction::Lines { clear, .. } => *clear,
+                    CodeHighlightAction::Pattern { clear, .. } => *clear,
+                };
+                if clear {
+                    code.highlights.clear();
+                }
                 let highlight = match &action {
                     CodeHighlightAction::Lines { ranges, color, .. } => CodeHighlight {
                         color: *color,
@@ -481,13 +488,7 @@ pub fn highlight_fade_in(
         let obj = animator.get_object_mut(&uuid)?;
         if let Some(code) = code_mut(obj.anim_data.as_any_mut()) {
             if let Some(hl) = code.highlights.get_mut(idx) {
-                hl.progress = if t < 0.1 {
-                    t / 0.1
-                } else if t < 0.9 {
-                    1.0
-                } else {
-                    1.0 - (t - 0.9) / 0.1
-                };
+                hl.progress = t;
             }
         }
         let _ = obj;

@@ -74,9 +74,13 @@ fn main() -> Project {
                 .style(TypeWriter),
             code.highlight()
                 .lines(3..6)
-                .color(Color::new(1.0, 1.0, 0.0, 0.3))
                 .over(5.s())
                 .ease(Ease::InOutCubic),
+            wait(500.ms()),
+            code.highlight()
+                .reset()
+                .lines(0..3)
+                .over(1.s()),
             wait(500.ms()),
             code.add_lines()
                 .from_line(5)

@@ -227,6 +227,7 @@ pub struct CodeHighlightBuilder {
     pub(crate) color: Color,
     pub(crate) duration: Time,
     pub(crate) ease: Ease,
+    pub(crate) clear: bool,
 }
 
 impl CodeHighlightBuilder {
@@ -260,6 +261,14 @@ impl CodeHighlightBuilder {
         self.ease = ease;
         self
     }
+    #[must_use]
+    /// Reset any previous highlights before applying this one
+    pub fn reset(mut self) -> Self {
+        self.clear = true;
+        self.ranges.clear();
+        self.regex = None;
+        self
+    }
 }
 
 impl From<CodeHighlightBuilder> for AnimOP {
@@ -270,6 +279,7 @@ impl From<CodeHighlightBuilder> for AnimOP {
                 color: b.color,
                 duration: b.duration,
                 curve: b.ease,
+                clear: b.clear,
             }
         } else {
             CodeHighlightAction::Lines {
@@ -277,6 +287,7 @@ impl From<CodeHighlightBuilder> for AnimOP {
                 color: b.color,
                 duration: b.duration,
                 curve: b.ease,
+                clear: b.clear,
             }
         };
         Self::CodeHighlight(b.uuid, action, None)
