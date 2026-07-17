@@ -1,4 +1,5 @@
 pub mod code;
+pub mod terminal;
 mod transform;
 
 use std::ops::Range;
@@ -6,7 +7,9 @@ use std::ops::Range;
 use anyhow::{Context, Result};
 use glam::{Vec2, Vec4Swizzles, vec3};
 use log::debug;
-use scal_core::{CodeAnimationStyle, CodeHighlightAction, Ease, Time, Sfx, SourceLoc};
+use scal_core::{
+    CodeAnimationStyle, CodeHighlightAction, Ease, TerminalOutputAction, Time, Sfx, SourceLoc,
+};
 use uuid::Uuid;
 
 use crate::anim_object::object_trait::DynAnimObj;
@@ -46,6 +49,8 @@ pub enum AnimOperation {
         Option<SourceLoc>,
     ),
     CodeHighlight(Uuid, CodeHighlightAction, Option<SourceLoc>),
+    TerminalTypeInput(Uuid, String, Option<String>, String, String, Time, Ease, Option<SourceLoc>),
+    TerminalOutput(Uuid, TerminalOutputAction, Time, Ease, Option<SourceLoc>),
     All(Vec<AnimOperation>, Option<SourceLoc>),
     Sequence(Vec<AnimOperation>, Option<SourceLoc>),
     Wait(Time, Option<SourceLoc>),
@@ -64,6 +69,8 @@ impl AnimOperation {
             | AnimOperation::CodeModifyLine(_, _, _, _, _, _, l)
             | AnimOperation::CodeRemoveLines(_, _, _, _, _, l)
             | AnimOperation::CodeHighlight(_, _, l)
+            | AnimOperation::TerminalTypeInput(_, _, _, _, _, _, _, l)
+            | AnimOperation::TerminalOutput(_, _, _, _, l)
             | AnimOperation::All(_, l)
             | AnimOperation::Sequence(_, l)
             | AnimOperation::Wait(_, l)
@@ -144,6 +151,14 @@ pub fn resolve_op(op: AnimOperation) -> Result<Animation> {
         AnimOperation::CodeHighlight(uuid, action, _loc) => {
             let (duration, curve) = action.duration_and_curve();
             code::highlight_fade_in(uuid, action, duration, curve)
+        }
+        AnimOperation::TerminalTypeInput(uuid, command, display_override, captured_output, captured_prompt, duration, curve, _loc) => {
+            debug!("TerminalTypeInput uuid={uuid}");
+            self::terminal::type_input(uuid, command, display_override, captured_output, captured_prompt, duration, curve)
+        }
+        AnimOperation::TerminalOutput(uuid, action, duration, curve, _loc) => {
+            debug!("TerminalOutput uuid={uuid} action={action:?}");
+            self::terminal::output(uuid, action, duration, curve)
         }
         AnimOperation::All(anim_ops, _loc) => get_all_animation(anim_ops)?,
         AnimOperation::Sequence(anim_ops, _loc) => get_sequence_animation(anim_ops)?,

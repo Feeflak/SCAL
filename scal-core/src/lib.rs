@@ -515,8 +515,12 @@ pub mod sfx;
 pub mod theme;
 pub mod transform;
 
-pub use anim_obj::{AnimObj, CodeHandle, CodeWindowHandle, StretchMode, Syntax, TextAlign};
-pub use anim_op::{AnimOP, CodeAnimationStyle, CodeHighlightAction, IntoAnimOp, SourceLoc};
+pub use anim_obj::{
+    AnimObj, CodeHandle, CodeWindowHandle, StretchMode, Syntax, TerminalHandle, TextAlign,
+};
+pub use anim_op::{
+    AnimOP, CodeAnimationStyle, CodeHighlightAction, IntoAnimOp, SourceLoc, TerminalOutputAction,
+};
 pub use camera::Camera;
 pub use color::Color;
 pub use ease::Ease;
@@ -533,9 +537,11 @@ pub mod prelude {
     pub use crate::anim::*;
     pub use crate::anim_builders::*;
     pub use crate::anim_obj::{
-        AnimObj, CodeHandle, CodeWindowHandle, StretchMode, Syntax, TextAlign,
+        AnimObj, CodeHandle, CodeWindowHandle, StretchMode, Syntax, TerminalHandle, TextAlign,
     };
-    pub use crate::anim_op::{AnimOP, CodeAnimationStyle, CodeHighlightAction, IntoAnimOp};
+    pub use crate::anim_op::{
+        AnimOP, CodeAnimationStyle, CodeHighlightAction, IntoAnimOp, TerminalOutputAction,
+    };
     pub use crate::camera::Camera;
     pub use crate::color::Color;
     pub use crate::ease::Ease;

@@ -17,6 +17,7 @@ pub mod object_trait;
 pub mod primitive_shapes;
 pub mod render;
 pub mod svg;
+pub mod terminal;
 pub mod text;
 
 use object_trait::DynAnimObj;

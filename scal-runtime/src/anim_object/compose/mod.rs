@@ -197,12 +197,8 @@ impl LayoutResult {
         for item in &self.items {
             ops.push(item.clone().instantiate());
         }
-        for nested in &self.nested {
-            ops.extend(nested.nested_ops.iter().cloned());
-            for item in &nested.items {
-                ops.push(item.clone().instantiate());
-            }
-        }
+        // nested_ops already contains instantiate_children() of each nested layout,
+        // which includes their container, items, and further nested items.
         ops.extend(self.nested_ops.iter().cloned());
         AnimOperation::All(ops, None)
     }
@@ -213,12 +209,7 @@ impl LayoutResult {
         for item in &self.items {
             ops.push(item.clone().instantiate());
         }
-        for nested in &self.nested {
-            ops.extend(nested.nested_ops.iter().cloned());
-            for item in &nested.items {
-                ops.push(item.clone().instantiate());
-            }
-        }
+        // nested_ops already contains instantiate_children() of each nested layout
         ops.extend(self.nested_ops.iter().cloned());
         AnimOperation::All(ops, None)
     }

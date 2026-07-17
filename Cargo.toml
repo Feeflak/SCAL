@@ -22,4 +22,5 @@ members = [
         "./examples/image",
         "./examples/simple",
         "./examples/svg",
+        "./examples/terminal",
 ]

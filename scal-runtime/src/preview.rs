@@ -711,6 +711,7 @@ pub enum OpKind {
     Instantiate,
     Transform,
     Code,
+    Terminal,
     Wait,
     Sound,
     Composite,
@@ -760,6 +761,8 @@ fn op_label(op: &AnimOperation) -> &'static str {
         AnimOperation::All(..) => "All",
         AnimOperation::Sequence(..) => "Sequence",
         AnimOperation::Wait(..) => "Wait",
+        AnimOperation::TerminalTypeInput(..) => "Type Input",
+        AnimOperation::TerminalOutput(..) => "Output",
         AnimOperation::PlaySound(..) => "Sound",
     }
 }
@@ -775,6 +778,7 @@ fn op_kind(op: &AnimOperation) -> OpKind {
         | AnimOperation::CodeModifyLine(..)
         | AnimOperation::CodeRemoveLines(..)
         | AnimOperation::CodeHighlight(..) => OpKind::Code,
+        AnimOperation::TerminalTypeInput(..) | AnimOperation::TerminalOutput(..) => OpKind::Terminal,
         AnimOperation::All(..) | AnimOperation::Sequence(..) => OpKind::Composite,
         AnimOperation::Wait(..) => OpKind::Wait,
         AnimOperation::PlaySound(..) => OpKind::Sound,
@@ -786,6 +790,7 @@ fn op_color(kind: OpKind) -> [f32; 4] {
         OpKind::Instantiate => [0.2, 0.8, 0.2, 1.0],
         OpKind::Transform => [0.2, 0.4, 0.9, 1.0],
         OpKind::Code => [0.9, 0.7, 0.2, 1.0],
+        OpKind::Terminal => [0.2, 0.9, 0.6, 1.0],
         OpKind::Wait => [0.4, 0.4, 0.4, 1.0],
         OpKind::Sound => [0.9, 0.2, 0.2, 1.0],
         OpKind::Composite => [0.6, 0.6, 0.8, 1.0],
@@ -803,6 +808,8 @@ fn op_source_loc(op: &AnimOperation) -> Option<scal_core::SourceLoc> {
         | AnimOperation::CodeModifyLine(_, _, _, _, _, _, loc)
         | AnimOperation::CodeRemoveLines(_, _, _, _, _, loc)
         | AnimOperation::CodeHighlight(_, _, loc)
+        | AnimOperation::TerminalTypeInput(_, _, _, _, _, _, _, loc)
+        | AnimOperation::TerminalOutput(_, _, _, _, loc)
         | AnimOperation::All(_, loc)
         | AnimOperation::Sequence(_, loc)
         | AnimOperation::Wait(_, loc)
@@ -840,6 +847,8 @@ pub fn flatten_ops(ops: &[AnimOperation]) -> (Vec<TimelineOp>, f32) {
                 AnimOperation::CodeHighlight(_, action, _) => {
                     time += action.duration_and_curve().0;
                 }
+                AnimOperation::TerminalTypeInput(_, _, _, _, _, d, _, _)
+                | AnimOperation::TerminalOutput(_, _, d, _, _) => time += d,
                 AnimOperation::PlaySound(_, _, _) => {}
                 AnimOperation::Instantiate(..) => {}
             }
@@ -1323,10 +1332,7 @@ impl PreviewRenderer {
             .bind_groups
             .push(text_renderer.bind_group.clone());
 
-        // Animator::new pops from the end, so we need to reverse
-        let mut anims_for_animator = animations.clone();
-        anims_for_animator.reverse();
-        let animator = Animator::new(anims_for_animator, fps, camera, text_resolution_multiplier)?;
+        let animator = Animator::new(animations.clone(), fps, camera, text_resolution_multiplier)?;
 
         let renderer = crate::renderer::Renderer::new(&device);
 
@@ -2286,11 +2292,8 @@ impl PreviewRenderer {
         self.finished = false;
         self.frame_rendered = false;
 
-        // Animator::new pops from the end, so we need to reverse
-        let mut anims_for_animator = self.original_animations.clone();
-        anims_for_animator.reverse();
         let mut animator = Animator::new(
-            anims_for_animator,
+            self.original_animations.clone(),
             self.fps,
             self.camera,
             self.text_resolution_multiplier,
@@ -2447,11 +2450,8 @@ impl PreviewRenderer {
         self.paused = false;
         self.frame_rendered = false;
 
-        // Animator::new pops from the end, so we need to reverse
-        let mut anims_for_animator = self.original_animations.clone();
-        anims_for_animator.reverse();
         self.animator = Animator::new(
-            anims_for_animator,
+            self.original_animations.clone(),
             self.fps,
             self.camera,
             self.text_resolution_multiplier,

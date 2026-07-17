@@ -36,6 +36,12 @@ fn convert_anim_op(
                     *l = loc;
                 }
                 op
+            } else if let scal_core::anim_obj::AnimObjKind::Terminal { .. } = &core_obj.kind {
+                let mut op = build_terminal_op(*core_obj, default_theme)?;
+                if let AnimOperation::Instantiate(_, ref mut l) = op {
+                    *l = loc;
+                }
+                op
             } else {
                 let render_obj = convert_core_anim_obj(*core_obj, default_theme)?;
                 AnimOperation::Instantiate(render_obj, loc)
@@ -64,6 +70,12 @@ fn convert_anim_op(
         }
         scal_core::AnimOP::CodeHighlight(u, action, loc) => {
             AnimOperation::CodeHighlight(u, action, loc)
+        }
+        scal_core::AnimOP::TerminalTypeInput(u, cmd, ovr, captured, prompt, d, e, loc) => {
+            AnimOperation::TerminalTypeInput(u, cmd, ovr, captured, prompt, d, e, loc)
+        }
+        scal_core::AnimOP::TerminalOutput(u, action, d, e, loc) => {
+            AnimOperation::TerminalOutput(u, action, d, e, loc)
         }
     })
 }
@@ -138,6 +150,63 @@ fn build_code_window_op(
         Ok(cw.instantiate())
     } else {
         bail!("build_code_window_op called on non-CodeWindow kind")
+    }
+}
+
+fn build_terminal_op(
+    obj: scal_core::AnimObj,
+    _default_theme: &scal_core::Theme,
+) -> Result<AnimOperation> {
+    use scal_core::anim_obj::AnimObjKind;
+    if let AnimObjKind::Terminal {
+        shell,
+        prompt,
+        font_family,
+        font_size,
+        theme: _,
+        width,
+        height,
+        background_color,
+        text_color,
+        term_id,
+        text_buffer_id,
+        bg_id,
+        container_id,
+        close_btn_id,
+        minimize_btn_id,
+        maximize_btn_id,
+        title_id,
+        title_bar_bg_id,
+        title,
+        title_font_size,
+        ..
+    } = obj.kind
+    {
+        let term = crate::anim_object::terminal::terminal(
+            obj.transform.position,
+            shell,
+            prompt,
+            font_family,
+            font_size,
+            width,
+            height,
+            background_color,
+            text_color,
+            term_id,
+            text_buffer_id,
+            bg_id,
+            container_id,
+            close_btn_id,
+            minimize_btn_id,
+            maximize_btn_id,
+            title_id,
+            title_bar_bg_id,
+            title,
+            title_font_size,
+        );
+        Ok(term.instantiate())
+    } else {
+        bail!("build_terminal_op called on non-Terminal kind")
     }
 }
 
@@ -266,6 +335,9 @@ fn convert_core_anim_obj(
         }))),
         scal_core::anim_obj::AnimObjKind::CodeWindow { .. } => {
             bail!("CodeWindow should be handled by build_code_window_op")
+        }
+        scal_core::anim_obj::AnimObjKind::Terminal { .. } => {
+            bail!("Terminal should be handled by build_terminal_op")
         }
         scal_core::anim_obj::AnimObjKind::Group { .. } => {
             bail!("Group object conversion not yet implemented")

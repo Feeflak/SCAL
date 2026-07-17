@@ -97,6 +97,7 @@ impl Animator {
         camera: Camera,
         text_scale: f32,
     ) -> Result<Self> {
+        animations.reverse();
         let first_anim = animations
             .pop()
             .take()

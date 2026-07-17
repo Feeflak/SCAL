@@ -111,11 +111,14 @@ impl Animator {
         obj.render_data.pipeline = pipeline;
 
         for other in self.objects.iter_mut() {
-            if other.render_data.vertices_base_index > old_vert_start {
+            if other.anim_data.uuid() == *uuid {
+                continue;
+            }
+            if other.render_data.vertices_base_index >= old_vert_start {
                 other.render_data.vertices_base_index =
                     (other.render_data.vertices_base_index as isize + vert_diff) as usize;
             }
-            if other.render_data.indices_base_index > old_idx_start {
+            if other.render_data.indices_base_index >= old_idx_start {
                 other.render_data.indices_base_index =
                     (other.render_data.indices_base_index as isize + idx_diff) as usize;
             }

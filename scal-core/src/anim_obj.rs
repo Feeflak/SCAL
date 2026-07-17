@@ -6,6 +6,7 @@ use uuid::Uuid;
 
 use crate::anim_builders::{
     CodeAddLinesBuilder, CodeHighlightBuilder, CodeModifyLineBuilder, CodeRemoveLinesBuilder,
+    TerminalInputBuilder, TerminalOutputBuilder,
 };
 use crate::anim_op::{AnimOP, CodeAnimationStyle};
 use crate::color::Color;
@@ -114,6 +115,30 @@ pub enum AnimObjKind {
         title_bar_bg_id: Uuid,
         show_line_numbers: bool,
         line_number_color: Color,
+    },
+    Terminal {
+        shell: String,
+        prompt: String,
+        font_family: String,
+        font_size: f32,
+        theme: Option<Theme>,
+        width: f32,
+        height: f32,
+        background_color: Color,
+        text_color: Color,
+        term_id: Uuid,
+        text_buffer_id: Uuid,
+        bg_id: Uuid,
+        container_id: Uuid,
+        close_btn_id: Uuid,
+        minimize_btn_id: Uuid,
+        maximize_btn_id: Uuid,
+        title_id: Uuid,
+        title_bar_bg_id: Uuid,
+        title: String,
+        title_font_size: f32,
+        source_dir: Option<String>,
+        startup_config: Option<String>,
     },
     Group {
         children: Vec<AnimObj>,
@@ -470,6 +495,145 @@ impl CodeWindowHandle {
         } = &self.0.kind
         {
             RectangleHandle(*title_bar_bg_id)
+        } else {
+            RectangleHandle(self.0.id)
+        }
+    }
+}
+
+/// Wrapper around the ``AnimObj`` struct for a terminal emulator window.
+pub struct TerminalHandle(pub AnimObj);
+
+impl std::ops::Deref for TerminalHandle {
+    type Target = AnimObj;
+    fn deref(&self) -> &AnimObj {
+        &self.0
+    }
+}
+
+impl TerminalHandle {
+    /// Returns an animation that instantly adds the terminal to the scene.
+    #[must_use]
+    pub fn instantiate(&self) -> AnimOP {
+        AnimOP::Instantiate(Box::new(self.0.clone()), None)
+    }
+    /// Returns a builder for animating typing a command into the terminal.
+    /// Use `.value("cmd")` to set the command text (executes it too),
+    /// `.input_view_override("text")` to override the visual display,
+    /// and `.over(0.2.s())` for the typing duration.
+    #[must_use]
+    pub fn input(&self) -> TerminalInputBuilder {
+        let shell = self.shell();
+        let source_dir = self.source_dir();
+        let text_buffer_id = if let AnimObjKind::Terminal { text_buffer_id, .. } = &self.0.kind {
+            *text_buffer_id
+        } else {
+            self.0.id
+        };
+        let startup_config = if let AnimObjKind::Terminal { startup_config, .. } = &self.0.kind {
+            startup_config.clone()
+        } else {
+            None
+        };
+        TerminalInputBuilder {
+            uuid: text_buffer_id,
+            shell,
+            source_dir,
+            command: String::new(),
+            display_override: None,
+            captured_output: String::new(),
+            captured_prompt: String::new(),
+            duration: 1.0,
+            ease: Ease::Linear,
+            startup_config,
+        }
+    }
+    /// Returns a builder for animating terminal output reveal.
+    /// Use `.skip(N)`, `.pull(N)`, `.push("text")`, or `.pull_all()`
+    /// to control output display, then `.over(0.2.s())` for the duration.
+    #[must_use]
+    pub fn output(&self) -> TerminalOutputBuilder {
+        let text_buffer_id = if let AnimObjKind::Terminal { text_buffer_id, .. } = &self.0.kind {
+            *text_buffer_id
+        } else {
+            self.0.id
+        };
+        TerminalOutputBuilder {
+            uuid: text_buffer_id,
+            action: None,
+            duration: 1.0,
+            ease: Ease::Linear,
+        }
+    }
+    fn shell(&self) -> String {
+        if let AnimObjKind::Terminal { shell, .. } = &self.0.kind {
+            shell.clone()
+        } else {
+            "bash".to_string()
+        }
+    }
+    fn source_dir(&self) -> Option<String> {
+        if let AnimObjKind::Terminal { source_dir, .. } = &self.0.kind {
+            source_dir.clone()
+        } else {
+            None
+        }
+    }
+    #[must_use]
+    /// Returns handle to the terminal window's close button.
+    pub const fn close_button(&self) -> CircleHandle {
+        if let AnimObjKind::Terminal { close_btn_id, .. } = &self.0.kind {
+            CircleHandle(*close_btn_id)
+        } else {
+            CircleHandle(self.0.id)
+        }
+    }
+    #[must_use]
+    /// Returns handle to the terminal window's minimize button.
+    pub const fn minimize_button(&self) -> CircleHandle {
+        if let AnimObjKind::Terminal { minimize_btn_id, .. } = &self.0.kind {
+            CircleHandle(*minimize_btn_id)
+        } else {
+            CircleHandle(self.0.id)
+        }
+    }
+    #[must_use]
+    /// Returns handle to the terminal window's maximize button.
+    pub const fn maximize_button(&self) -> CircleHandle {
+        if let AnimObjKind::Terminal { maximize_btn_id, .. } = &self.0.kind {
+            CircleHandle(*maximize_btn_id)
+        } else {
+            CircleHandle(self.0.id)
+        }
+    }
+    #[must_use]
+    /// Returns handle to the terminal window's title text.
+    pub const fn title_text(&self) -> TextHandle {
+        if let AnimObjKind::Terminal { title_id, .. } = &self.0.kind {
+            TextHandle(*title_id)
+        } else {
+            TextHandle(self.0.id)
+        }
+    }
+    #[must_use]
+    /// Returns handle to the terminal window's title bar background.
+    pub const fn title_bar_background(&self) -> RectangleHandle {
+        if let AnimObjKind::Terminal { title_bar_bg_id, .. } = &self.0.kind {
+            RectangleHandle(*title_bar_bg_id)
+        } else {
+            RectangleHandle(self.0.id)
+        }
+    }
+    #[must_use]
+    /// Returns handle to the terminal window's background rectangle.
+    pub const fn window_background(&self) -> RectangleHandle {
+        RectangleHandle(self.0.id)
+    }
+    #[must_use]
+    /// Returns handle to the terminal window's container rectangle.
+    pub const fn container(&self) -> RectangleHandle {
+        if let AnimObjKind::Terminal { container_id, .. } = &self.0.kind {
+            RectangleHandle(*container_id)
         } else {
             RectangleHandle(self.0.id)
         }

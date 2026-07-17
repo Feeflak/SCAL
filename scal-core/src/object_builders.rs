@@ -2,7 +2,8 @@ use glam::{Vec2, Vec3};
 use uuid::Uuid;
 
 use crate::anim_obj::{
-    AnimObj, AnimObjKind, CodeHandle, CodeWindowHandle, StretchMode, Syntax, TextAlign,
+    AnimObj, AnimObjKind, CodeHandle, CodeWindowHandle, StretchMode, Syntax, TerminalHandle,
+    TextAlign,
 };
 use crate::color::Color;
 use crate::theme::Theme;
@@ -713,3 +714,166 @@ impl CodeWindowBuilder {
 }
 
 impl_transform_methods!(CodeWindowBuilder);
+
+/// Create a new terminal emulator window builder.
+/// ```
+/// terminal()
+///     .shell("bash")
+///     .prompt("$ ")
+///     .command("ls -la")
+///     .font_family("JetBrains Mono")
+///     .build()
+/// ```
+pub fn terminal() -> TerminalBuilder {
+    TerminalBuilder::default()
+}
+
+#[must_use]
+pub struct TerminalBuilder {
+    shell: String,
+    prompt: String,
+    font_family: String,
+    font_size: f32,
+    theme: Option<Theme>,
+    width: f32,
+    height: f32,
+    background_color: Color,
+    text_color: Color,
+    source_dir: Option<String>,
+    title: String,
+    title_font_size: f32,
+    startup_config: Option<String>,
+    transform: Transform,
+}
+
+impl Default for TerminalBuilder {
+    fn default() -> Self {
+        Self {
+            shell: "bash".to_string(),
+            prompt: "$ ".to_string(),
+            font_family: "sans-serif".to_string(),
+            font_size: 16.0,
+            theme: None,
+            width: 800.0,
+            height: 500.0,
+            background_color: Color::new(0.08, 0.08, 0.08, 1.0),
+            text_color: Color::new(0.8, 0.8, 0.8, 1.0),
+            source_dir: None,
+            title: "Terminal".to_string(),
+            title_font_size: 14.0,
+            startup_config: None,
+            transform: Transform::new(Vec3::ZERO),
+        }
+    }
+}
+
+impl TerminalBuilder {
+    /// Set the shell to use for command execution (e.g. "bash", "fish", "zsh")
+    pub fn shell(mut self, shell: impl Into<String>) -> Self {
+        self.shell = shell.into();
+        self
+    }
+    /// Set the prompt string (e.g. "$ ", "❯ ", "% ")
+    pub fn prompt(mut self, prompt: impl Into<String>) -> Self {
+        self.prompt = prompt.into();
+        self
+    }
+    /// Set the font family
+    pub fn font_family(mut self, family: impl Into<String>) -> Self {
+        self.font_family = family.into();
+        self
+    }
+    /// Set the font size
+    pub const fn font_size(mut self, size: f32) -> Self {
+        self.font_size = size;
+        self
+    }
+    /// Set the theme
+    pub fn theme(mut self, theme: Theme) -> Self {
+        self.theme = Some(theme);
+        self
+    }
+    /// Set the width of the terminal window
+    pub const fn width(mut self, width: f32) -> Self {
+        self.width = width;
+        self
+    }
+    /// Set the height of the terminal window
+    pub const fn height(mut self, height: f32) -> Self {
+        self.height = height;
+        self
+    }
+    /// Set the background color
+    pub const fn background_color(mut self, color: Color) -> Self {
+        self.background_color = color;
+        self
+    }
+    /// Set the default text color
+    pub const fn text_color(mut self, color: Color) -> Self {
+        self.text_color = color;
+        self
+    }
+    /// Set a source directory whose contents will be copied into the temp working directory
+    pub fn source_dir(mut self, dir: impl Into<String>) -> Self {
+        self.source_dir = Some(dir.into());
+        self
+    }
+    /// Set the title displayed in the terminal window's title bar
+    pub fn title(mut self, title: impl Into<String>) -> Self {
+        self.title = title.into();
+        self
+    }
+    /// Set the title bar font size
+    pub const fn title_font_size(mut self, size: f32) -> Self {
+        self.title_font_size = size;
+        self
+    }
+    /// Set a startup config that will be sourced before each command.
+    /// For example: `"starship init fish | source\nstarship preset bracketed-segments -o ~/.config/starship.toml"`
+    pub fn startup_config(mut self, config: impl Into<String>) -> Self {
+        self.startup_config = Some(config.into());
+        self
+    }
+    #[must_use]
+    pub fn build(self) -> TerminalHandle {
+        let id = self.transform.uuid;
+        let text_buffer_id = Uuid::new_v5(&id, b"text_buffer");
+        let bg_id = Uuid::new_v5(&id, b"bg");
+        let container_id = Uuid::new_v5(&id, b"container");
+        let close_btn_id = Uuid::new_v5(&id, b"close");
+        let minimize_btn_id = Uuid::new_v5(&id, b"minimize");
+        let maximize_btn_id = Uuid::new_v5(&id, b"maximize");
+        let title_id = Uuid::new_v5(&id, b"title");
+        let title_bar_bg_id = Uuid::new_v5(&id, b"title_bg");
+        TerminalHandle(AnimObj {
+            id,
+            transform: self.transform,
+            kind: AnimObjKind::Terminal {
+                shell: self.shell,
+                prompt: self.prompt,
+                font_family: self.font_family,
+                font_size: self.font_size,
+                theme: self.theme,
+                width: self.width,
+                height: self.height,
+                background_color: self.background_color,
+                text_color: self.text_color,
+                term_id: id,
+                text_buffer_id,
+                bg_id,
+                container_id,
+                close_btn_id,
+                minimize_btn_id,
+                maximize_btn_id,
+                title_id,
+                title_bar_bg_id,
+                title: self.title,
+                title_font_size: self.title_font_size,
+                source_dir: self.source_dir,
+                startup_config: self.startup_config,
+            },
+        })
+    }
+}
+
+impl_transform_methods!(TerminalBuilder);

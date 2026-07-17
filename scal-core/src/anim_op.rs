@@ -67,6 +67,10 @@ pub enum AnimOP {
         Option<SourceLoc>,
     ),
     CodeHighlight(Uuid, CodeHighlightAction, Option<SourceLoc>),
+    TerminalTypeInput(Uuid, String, Option<String>, String, String, Time, Ease, Option<SourceLoc>),
+    //                  uuid, command, display_override, captured_output, captured_prompt, dur, ease, loc
+    TerminalOutput(Uuid, TerminalOutputAction, Time, Ease, Option<SourceLoc>),
+    //               uuid, action, dur, ease, loc
     All(Vec<Self>, Option<SourceLoc>),
     Sequence(Vec<Self>, Option<SourceLoc>),
     Wait(Time, Option<SourceLoc>),
@@ -86,12 +90,27 @@ impl AnimOP {
             | Self::CodeModifyLine(_, _, _, _, _, _, l)
             | Self::CodeRemoveLines(_, _, _, _, _, l)
             | Self::CodeHighlight(_, _, l)
+            | Self::TerminalTypeInput(_, _, _, _, _, _, _, l)
+            | Self::TerminalOutput(_, _, _, _, l)
             | Self::All(_, l)
             | Self::Sequence(_, l)
             | Self::Wait(_, l)
             | Self::PlaySound(_, _, l) => l.as_ref(),
         }
     }
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+/// Actions for animating terminal output reveal.
+pub enum TerminalOutputAction {
+    /// Permanently skip N bytes from the start of the output.
+    Skip(usize),
+    /// Reveal N bytes from the current position (animated).
+    Pull(usize),
+    /// Append text to the output.
+    Push(String),
+    /// Reveal all remaining output (animated).
+    PullAll,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
@@ -163,6 +182,8 @@ impl AnimOP {
             | Self::CodeModifyLine(_, _, _, _, _, _, l)
             | Self::CodeRemoveLines(_, _, _, _, _, l)
             | Self::CodeHighlight(_, _, l)
+            | Self::TerminalTypeInput(_, _, _, _, _, _, _, l)
+            | Self::TerminalOutput(_, _, _, _, l)
             | Self::All(_, l)
             | Self::Sequence(_, l)
             | Self::Wait(_, l)
