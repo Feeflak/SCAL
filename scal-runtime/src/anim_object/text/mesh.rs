@@ -1,3 +1,5 @@
+use scal_core::Color;
+
 use crate::{
     anim_object::{
         render::PipelineKind,
@@ -30,11 +32,16 @@ pub fn generate_text_mesh(
             let h = glyph_info.height / scale;
 
             let base = vertices.len() as u32;
+            let glyph_color = if glyph_info.is_color {
+                Color::WHITE
+            } else {
+                text.color
+            };
 
             vertices.extend([
                 Vertex {
                     position: vec2(x, y),
-                    color: text.color,
+                    color: glyph_color,
                     uv: glyph_info.uv_min,
                 },
                 Vertex {

@@ -14,6 +14,8 @@ pub struct GlyphInfo {
 
     pub bearing: Vec2,
     pub advance: f32,
+
+    pub is_color: bool,
 }
 
 pub struct GlyphAtlas {
@@ -59,7 +61,7 @@ impl GlyphAtlas {
             width: size as u32,
             height: size as u32,
 
-            pixels: vec![0; size * size],
+            pixels: vec![0; size * size * 4],
 
             cursor_x: 0,
             cursor_y: 0,
@@ -93,6 +95,7 @@ impl GlyphAtlas {
                 height: 0.0,
                 bearing: Vec2::ZERO,
                 advance: 0.0,
+                is_color: false,
             };
         };
 
@@ -105,16 +108,22 @@ impl GlyphAtlas {
 
         for row in 0..height {
             for col in 0..width {
-                let dst = ((y + row) * self.width + x + col) as usize;
-                self.pixels[dst] = if is_color {
-                    // Color emoji: data is RGBA (4 bytes/pixel), extract alpha channel
-                    let src = ((row * width + col) * 4 + 3) as usize;
-                    image.data[src]
+                let dst = ((y + row) * self.width + x + col) as usize * 4;
+                if is_color {
+                    // Color emoji: data is RGBA (4 bytes/pixel), store directly
+                    let src = ((row * width + col) * 4) as usize;
+                    self.pixels[dst] = image.data[src];
+                    self.pixels[dst + 1] = image.data[src + 1];
+                    self.pixels[dst + 2] = image.data[src + 2];
+                    self.pixels[dst + 3] = image.data[src + 3];
                 } else {
-                    // Alpha mask: data is single channel (1 byte/pixel)
+                    // Alpha mask: data is single channel (1 byte/pixel), set RGB to white
                     let src = (row * width + col) as usize;
-                    image.data[src]
-                };
+                    self.pixels[dst] = 255;
+                    self.pixels[dst + 1] = 255;
+                    self.pixels[dst + 2] = 255;
+                    self.pixels[dst + 3] = image.data[src];
+                }
             }
         }
         self.cursor_x += width + 1;
@@ -136,6 +145,7 @@ impl GlyphAtlas {
             height: height as f32,
             bearing: vec2(image.placement.left as f32, image.placement.top as f32),
             advance: image.placement.width as f32,
+            is_color,
         }
     }
 }

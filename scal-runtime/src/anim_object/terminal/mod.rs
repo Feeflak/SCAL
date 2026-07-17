@@ -301,25 +301,31 @@ impl TerminalTextBuffer {
 
                 let base = vertices.len() as u32;
 
+                let glyph_color = if glyph_info.is_color {
+                    Color::WHITE
+                } else {
+                    color
+                };
+
                 vertices.extend([
                     Vertex {
                         position: vec2(x, y),
-                        color,
+                        color: glyph_color,
                         uv: glyph_info.uv_min,
                     },
                     Vertex {
                         position: vec2(x + w, y),
-                        color,
+                        color: glyph_color,
                         uv: vec2(glyph_info.uv_max.x, glyph_info.uv_min.y),
                     },
                     Vertex {
                         position: vec2(x + w, y + h),
-                        color,
+                        color: glyph_color,
                         uv: glyph_info.uv_max,
                     },
                     Vertex {
                         position: vec2(x, y + h),
-                        color,
+                        color: glyph_color,
                         uv: vec2(glyph_info.uv_min.x, glyph_info.uv_max.y),
                     },
                 ]);

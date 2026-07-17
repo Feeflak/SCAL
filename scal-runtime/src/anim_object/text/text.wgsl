@@ -53,17 +53,12 @@ fn fs_main(input: VertexOutput)
         return input.color;
     }
 
-    let alpha =
+    let texel =
         textureSample(
             atlas,
             sampler0,
             input.uv
-        ).r;
+        );
 
-    let out_alpha = alpha * input.color.w;
-
-    return vec4<f32>(
-        input.color.xyz,
-        out_alpha
-    );
+    return texel * input.color;
 }

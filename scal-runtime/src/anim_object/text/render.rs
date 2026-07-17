@@ -41,7 +41,7 @@ impl TextRenderer {
             mip_level_count: 1,
             sample_count: 1,
             dimension: wgpu::TextureDimension::D2,
-            format: wgpu::TextureFormat::R8Unorm,
+            format: wgpu::TextureFormat::Rgba8Unorm,
             usage: wgpu::TextureUsages::TEXTURE_BINDING | wgpu::TextureUsages::COPY_DST,
             view_formats: &[],
         });
@@ -91,7 +91,7 @@ impl TextRenderer {
             &data.pixels,
             wgpu::TexelCopyBufferLayout {
                 offset: 0,
-                bytes_per_row: Some(data.width),
+                bytes_per_row: Some(data.width * 4),
                 rows_per_image: Some(data.height),
             },
             wgpu::Extent3d {
