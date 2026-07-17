@@ -760,7 +760,7 @@ impl Default for TerminalBuilder {
             text_color: Color::new(0.8, 0.8, 0.8, 1.0),
             source_dir: None,
             title: "Terminal".to_string(),
-            title_font_size: 14.0,
+            title_font_size: 25.0,
             startup_config: None,
             transform: Transform::new(Vec3::ZERO),
         }

@@ -1,6 +1,7 @@
 use std::collections::HashMap;
 
 use cosmic_text::{CacheKey, FontSystem, SwashCache};
+use swash::scale::image::Content;
 
 use glam::{Vec2, vec2};
 #[derive(Clone, Copy, Debug)]
@@ -97,17 +98,23 @@ impl GlyphAtlas {
 
         let width = image.placement.width as u32;
         let height = image.placement.height as u32;
+        let is_color = image.content == Content::Color || image.content == Content::SubpixelMask;
 
         let x = self.cursor_x;
         let y = self.cursor_y;
 
         for row in 0..height {
             for col in 0..width {
-                let src = (row * width + col) as usize;
-
                 let dst = ((y + row) * self.width + x + col) as usize;
-
-                self.pixels[dst] = image.data[src];
+                self.pixels[dst] = if is_color {
+                    // Color emoji: data is RGBA (4 bytes/pixel), extract alpha channel
+                    let src = ((row * width + col) * 4 + 3) as usize;
+                    image.data[src]
+                } else {
+                    // Alpha mask: data is single channel (1 byte/pixel)
+                    let src = (row * width + col) as usize;
+                    image.data[src]
+                };
             }
         }
         self.cursor_x += width + 1;

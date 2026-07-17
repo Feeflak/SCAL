@@ -144,27 +144,28 @@ pub fn code_window(
 ) -> CodeWindow {
     let circle_r = 12.0;
 
+    let b = theme.base.colors;
     let close_btn = circle(
         Transform::with_uuid(close_btn_id, Vec3::ZERO),
         circle_r,
-        Color::new(1.0, 0.373, 0.341, 1.0),
+        b[8], // base08
     );
     let minimize_btn = circle(
         Transform::with_uuid(minimize_btn_id, Vec3::ZERO),
         circle_r,
-        Color::new(1.0, 0.741, 0.180, 1.0),
+        b[9], // base09
     );
     let maximize_btn = circle(
         Transform::with_uuid(maximize_btn_id, Vec3::ZERO),
         circle_r,
-        Color::new(0.337, 1.0, 0.337, 1.0),
+        b[11], // base0B
     );
     let title_text = text(
         Transform::with_uuid(title_id, Vec3::ZERO),
         title,
         font_family.clone(),
         Align::Left,
-        Color::new(0.812, 0.812, 0.812, 1.0),
+        b[5], // base05
         title_font_size,
     );
 
@@ -191,7 +192,7 @@ pub fn code_window(
             LayoutItem::Object(title_text.clone()),
         ],
         LayoutBackground {
-            color: Color::new(0.106, 0.106, 0.106, 1.0),
+            color: b[1], // base01
             corner_radius: 5.,
         },
         LayoutDir::Row,

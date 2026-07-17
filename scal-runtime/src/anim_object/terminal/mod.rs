@@ -2,7 +2,7 @@ pub mod ansi;
 
 use anyhow::Result;
 use glam::{Vec2, Vec3, vec2};
-use scal_core::{Color, Ease};
+use scal_core::{Color, Ease, Theme};
 use uuid::Uuid;
 
 use crate::anim_object::text as text_fn;
@@ -75,6 +75,8 @@ pub struct TerminalTextBuffer {
     pub font_family: String,
     pub font_size: f32,
     pub default_color: Color,
+    pub ansi_colors: [Color; 16],
+    pub base16: [Color; 16],
     pub width: f32,
     pub height: f32,
     pub entries: Vec<TerminalEntry>,
@@ -104,6 +106,8 @@ impl TerminalTextBuffer {
         width: f32,
         height: f32,
         default_color: Color,
+        ansi_colors: [Color; 16],
+        base16: [Color; 16],
     ) -> Self {
         Self {
             id,
@@ -112,6 +116,8 @@ impl TerminalTextBuffer {
             font_family,
             font_size,
             default_color,
+            ansi_colors,
+            base16,
             width,
             height,
             entries: Vec::new(),
@@ -146,6 +152,9 @@ impl TerminalTextBuffer {
 
     fn build_content(&self) -> Vec<ColoredLine> {
         let mut lines: Vec<ColoredLine> = Vec::new();
+        let cursor_color = self.base16[5];
+        let cmd_color0 = self.base16[12]; // base0C
+        let cmd_color1 = self.base16[10]; // base0A
 
         for entry in &self.entries {
             let display_cmd = entry
@@ -155,14 +164,12 @@ impl TerminalTextBuffer {
             let reveal_len = entry.input_reveal.min(display_cmd.len());
             let visible_cmd = &display_cmd[..reveal_len];
 
-            let cmd_color = self.default_color;
-
             let prompt_text = if entry.prompt.is_empty() {
                 self.prompt.clone()
             } else {
                 entry.prompt.clone()
             };
-            let prompt_spans = ansi::parse_ansi(&prompt_text, self.default_color);
+            let prompt_spans = ansi::parse_ansi(&prompt_text, self.default_color, &self.ansi_colors);
             let mut cmd_line = ColoredLine {
                 spans: prompt_spans
                     .into_iter()
@@ -173,14 +180,11 @@ impl TerminalTextBuffer {
                     .collect(),
             };
             if !visible_cmd.is_empty() {
-                cmd_line.spans.push(ColoredSpan {
-                    color: cmd_color,
-                    text: visible_cmd.to_string(),
-                });
+                cmd_line.spans.extend(colorize_cmd(visible_cmd, cmd_color0, cmd_color1));
             }
             if reveal_len < display_cmd.len() {
                 cmd_line.spans.push(ColoredSpan {
-                    color: Color::new(0.8, 0.8, 0.8, 1.0),
+                    color: cursor_color,
                     text: "\u{2588}".to_string(),
                 });
             }
@@ -195,7 +199,7 @@ impl TerminalTextBuffer {
             let available = output_text.len() - skip;
             let reveal = entry.output_reveal.min(available);
 
-            let all_spans = ansi::parse_ansi(&output_text, self.default_color);
+            let all_spans = ansi::parse_ansi(&output_text, self.default_color, &self.ansi_colors);
             let sliced = slice_spans_by_byte_range(&all_spans, skip, reveal);
             if !sliced.is_empty() {
                 lines.push(ColoredLine {
@@ -367,6 +371,44 @@ fn slice_spans_by_byte_range(spans: &[ansi::AnsiSpan], skip: usize, reveal: usiz
     result
 }
 
+fn colorize_cmd(cmd: &str, cmd_color0: Color, cmd_color1: Color) -> Vec<ColoredSpan> {
+    let mut spans = Vec::new();
+    let mut first = true;
+    let mut pos = 0;
+    let bytes = cmd.as_bytes();
+
+    while pos < bytes.len() {
+        let ws_start = pos;
+        while pos < bytes.len() && bytes[pos].is_ascii_whitespace() {
+            pos += 1;
+        }
+        if pos > ws_start {
+            spans.push(ColoredSpan {
+                color: cmd_color0,
+                text: cmd[ws_start..pos].to_string(),
+            });
+        }
+        if pos >= bytes.len() {
+            break;
+        }
+        let tok_start = pos;
+        while pos < bytes.len() && !bytes[pos].is_ascii_whitespace() {
+            pos += 1;
+        }
+        let color = if first {
+            first = false;
+            cmd_color0
+        } else {
+            cmd_color1
+        };
+        spans.push(ColoredSpan {
+            color,
+            text: cmd[tok_start..pos].to_string(),
+        });
+    }
+    spans
+}
+
 impl AnimObjectTrait for TerminalTextBuffer {
     fn transform(&self) -> &Transform {
         &self.transform
@@ -434,31 +476,33 @@ pub fn terminal(
     title_bar_bg_id: Uuid,
     title: String,
     title_font_size: f32,
+    theme: &Theme,
 ) -> Terminal {
     let _ = shell; // shell is used at animation definition time (in TerminalInputBuilder)
     let circle_r = 12.0;
 
+    let b = &theme.base.colors;
     let close_btn = circle(
         Transform::with_uuid(close_btn_id, Vec3::ZERO),
         circle_r,
-        Color::new(1.0, 0.373, 0.341, 1.0),
+        b[8], // base08
     );
     let minimize_btn = circle(
         Transform::with_uuid(minimize_btn_id, Vec3::ZERO),
         circle_r,
-        Color::new(1.0, 0.741, 0.180, 1.0),
+        b[9], // base09
     );
     let maximize_btn = circle(
         Transform::with_uuid(maximize_btn_id, Vec3::ZERO),
         circle_r,
-        Color::new(0.337, 1.0, 0.337, 1.0),
+        b[11], // base0B
     );
     let title_text = text_fn(
         Transform::with_uuid(title_id, Vec3::ZERO),
         title,
         "sans-serif".to_string(),
         Align::Left,
-        Color::new(0.812, 0.812, 0.812, 1.0),
+        b[5], // base05
         title_font_size,
     );
 
@@ -472,7 +516,7 @@ pub fn terminal(
             LayoutItem::Object(title_text.clone()),
         ],
         LayoutBackground {
-            color: Color::new(0.106, 0.106, 0.106, 1.0),
+            color: b[1], // base01
             corner_radius: 5.,
         },
         LayoutDir::Row,
@@ -488,6 +532,7 @@ pub fn terminal(
         None,
     );
 
+    let ansi_colors = ansi::ansi_table_from_base16(&theme.base);
     let text_buffer = TerminalTextBuffer::new(
         text_buffer_id,
         prompt,
@@ -496,6 +541,8 @@ pub fn terminal(
         width,
         height,
         text_color,
+        ansi_colors,
+        theme.base.colors,
     );
 
     let layout_result = layout_with_ids(

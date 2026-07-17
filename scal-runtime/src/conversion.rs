@@ -155,7 +155,7 @@ fn build_code_window_op(
 
 fn build_terminal_op(
     obj: scal_core::AnimObj,
-    _default_theme: &scal_core::Theme,
+    default_theme: &scal_core::Theme,
 ) -> Result<AnimOperation> {
     use scal_core::anim_obj::AnimObjKind;
     if let AnimObjKind::Terminal {
@@ -163,7 +163,7 @@ fn build_terminal_op(
         prompt,
         font_family,
         font_size,
-        theme: _,
+        theme,
         width,
         height,
         background_color,
@@ -182,6 +182,7 @@ fn build_terminal_op(
         ..
     } = obj.kind
     {
+        let t = theme.as_ref().unwrap_or(default_theme);
         let term = crate::anim_object::terminal::terminal(
             obj.transform.position,
             shell,
@@ -203,6 +204,7 @@ fn build_terminal_op(
             title_bar_bg_id,
             title,
             title_font_size,
+            t,
         );
         Ok(term.instantiate())
     } else {
