@@ -27,7 +27,7 @@ pub fn generate_rectangle_mesh_data(
     vertices.push(Vertex {
         position: Vec2::ZERO,
         color: rectangle.color,
-        uv: vec2(0.5, 0.5),
+        uv: vec2(r, 1.0),
     });
 
     for (ci, &center) in corner_centers.iter().enumerate() {
@@ -38,7 +38,7 @@ pub fn generate_rectangle_mesh_data(
             vertices.push(Vertex {
                 position: pos,
                 color: rectangle.color,
-                uv: pos / half * 0.5 + 0.5,
+                uv: vec2(r, 1.0),
             });
         }
     }
@@ -54,31 +54,14 @@ pub fn generate_rectangle_mesh_data(
 }
 
 pub fn generate_circle_mesh_data(circle: &Circle) -> (Vec<Vertex>, Vec<Index>, PipelineKind) {
-    let segments: usize = 32;
-    let mut vertices = Vec::with_capacity(segments + 1);
-    vertices.push(Vertex {
-        position: Vec2::ZERO,
-        color: circle.color,
-        uv: vec2(0.5, 0.5),
-    });
-
-    for i in 0..segments {
-        let angle = i as f32 * (2.0 * PI / segments as f32);
-        let pos = vec2(circle.radius * angle.cos(), circle.radius * angle.sin());
-        vertices.push(Vertex {
-            position: pos,
-            color: circle.color,
-            uv: pos / circle.radius * 0.5 + 0.5,
-        });
-    }
-
-    let mut indices = Vec::with_capacity(segments * 3);
-    for i in 0..segments {
-        indices.push(0);
-        indices.push(i as u32 + 1);
-        indices.push(((i + 1) % segments) as u32 + 1);
-    }
-
+    let r = circle.radius;
+    let vertices = vec![
+        Vertex { position: vec2(-r, -r), color: circle.color, uv: vec2(r, 0.0) },
+        Vertex { position: vec2(r, -r), color: circle.color, uv: vec2(r, 0.0) },
+        Vertex { position: vec2(r, r), color: circle.color, uv: vec2(r, 0.0) },
+        Vertex { position: vec2(-r, r), color: circle.color, uv: vec2(r, 0.0) },
+    ];
+    let indices = vec![0, 1, 2, 0, 2, 3];
     (vertices, indices, PipelineKind::Shape)
 }
 
@@ -88,7 +71,7 @@ pub fn generate_polygon_mesh_data(polygon: &Polygon) -> (Vec<Vertex>, Vec<Index>
     vertices.push(Vertex {
         position: Vec2::ZERO,
         color: polygon.color,
-        uv: vec2(0.5, 0.5),
+        uv: vec2(0.0, 1.0),
     });
 
     for i in 0..sides {
@@ -97,7 +80,7 @@ pub fn generate_polygon_mesh_data(polygon: &Polygon) -> (Vec<Vertex>, Vec<Index>
         vertices.push(Vertex {
             position: pos,
             color: polygon.color,
-            uv: pos / polygon.radius * 0.5 + 0.5,
+            uv: vec2(0.0, 1.0),
         });
     }
 
