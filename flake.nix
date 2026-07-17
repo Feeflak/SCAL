@@ -18,14 +18,18 @@
         pkgs = import nixpkgs {
           inherit system;
         };
-
         runtime = pkgs.rustPlatform.buildRustPackage {
           pname = "scal-runtime";
           version = "0.1.0";
 
-          src = ./scal-runtime/.;
+          src = ./.;
 
           cargoLock.lockFile = ./Cargo.lock;
+
+          cargoBuildFlags = [
+            "-p"
+            "scal-runtime"
+          ];
 
           nativeBuildInputs = with pkgs; [
             pkg-config
