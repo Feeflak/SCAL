@@ -546,6 +546,7 @@ impl TerminalHandle {
             duration: 1.0,
             ease: Ease::Linear,
             startup_config,
+            style: None,
         }
     }
     /// Returns a builder for animating terminal output reveal.
@@ -563,6 +564,7 @@ impl TerminalHandle {
             action: None,
             duration: 1.0,
             ease: Ease::Linear,
+            style: None,
         }
     }
     fn shell(&self) -> String {

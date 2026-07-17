@@ -67,10 +67,10 @@ pub enum AnimOP {
         Option<SourceLoc>,
     ),
     CodeHighlight(Uuid, CodeHighlightAction, Option<SourceLoc>),
-    TerminalTypeInput(Uuid, String, Option<String>, String, String, Time, Ease, Option<SourceLoc>),
-    //                  uuid, command, display_override, captured_output, captured_prompt, dur, ease, loc
-    TerminalOutput(Uuid, TerminalOutputAction, Time, Ease, Option<SourceLoc>),
-    //               uuid, action, dur, ease, loc
+    TerminalTypeInput(Uuid, String, Option<String>, String, String, Time, Ease, Option<CodeAnimationStyle>, Option<SourceLoc>),
+    //                  uuid, command, display_override, captured_output, captured_prompt, dur, ease, style, loc
+    TerminalOutput(Uuid, TerminalOutputAction, Time, Ease, Option<CodeAnimationStyle>, Option<SourceLoc>),
+    //               uuid, action, dur, ease, style, loc
     All(Vec<Self>, Option<SourceLoc>),
     Sequence(Vec<Self>, Option<SourceLoc>),
     Wait(Time, Option<SourceLoc>),
@@ -90,8 +90,8 @@ impl AnimOP {
             | Self::CodeModifyLine(_, _, _, _, _, _, l)
             | Self::CodeRemoveLines(_, _, _, _, _, l)
             | Self::CodeHighlight(_, _, l)
-            | Self::TerminalTypeInput(_, _, _, _, _, _, _, l)
-            | Self::TerminalOutput(_, _, _, _, l)
+            | Self::TerminalTypeInput(_, _, _, _, _, _, _, _, l)
+            | Self::TerminalOutput(_, _, _, _, _, l)
             | Self::All(_, l)
             | Self::Sequence(_, l)
             | Self::Wait(_, l)
@@ -183,8 +183,8 @@ impl AnimOP {
             | Self::CodeModifyLine(_, _, _, _, _, _, l)
             | Self::CodeRemoveLines(_, _, _, _, _, l)
             | Self::CodeHighlight(_, _, l)
-            | Self::TerminalTypeInput(_, _, _, _, _, _, _, l)
-            | Self::TerminalOutput(_, _, _, _, l)
+            | Self::TerminalTypeInput(_, _, _, _, _, _, _, _, l)
+            | Self::TerminalOutput(_, _, _, _, _, l)
             | Self::All(_, l)
             | Self::Sequence(_, l)
             | Self::Wait(_, l)

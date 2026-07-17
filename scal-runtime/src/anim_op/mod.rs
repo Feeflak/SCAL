@@ -49,8 +49,8 @@ pub enum AnimOperation {
         Option<SourceLoc>,
     ),
     CodeHighlight(Uuid, CodeHighlightAction, Option<SourceLoc>),
-    TerminalTypeInput(Uuid, String, Option<String>, String, String, Time, Ease, Option<SourceLoc>),
-    TerminalOutput(Uuid, TerminalOutputAction, Time, Ease, Option<SourceLoc>),
+    TerminalTypeInput(Uuid, String, Option<String>, String, String, Time, Ease, Option<CodeAnimationStyle>, Option<SourceLoc>),
+    TerminalOutput(Uuid, TerminalOutputAction, Time, Ease, Option<CodeAnimationStyle>, Option<SourceLoc>),
     All(Vec<AnimOperation>, Option<SourceLoc>),
     Sequence(Vec<AnimOperation>, Option<SourceLoc>),
     Wait(Time, Option<SourceLoc>),
@@ -69,8 +69,8 @@ impl AnimOperation {
             | AnimOperation::CodeModifyLine(_, _, _, _, _, _, l)
             | AnimOperation::CodeRemoveLines(_, _, _, _, _, l)
             | AnimOperation::CodeHighlight(_, _, l)
-            | AnimOperation::TerminalTypeInput(_, _, _, _, _, _, _, l)
-            | AnimOperation::TerminalOutput(_, _, _, _, l)
+            | AnimOperation::TerminalTypeInput(_, _, _, _, _, _, _, _, l)
+            | AnimOperation::TerminalOutput(_, _, _, _, _, l)
             | AnimOperation::All(_, l)
             | AnimOperation::Sequence(_, l)
             | AnimOperation::Wait(_, l)
@@ -152,13 +152,13 @@ pub fn resolve_op(op: AnimOperation) -> Result<Animation> {
             let (duration, curve) = action.duration_and_curve();
             code::highlight_fade_in(uuid, action, duration, curve)
         }
-        AnimOperation::TerminalTypeInput(uuid, command, display_override, captured_output, captured_prompt, duration, curve, _loc) => {
+        AnimOperation::TerminalTypeInput(uuid, command, display_override, captured_output, captured_prompt, duration, curve, style, _loc) => {
             debug!("TerminalTypeInput uuid={uuid}");
-            self::terminal::type_input(uuid, command, display_override, captured_output, captured_prompt, duration, curve)
+            self::terminal::type_input(uuid, command, display_override, captured_output, captured_prompt, duration, curve, style)
         }
-        AnimOperation::TerminalOutput(uuid, action, duration, curve, _loc) => {
+        AnimOperation::TerminalOutput(uuid, action, duration, curve, style, _loc) => {
             debug!("TerminalOutput uuid={uuid} action={action:?}");
-            self::terminal::output(uuid, action, duration, curve)
+            self::terminal::output(uuid, action, duration, curve, style)
         }
         AnimOperation::All(anim_ops, _loc) => get_all_animation(anim_ops)?,
         AnimOperation::Sequence(anim_ops, _loc) => get_sequence_animation(anim_ops)?,

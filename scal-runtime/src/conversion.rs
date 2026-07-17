@@ -71,11 +71,11 @@ fn convert_anim_op(
         scal_core::AnimOP::CodeHighlight(u, action, loc) => {
             AnimOperation::CodeHighlight(u, action, loc)
         }
-        scal_core::AnimOP::TerminalTypeInput(u, cmd, ovr, captured, prompt, d, e, loc) => {
-            AnimOperation::TerminalTypeInput(u, cmd, ovr, captured, prompt, d, e, loc)
+        scal_core::AnimOP::TerminalTypeInput(u, cmd, ovr, captured, prompt, d, e, style, loc) => {
+            AnimOperation::TerminalTypeInput(u, cmd, ovr, captured, prompt, d, e, style, loc)
         }
-        scal_core::AnimOP::TerminalOutput(u, action, d, e, loc) => {
-            AnimOperation::TerminalOutput(u, action, d, e, loc)
+        scal_core::AnimOP::TerminalOutput(u, action, d, e, style, loc) => {
+            AnimOperation::TerminalOutput(u, action, d, e, style, loc)
         }
     })
 }

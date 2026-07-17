@@ -1,4 +1,4 @@
-use scal_core::{Ease, TerminalOutputAction};
+use scal_core::{CodeAnimationStyle, Ease, TerminalOutputAction};
 use uuid::Uuid;
 
 use crate::{
@@ -16,15 +16,19 @@ pub fn type_input(
     captured_prompt: String,
     duration: f32,
     curve: Ease,
+    style: Option<CodeAnimationStyle>,
 ) -> Animation {
+    let is_reveal = style.map_or(true, |s| s == CodeAnimationStyle::Reveal);
     let total_chars = display_override
         .as_deref()
         .unwrap_or(&command)
         .len();
 
+    let anim_curve = if is_reveal { Ease::Linear } else { curve };
+
     Animation::new(
         duration,
-        curve,
+        anim_curve,
         Box::new(move |animator, storage| {
             let obj = animator.get_object_mut(&uuid)?;
             let buffer = obj
@@ -37,6 +41,11 @@ pub fn type_input(
 
             buffer.add_entry(command.clone(), display_override.clone(), captured_output.clone(), captured_prompt.clone());
             storage.push(total_chars as f32);
+            if is_reveal {
+                if let Some(entry) = buffer.current_entry_mut() {
+                    entry.entry_alpha = 0.0;
+                }
+            }
             buffer.dirty = true;
             animator.regenerate_object_mesh(&uuid)?;
             Ok(())
@@ -54,6 +63,9 @@ pub fn type_input(
             let total = storage[0] as usize;
             if let Some(entry) = buffer.current_entry_mut() {
                 entry.input_reveal = (t * total as f32) as usize;
+                if is_reveal {
+                    entry.entry_alpha = Ease::InOutCubic.apply(t);
+                }
             }
             buffer.dirty = true;
             animator.regenerate_object_mesh(&uuid)?;
@@ -69,6 +81,7 @@ pub fn output(
     action: TerminalOutputAction,
     duration: f32,
     curve: Ease,
+    style: Option<CodeAnimationStyle>,
 ) -> Animation {
     match action {
         TerminalOutputAction::Skip(bytes) => {
@@ -91,9 +104,11 @@ pub fn output(
             }))
         }
         TerminalOutputAction::Pull(bytes) => {
+            let is_reveal = style.map_or(true, |s| s == CodeAnimationStyle::Reveal);
+            let anim_curve = if is_reveal { Ease::Linear } else { curve };
             Animation::new(
                 duration,
-                curve,
+                anim_curve,
                 Box::new(move |animator, storage| {
                     let obj = animator.get_object_mut(&uuid)?;
                     let buffer = obj
@@ -106,9 +121,19 @@ pub fn output(
                             )
                         })?;
 
-                    let current = buffer.current_entry().map_or(0, |e| e.output_reveal);
-                    storage.push(current as f32);
-                    storage.push(bytes as f32);
+                    if is_reveal {
+                        // For Reveal: show all bytes immediately, fade with alpha
+                        if let Some(entry) = buffer.current_entry_mut() {
+                            let total = entry.output.len();
+                            entry.output_reveal = total.saturating_sub(entry.output_skip);
+                            entry.output_alpha = 0.0;
+                        }
+                        storage.push(0.0);
+                    } else {
+                        let current = buffer.current_entry().map_or(0, |e| e.output_reveal);
+                        storage.push(current as f32);
+                        storage.push(bytes as f32);
+                    }
                     buffer.dirty = true;
                     animator.regenerate_object_mesh(&uuid)?;
                     Ok(())
@@ -126,9 +151,13 @@ pub fn output(
                         })?;
 
                     if let Some(entry) = buffer.current_entry_mut() {
-                        let start = storage[0] as usize;
-                        let total_bytes = storage[1] as usize;
-                        entry.output_reveal = start + (t * total_bytes as f32) as usize;
+                        if is_reveal {
+                            entry.output_alpha = Ease::InOutCubic.apply(t);
+                        } else {
+                            let start = storage[0] as usize;
+                            let total_bytes = storage[1] as usize;
+                            entry.output_reveal = start + (t * total_bytes as f32) as usize;
+                        }
                     }
                     buffer.dirty = true;
                     animator.regenerate_object_mesh(&uuid)?;
@@ -159,9 +188,11 @@ pub fn output(
             }))
         }
         TerminalOutputAction::PullAll => {
+            let is_reveal = style.map_or(true, |s| s == CodeAnimationStyle::Reveal);
+            let anim_curve = if is_reveal { Ease::Linear } else { curve };
             Animation::new(
                 duration,
-                curve,
+                anim_curve,
                 Box::new(move |animator, storage| {
                     let obj = animator.get_object_mut(&uuid)?;
                     let buffer = obj
@@ -174,15 +205,25 @@ pub fn output(
                             )
                         })?;
 
-                    if let Some(entry) = buffer.current_entry() {
-                        let pushed = entry.pushed_text.as_deref().unwrap_or("");
-                        let total = entry.output.len() + pushed.len();
-                        let remaining = total.saturating_sub(entry.output_skip);
-                        storage.push(entry.output_reveal as f32);
-                        storage.push(remaining as f32);
+                    if is_reveal {
+                        if let Some(entry) = buffer.current_entry_mut() {
+                            let pushed = entry.pushed_text.as_deref().unwrap_or("").to_string();
+                            let total = entry.output.len() + pushed.len();
+                            entry.output_reveal = total.saturating_sub(entry.output_skip);
+                            entry.output_alpha = 0.0;
+                        }
+                        storage.push(0.0);
                     } else {
-                        storage.push(0.0);
-                        storage.push(0.0);
+                        if let Some(entry) = buffer.current_entry() {
+                            let pushed = entry.pushed_text.as_deref().unwrap_or("");
+                            let total = entry.output.len() + pushed.len();
+                            let remaining = total.saturating_sub(entry.output_skip);
+                            storage.push(entry.output_reveal as f32);
+                            storage.push(remaining as f32);
+                        } else {
+                            storage.push(0.0);
+                            storage.push(0.0);
+                        }
                     }
                     buffer.dirty = true;
                     animator.regenerate_object_mesh(&uuid)?;
@@ -201,9 +242,13 @@ pub fn output(
                         })?;
 
                     if let Some(entry) = buffer.current_entry_mut() {
-                        let start = storage[0] as usize;
-                        let remaining = storage[1] as usize;
-                        entry.output_reveal = start + (t * remaining as f32) as usize;
+                        if is_reveal {
+                            entry.output_alpha = Ease::InOutCubic.apply(t);
+                        } else {
+                            let start = storage[0] as usize;
+                            let remaining = storage[1] as usize;
+                            entry.output_reveal = start + (t * remaining as f32) as usize;
+                        }
                     }
                     buffer.dirty = true;
                     animator.regenerate_object_mesh(&uuid)?;

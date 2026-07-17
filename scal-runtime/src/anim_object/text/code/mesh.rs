@@ -146,8 +146,12 @@ pub fn generate_code_mesh(
             let base = vertices.len() as u32;
 
             if glyph_info.is_color {
-                // pass-through for color emoji — use identity tint
-                let color = Color::WHITE;
+                let alpha = if in_animated && code.anim_style == CodeAnimationStyle::Reveal {
+                    reveal
+                } else {
+                    1.0
+                };
+                let color = Color::new(1.0, 1.0, 1.0, alpha);
                 vertices.extend([
                     Vertex { position: vec2(x, y), color, uv: glyph_info.uv_min },
                     Vertex { position: vec2(x + w, y), color, uv: vec2(glyph_info.uv_max.x, glyph_info.uv_min.y) },

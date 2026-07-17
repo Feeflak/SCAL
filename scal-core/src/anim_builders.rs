@@ -358,6 +358,7 @@ pub struct TerminalInputBuilder {
     pub(crate) duration: Time,
     pub(crate) ease: Ease,
     pub(crate) startup_config: Option<String>,
+    pub(crate) style: Option<CodeAnimationStyle>,
 }
 
 impl TerminalInputBuilder {
@@ -390,6 +391,12 @@ impl TerminalInputBuilder {
         self.ease = ease;
         self
     }
+    /// Animation style for how the prompt and output appear
+    #[must_use]
+    pub const fn style(mut self, style: CodeAnimationStyle) -> Self {
+        self.style = Some(style);
+        self
+    }
 }
 
 impl From<TerminalInputBuilder> for AnimOP {
@@ -402,6 +409,7 @@ impl From<TerminalInputBuilder> for AnimOP {
             b.captured_prompt,
             b.duration,
             b.ease,
+            b.style,
             None,
         )
     }
@@ -425,6 +433,7 @@ pub struct TerminalOutputBuilder {
     pub(crate) action: Option<TerminalOutputAction>,
     pub(crate) duration: Time,
     pub(crate) ease: Ease,
+    pub(crate) style: Option<CodeAnimationStyle>,
 }
 
 impl TerminalOutputBuilder {
@@ -464,12 +473,18 @@ impl TerminalOutputBuilder {
         self.ease = ease;
         self
     }
+    /// Animation style for how output appears
+    #[must_use]
+    pub const fn style(mut self, style: CodeAnimationStyle) -> Self {
+        self.style = Some(style);
+        self
+    }
 }
 
 impl From<TerminalOutputBuilder> for AnimOP {
     fn from(b: TerminalOutputBuilder) -> Self {
         let action = b.action.unwrap_or(TerminalOutputAction::PullAll);
-        Self::TerminalOutput(b.uuid, action, b.duration, b.ease, None)
+        Self::TerminalOutput(b.uuid, action, b.duration, b.ease, b.style, None)
     }
 }
 

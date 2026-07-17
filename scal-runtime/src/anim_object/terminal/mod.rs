@@ -95,6 +95,8 @@ pub struct TerminalEntry {
     pub output_skip: usize,
     pub output_reveal: usize,
     pub pushed_text: Option<String>,
+    pub entry_alpha: f32,
+    pub output_alpha: f32,
 }
 
 impl TerminalTextBuffer {
@@ -137,6 +139,8 @@ impl TerminalTextBuffer {
             output_skip: 0,
             output_reveal: 0,
             pushed_text: None,
+            entry_alpha: 1.0,
+            output_alpha: 1.0,
         });
         self.current_entry = self.entries.len().saturating_sub(1);
         self.dirty = true;
@@ -174,17 +178,22 @@ impl TerminalTextBuffer {
                 spans: prompt_spans
                     .into_iter()
                     .map(|s| ColoredSpan {
-                        color: s.color,
+                        color: apply_alpha(s.color, entry.entry_alpha),
                         text: s.text,
                     })
                     .collect(),
             };
             if !visible_cmd.is_empty() {
-                cmd_line.spans.extend(colorize_cmd(visible_cmd, cmd_color0, cmd_color1));
+                cmd_line.spans.extend(colorize_cmd(visible_cmd, cmd_color0, cmd_color1).into_iter().map(|s| {
+                    ColoredSpan {
+                        color: apply_alpha(s.color, entry.entry_alpha),
+                        text: s.text,
+                    }
+                }));
             }
             if reveal_len < display_cmd.len() {
                 cmd_line.spans.push(ColoredSpan {
-                    color: cursor_color,
+                    color: apply_alpha(cursor_color, entry.entry_alpha),
                     text: "\u{2588}".to_string(),
                 });
             }
@@ -206,7 +215,7 @@ impl TerminalTextBuffer {
                     spans: sliced
                         .into_iter()
                         .map(|s| ColoredSpan {
-                            color: s.color,
+                            color: apply_alpha(s.color, entry.output_alpha),
                             text: s.text,
                         })
                         .collect(),
@@ -302,7 +311,7 @@ impl TerminalTextBuffer {
                 let base = vertices.len() as u32;
 
                 let glyph_color = if glyph_info.is_color {
-                    Color::WHITE
+                    Color::new(1.0, 1.0, 1.0, color.a)
                 } else {
                     color
                 };
@@ -458,6 +467,10 @@ struct ColoredLine {
 struct ColoredSpan {
     color: Color,
     text: String,
+}
+
+fn apply_alpha(color: Color, alpha: f32) -> Color {
+    Color::new(color.r, color.g, color.b, color.a * alpha.clamp(0.0, 1.0))
 }
 
 /// Factory function to create a Terminal from core data.

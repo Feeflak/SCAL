@@ -435,8 +435,8 @@ pub fn collect_sounds_from_ops(ops: &[AnimOperation]) -> Vec<ScheduledSound> {
             | AnimOperation::CodeAddLines(_, _, _, d, _, _, _)
             | AnimOperation::CodeModifyLine(_, _, _, d, _, _, _)
             | AnimOperation::CodeRemoveLines(_, _, d, _, _, _)
-            | AnimOperation::TerminalTypeInput(_, _, _, _, _, d, _, _)
-            | AnimOperation::TerminalOutput(_, _, d, _, _) => t + d,
+            | AnimOperation::TerminalTypeInput(_, _, _, _, _, d, _, _, _)
+            | AnimOperation::TerminalOutput(_, _, d, _, _, _) => t + d,
             AnimOperation::CodeHighlight(_, action, _) => t + action.duration_and_curve().0,
             AnimOperation::Instantiate(..) => t,
         }

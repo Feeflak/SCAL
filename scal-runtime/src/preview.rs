@@ -808,8 +808,8 @@ fn op_source_loc(op: &AnimOperation) -> Option<scal_core::SourceLoc> {
         | AnimOperation::CodeModifyLine(_, _, _, _, _, _, loc)
         | AnimOperation::CodeRemoveLines(_, _, _, _, _, loc)
         | AnimOperation::CodeHighlight(_, _, loc)
-        | AnimOperation::TerminalTypeInput(_, _, _, _, _, _, _, loc)
-        | AnimOperation::TerminalOutput(_, _, _, _, loc)
+        | AnimOperation::TerminalTypeInput(_, _, _, _, _, _, _, _, loc)
+        | AnimOperation::TerminalOutput(_, _, _, _, _, loc)
         | AnimOperation::All(_, loc)
         | AnimOperation::Sequence(_, loc)
         | AnimOperation::Wait(_, loc)
@@ -847,8 +847,8 @@ pub fn flatten_ops(ops: &[AnimOperation]) -> (Vec<TimelineOp>, f32) {
                 AnimOperation::CodeHighlight(_, action, _) => {
                     time += action.duration_and_curve().0;
                 }
-                AnimOperation::TerminalTypeInput(_, _, _, _, _, d, _, _)
-                | AnimOperation::TerminalOutput(_, _, d, _, _) => time += d,
+                AnimOperation::TerminalTypeInput(_, _, _, _, _, d, _, _, _)
+                | AnimOperation::TerminalOutput(_, _, d, _, _, _) => time += d,
                 AnimOperation::PlaySound(_, _, _) => {}
                 AnimOperation::Instantiate(..) => {}
             }

@@ -45,9 +45,6 @@ fn main() -> Project {
             // Show partial output
             term.output().pull(50).over(0.5.s()),
             wait(0.3.s()),
-            // Skip some and show the rest
-            term.output().skip(10).pull_all().over(0.5.s()),
-            wait(0.5.s()),
         ],
     }
 }
