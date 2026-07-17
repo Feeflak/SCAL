@@ -148,6 +148,30 @@ pub fn add_lines(
             animator.regenerate_object_mesh(&uuid)?;
             Ok(())
         })),
+        CodeAnimationStyle::Reveal => Some(Box::new(move |animator, t, _storage| {
+            let obj = animator.get_object_mut(&uuid)?;
+            if let Some(code) = code_mut(obj.anim_data.as_any_mut()) {
+                let prev_reveal = code.anim_reveal;
+                let prev_spacing = code.anim_spacing;
+                // Spacing: OutBack over 0→0.8 of timeline (container expands with bounce)
+                let spacing_t = (t / 0.8).min(1.0);
+                code.anim_spacing = Ease::OutBack.apply(spacing_t);
+                // Reveal: InOutCubic, starts at 0.2 overlaps with spacing expansion
+                let reveal_t = ((t - 0.2) / 0.8).max(0.0).min(1.0);
+                code.anim_reveal = Ease::InOutCubic.apply(reveal_t);
+                log::trace!(
+                    "Reveal add_lines t={:.4} reveal={:.4}->{:.4} spacing={:.4}->{:.4}",
+                    t,
+                    prev_reveal,
+                    code.anim_reveal,
+                    prev_spacing,
+                    code.anim_spacing
+                );
+            }
+            let _ = obj;
+            animator.regenerate_object_mesh(&uuid)?;
+            Ok(())
+        })),
     };
 
     Animation::new(duration, curve, start, update)
@@ -210,6 +234,16 @@ pub fn modify_line(
             if let Some(code) = code_mut(obj.anim_data.as_any_mut()) {
                 code.anim_reveal = t;
                 code.anim_spacing = t;
+            }
+            let _ = obj;
+            animator.regenerate_object_mesh(&uuid)?;
+            Ok(())
+        })),
+        CodeAnimationStyle::Reveal => Some(Box::new(move |animator, t, _storage| {
+            let obj = animator.get_object_mut(&uuid)?;
+            if let Some(code) = code_mut(obj.anim_data.as_any_mut()) {
+                code.anim_reveal = Ease::InOutCubic.apply(t);
+                code.anim_spacing = 1.0;
             }
             let _ = obj;
             animator.regenerate_object_mesh(&uuid)?;
@@ -290,6 +324,20 @@ pub fn remove_lines(
             if let Some(code) = code_mut(obj.anim_data.as_any_mut()) {
                 code.anim_reveal = t;
                 code.anim_spacing = t;
+            }
+            let _ = obj;
+            animator.regenerate_object_mesh(&uuid)?;
+            Ok(())
+        })),
+        CodeAnimationStyle::Reveal => Some(Box::new(move |animator, t, _storage| {
+            let obj = animator.get_object_mut(&uuid)?;
+            if let Some(code) = code_mut(obj.anim_data.as_any_mut()) {
+                // Spacing: OutCubic reversed, shrinks over 0→0.8
+                let spacing_t = (t / 0.8).min(1.0);
+                code.anim_spacing = 1.0 - Ease::OutCubic.apply(spacing_t);
+                // Reveal: InOutCubic reversed (fade out), starts at 0.2
+                let reveal_t = ((t - 0.2) / 0.8).max(0.0).min(1.0);
+                code.anim_reveal = 1.0 - Ease::InOutCubic.apply(reveal_t);
             }
             let _ = obj;
             animator.regenerate_object_mesh(&uuid)?;

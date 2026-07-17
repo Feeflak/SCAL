@@ -100,6 +100,10 @@ pub fn generate_code_mesh(
                     let line_threshold = reveal * num_animated_lines as f32;
                     (line_index as f32) < line_threshold
                 }
+                CodeAnimationStyle::Reveal => {
+                    // Lines always visible — alpha is controlled per-glyph
+                    true
+                }
             }
         } else {
             true
@@ -173,6 +177,10 @@ pub fn generate_code_mesh(
                     color.b * darken,
                     color.a,
                 );
+            }
+
+            if in_animated && code.anim_style == CodeAnimationStyle::Reveal {
+                color = Color::new(color.r, color.g, color.b, color.a * reveal);
             }
 
             vertices.extend([

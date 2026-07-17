@@ -118,6 +118,7 @@ pub enum CodeAnimationStyle {
     TypeWriter,
     TypeWriterInstantResize,
     Fold,
+    Reveal,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]

@@ -59,8 +59,8 @@ fn fib(n: u32) -> u32 {
 }
                 "
                     )
-                    .over(5.s())
-                    .style(CodeAnimationStyle::TypeWriterInstantResize),
+                    .over(1.s())
+                    .style(CodeAnimationStyle::Reveal),
             ],
             wait(0.5.s()),
             pointer
