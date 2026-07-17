@@ -502,6 +502,40 @@ impl CodeWindowHandle {
 }
 
 /// Wrapper around the ``AnimObj`` struct for a terminal emulator window.
+/// The terminal object simulates a terminal emulator window for animating CLI interactions.
+/// Commands you write in the animation are actually executed on your machine during
+/// animation creation, and their real output is captured and displayed.
+///
+/// ```
+/// let term = terminal()
+///     .shell("fish")
+///     .prompt("❯ ")
+///     .font_family("JetBrains Mono Nerd")
+///     .font_size(22.)
+///     .width(1500.)
+///     .height(800.)
+///     .background_color(Color::new(0.08, 0.08, 0.08, 1.0))
+///     .source_dir("./fixtures")
+///     .pos(WINDOW / 2.)
+///     .build();
+/// ```
+///
+/// After building, add it to the timeline:
+/// - `term.instantiate()` — adds the terminal window to the scene
+/// - `term.input().value("ls -la").over(0.5.s())` — animates typing a command and
+///   executes it to capture the real output
+/// - `term.input().input_view_override("cargo build --release")` — override the
+///   visually displayed text without changing what command gets executed
+/// - `term.output().pull_all().over(0.5.s())` — animates revealing all captured output
+/// - `term.output().pull(50).over(0.5.s())` — reveals only the first 50 bytes
+/// - `term.output().skip(25)` — permanently skips the first 25 bytes of output
+/// - `term.output().push("extra text")` — appends custom text to the output
+/// - `.source_dir("path")` — copies a directory into a temp working dir before
+///   executing commands (useful for reproducing specific environments)
+/// - `.startup_config("starship init fish | source")` — sources config before
+///   each command (e.g. for prompt customization)
+///
+/// Full example at `examples/terminal/`.
 pub struct TerminalHandle(pub AnimObj);
 
 impl std::ops::Deref for TerminalHandle {
@@ -593,7 +627,10 @@ impl TerminalHandle {
     #[must_use]
     /// Returns handle to the terminal window's minimize button.
     pub const fn minimize_button(&self) -> CircleHandle {
-        if let AnimObjKind::Terminal { minimize_btn_id, .. } = &self.0.kind {
+        if let AnimObjKind::Terminal {
+            minimize_btn_id, ..
+        } = &self.0.kind
+        {
             CircleHandle(*minimize_btn_id)
         } else {
             CircleHandle(self.0.id)
@@ -602,7 +639,10 @@ impl TerminalHandle {
     #[must_use]
     /// Returns handle to the terminal window's maximize button.
     pub const fn maximize_button(&self) -> CircleHandle {
-        if let AnimObjKind::Terminal { maximize_btn_id, .. } = &self.0.kind {
+        if let AnimObjKind::Terminal {
+            maximize_btn_id, ..
+        } = &self.0.kind
+        {
             CircleHandle(*maximize_btn_id)
         } else {
             CircleHandle(self.0.id)
@@ -620,7 +660,10 @@ impl TerminalHandle {
     #[must_use]
     /// Returns handle to the terminal window's title bar background.
     pub const fn title_bar_background(&self) -> RectangleHandle {
-        if let AnimObjKind::Terminal { title_bar_bg_id, .. } = &self.0.kind {
+        if let AnimObjKind::Terminal {
+            title_bar_bg_id, ..
+        } = &self.0.kind
+        {
             RectangleHandle(*title_bar_bg_id)
         } else {
             RectangleHandle(self.0.id)

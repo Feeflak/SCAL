@@ -134,16 +134,16 @@
 //! make sure that you have installed required system dependencies:
 //!
 //! - Ubuntu/Debian:
-//! ``sudo apt install ffmpeg libwayland-dev libxkbcommon-dev libx11-dev libxcursor-dev libxi-dev libxrandr-dev libxcb1-dev libasound2-dev libpulse-dev``
+//!   ``sudo apt install ffmpeg libwayland-dev libxkbcommon-dev libx11-dev libxcursor-dev libxi-dev libxrandr-dev libxcb1-dev libasound2-dev libpulse-dev``
 //!
 //! - Arch:
-//! ``sudo pacman -S ffmpeg wayland libxkbcommon libx11 libxcursor libxi libxrandr libxcb alsa-lib libpulse``
+//!   ``sudo pacman -S ffmpeg wayland libxkbcommon libx11 libxcursor libxi libxrandr libxcb alsa-lib libpulse``
 //!
 //! - Fedora:
-//! ``sudo dnf install ffmpeg-devel wayland-devel libxkbcommon-devel libX11-devel libXcursor-devel libXi-devel libXrandr-devel libxcb-devel alsa-lib-devel pulseaudio-libs-devel``
+//!   ``sudo dnf install ffmpeg-devel wayland-devel libxkbcommon-devel libX11-devel libXcursor-devel libXi-devel libXrandr-devel libxcb-devel alsa-lib-devel pulseaudio-libs-devel``
 //!
 //! - NixOS:
-//! download flake file:
+//!   download flake file:
 //! ```bash
 //! wget https://raw.githubusercontent.com/Feeflak/SCAL/refs/heads/main/flake.nix
 //! ```
@@ -194,6 +194,12 @@
 //!     .duration(5.)
 //!     .pitch_variation(0.05);
 //! ```
+//!
+//! ## Terminal Animation
+//!
+//! The terminal object simulates a terminal emulator window for animating CLI interactions.
+//! Commands you write in the animation are actually executed on your machine during
+//! animation creation, and their real output is captured and displayed.
 //!
 //! ## Fast Render Times
 //! Using FFmpeg supports hardware H264 encoding for most popular GPU brands- nvidia, intel, apple(I
@@ -498,21 +504,31 @@
 //!
 //!
 
+/// some basic animation functions/macros
 pub mod anim;
+/// Builders for animations of some objects
 pub mod anim_builders;
+/// Generic for all object type. Conversion is done using ``IntoAnimOp`` trait.
 pub mod anim_obj;
 pub mod anim_op;
+/// Camera LOL
 pub mod camera;
+/// Simple RGBA color struct with some helper functions. each field should be a 0..255 float.
 pub mod color;
+/// Simple way to make your animations smooth. <https://easings.net/>
 pub mod ease;
 pub mod highlight_specs;
 #[allow(missing_docs)]
 pub mod object_builders;
+/// Settings
 pub mod project;
 pub mod seconds;
 pub mod settings;
+/// Easy way to play sounds
 pub mod sfx;
+/// Theme for Code and Terminal
 pub mod theme;
+/// Standard way to control all anim object's position, scale and rotation
 pub mod transform;
 
 pub use anim_obj::{

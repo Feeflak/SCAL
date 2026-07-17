@@ -7,7 +7,7 @@ pub struct Camera {
     /// Makes the renderer write camera's matrix into buffer
     pub dirty: bool,
     // Size of the space that is used in animations.
-    /// For example, if the virtual_size= 1080 then objects with transform at y= 540 will be at the
+    /// For example, if the `virtual_size`= 1080 then objects with transform at y= 540 will be at the
     /// center of your screen no mater the render resolution.
     pub virtual_size: Vec2,
     /// Offsets the whole scene
@@ -19,9 +19,8 @@ pub struct Camera {
 impl Camera {
     #[must_use]
     /// ``virtual_size``- Size of the space that is used in animations.
-    /// For example, if the virtual_size= 1080 then objects with transform at y= 540 will be at the
+    /// For example, if the `virtual_size`= 1080 then objects with transform at y= 540 will be at the
     /// center of your screen no mater the render resolution.
-    /// ``position``- Offsets the whole scene
     /// ``zoom``- Zooms in on the whole scene
     pub const fn new(virtual_size: Vec2, position: Vec2, zoom: f32) -> Self {
         Self {
