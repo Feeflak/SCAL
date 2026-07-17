@@ -18,6 +18,29 @@
         pkgs = import nixpkgs {
           inherit system;
         };
+
+        runtimeDeps = with pkgs; [
+          ffmpeg
+
+          wayland
+          libxkbcommon
+
+          libx11
+          libxcursor
+          libxi
+          libxrandr
+          libxcb
+
+          alsa-lib
+          libpulseaudio
+        ];
+
+        buildDeps = with pkgs; [
+          pkg-config
+          clang
+          llvmPackages.libclang
+        ];
+
         runtime = pkgs.rustPlatform.buildRustPackage {
           pname = "scal-runtime";
           version = "1.0.1";
@@ -31,27 +54,23 @@
             "scal-runtime"
           ];
 
-          nativeBuildInputs = with pkgs; [
-            pkg-config
-            clang
+          nativeBuildInputs = buildDeps;
+
+          buildInputs = runtimeDeps;
+
+          LIBCLANG_PATH = "${pkgs.llvmPackages.libclang.lib}/lib";
+
+          PKG_CONFIG_PATH = pkgs.lib.makeSearchPath "lib/pkgconfig" [
+            pkgs.alsa-lib.dev
+            pkgs.ffmpeg
           ];
 
-          buildInputs = with pkgs; [
-            ffmpeg
-
-            wayland
-            libxkbcommon
-
-            xorg.libX11
-            xorg.libXcursor
-            xorg.libXi
-            xorg.libXrandr
-            xorg.libxcb
-
-            alsa-lib
-            libpulseaudio
+          # Needed by some crates using bindgen
+          BINDGEN_EXTRA_CLANG_ARGS = builtins.concatStringsSep " " [
+            "-I${pkgs.llvmPackages.libclang.lib}/lib/clang/${pkgs.llvmPackages.libclang.version}/include"
           ];
         };
+
       in
       {
         packages = {
@@ -65,50 +84,26 @@
         };
 
         devShells.default = pkgs.mkShell {
-          packages = with pkgs; [
-            rust-analyzer
-            rustfmt
-            clippy
-            cargo
-            rustc
+          packages =
+            buildDeps
+            ++ runtimeDeps
+            ++ (with pkgs; [
+              rust-analyzer
+              rustfmt
+              clippy
+              cargo
+              rustc
+            ]);
 
-            pkg-config
-            ffmpeg
+          LIBCLANG_PATH = "${pkgs.llvmPackages.libclang.lib}/lib";
 
-            wayland
-            libxkbcommon
-            xorg.libX11
-            xorg.libXcursor
-            xorg.libXi
-            xorg.libXrandr
-            xorg.libxcb
-
-            clang
-            llvmPackages.libclang
-
-            alsa-lib
-            alsa-lib.dev
-            libpulseaudio
+          PKG_CONFIG_PATH = pkgs.lib.makeSearchPath "lib/pkgconfig" [
+            pkgs.alsa-lib.dev
+            pkgs.ffmpeg
           ];
 
           shellHook = ''
-            export LIBCLANG_PATH="${pkgs.llvmPackages.libclang.lib}/lib"
-
-            export LD_LIBRARY_PATH="${
-              pkgs.lib.makeLibraryPath [
-                pkgs.wayland
-                pkgs.libxkbcommon
-                pkgs.xorg.libX11
-                pkgs.xorg.libXcursor
-                pkgs.xorg.libXi
-                pkgs.xorg.libXrandr
-                pkgs.xorg.libxcb
-                pkgs.alsa-lib
-                pkgs.libpulseaudio
-              ]
-            }:$LD_LIBRARY_PATH"
-
-            export PKG_CONFIG_PATH="${pkgs.alsa-lib.dev}/lib/pkgconfig:$PKG_CONFIG_PATH"
+            export LD_LIBRARY_PATH="${pkgs.lib.makeLibraryPath runtimeDeps}:$LD_LIBRARY_PATH"
           '';
         };
       }
