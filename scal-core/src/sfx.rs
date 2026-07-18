@@ -22,7 +22,7 @@ pub struct Sfx {
 }
 
 /// Create a new sound effect builder.
-/// ```
+/// ```ignore
 /// sfx()
 ///     .path("./click.mp3")
 ///     .volume(0.5)

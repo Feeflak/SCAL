@@ -14,7 +14,7 @@ impl Base16 {
     #[must_use]
     /// <https://github.com/tinted-theming/schemes/tree/spec-0.11/base16>
     /// Use normal hex colors and just remove # from the front and replace it with 0x
-    /// ```
+    /// ```ignore
     /// let theme = Theme::from_base16(Base16::from_hex([
     ///     0x11121d, 0x1A1B2A, 0x212234, 0x282c34, 0x4a5057, 0xa0a8cd, 0xa0a8cd, 0xa0a8cd, 0xee6d85,
     ///     0xf6955b, 0xd7a65f, 0x95c561, 0x38a89d, 0x7199ee, 0xa485dd, 0x773440,

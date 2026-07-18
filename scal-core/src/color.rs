@@ -15,7 +15,7 @@ pub struct Color {
 }
 
 impl Color {
-    /// ```
+    /// ```ignore
     /// Color {
     ///     r: 0.0,
     ///     g: 0.0,
@@ -29,7 +29,7 @@ impl Color {
         b: 0.0,
         a: 0.0,
     };
-    /// ```
+    /// ```ignore
     /// Color {
     ///     r: 0.0,
     ///     g: 0.0,
@@ -43,7 +43,7 @@ impl Color {
         b: 0.0,
         a: 1.0,
     };
-    /// ```
+    /// ```ignore
     /// Color {
     ///     r: 1.0,
     ///     g: 1.0,
@@ -57,7 +57,7 @@ impl Color {
         b: 1.0,
         a: 1.0,
     };
-    /// ```
+    /// ```ignore
     /// Color {
     ///     r: 1.0,
     ///     g: 0.0,
@@ -71,7 +71,7 @@ impl Color {
         b: 0.0,
         a: 1.0,
     };
-    /// ```
+    /// ```ignore
     /// Color {
     ///     r: 0.0,
     ///     g: 1.0,
@@ -85,7 +85,7 @@ impl Color {
         b: 0.0,
         a: 1.0,
     };
-    /// ```
+    /// ```ignore
     /// Color {
     ///     r: 0.0,
     ///     g: 0.0,

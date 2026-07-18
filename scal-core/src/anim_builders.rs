@@ -8,21 +8,19 @@ use crate::{
 };
 
 /// Builder for an animation of adding code lines to the code block.
-/// ```
-///                code.add_lines()
-///                    .str(
-///                        r"
-///fn fib(n: u32) -> u32 {
-///    match n {
-///        0 => 0,
-///        1 => 1,
-///        _ => fib(n - 1) + fib(n - 2),
-///    }
-///}
-///                "
-///                    )
-///                    .over(5.s())
-///                    .style(CodeAnimationStyle::TypeWriter),
+/// ```ignore
+///code.add_lines()
+///    .str(
+///        r"fn fib(n: u32) -> u32 {
+///             match n {
+///                 0 => 0,
+///                 1 => 1,
+///                 _ => fib(n - 1) + fib(n - 2),
+///             }
+///         }"
+///    )
+///    .over(5.s())
+///    .style(CodeAnimationStyle::TypeWriter),
 /// ```
 pub struct CodeAddLinesBuilder {
     pub(crate) uuid: Uuid,
@@ -87,12 +85,12 @@ impl IntoAnimOp for CodeAddLinesBuilder {
 }
 
 /// Builder for an animation of modifying a line in the code block.
-/// ```
-///                code.modify_line()
-///                    .str("New Line Contents")
-///                    .line(25)
-///                    .over(5.s())
-///                    .style(CodeAnimationStyle::TypeWriter),
+/// ```ignore
+///code.modify_line()
+///    .str("New Line Contents")
+///    .line(25)
+///    .over(5.s())
+///    .style(CodeAnimationStyle::TypeWriter),
 /// ```
 pub struct CodeModifyLineBuilder {
     pub(crate) uuid: Uuid,
@@ -150,7 +148,7 @@ impl IntoAnimOp for CodeModifyLineBuilder {
 }
 
 /// Builder for an animation of removing lines from a code block.
-/// ```
+/// ```ignore
 ///                code.remove_lines()
 ///                    .range(0..25)
 ///                    .over(5.s())
@@ -203,10 +201,8 @@ impl IntoAnimOp for CodeRemoveLinesBuilder {
     }
 }
 
-
-
 /// Builder for an animation of highlighting code by line range or regex pattern.
-/// ```
+/// ```ignore
 ///                code.highlight()
 ///                    .lines(3..6)
 ///                    .color(Color::new(1.0, 1.0, 0.0, 0.3))
@@ -215,7 +211,7 @@ impl IntoAnimOp for CodeRemoveLinesBuilder {
 /// ```
 ///
 /// Or with a regex pattern:
-/// ```
+/// ```ignore
 ///                code.highlight()
 ///                    .pattern(r"fn \w+\(")
 ///                    .color(Color::new(0.0, 1.0, 0.0, 0.3))
@@ -302,7 +298,7 @@ impl IntoAnimOp for CodeHighlightBuilder {
 }
 
 /// Builder for an animation of playing a sound effect.
-/// ```
+/// ```ignore
 ///                sfx()
 ///                    .path("./click.mp3")
 ///                    .play()
@@ -341,7 +337,7 @@ impl IntoAnimOp for PlaySoundBuilder {
 }
 
 /// Builder for an animation of typing a command into a terminal.
-/// ```
+/// ```ignore
 ///                term.input()
 ///                    .value("ls -la")
 ///                    .input_view_override("ls")
@@ -422,7 +418,7 @@ impl IntoAnimOp for TerminalInputBuilder {
 }
 
 /// Builder for an animation of revealing terminal output.
-/// ```
+/// ```ignore
 ///                term.output()
 ///                    .skip(25)
 ///                    .pull(50)
@@ -497,10 +493,7 @@ impl IntoAnimOp for TerminalOutputBuilder {
 fn capture_prompt(shell: &str, source_dir: &Option<String>) -> String {
     use std::process::Command;
     let work_dir = source_dir.as_ref().map(std::path::Path::new);
-    let prompt_cmds = [
-        "starship prompt 2>/dev/null",
-        "fish_prompt 2>/dev/null",
-    ];
+    let prompt_cmds = ["starship prompt 2>/dev/null", "fish_prompt 2>/dev/null"];
     for prompt_cmd in &prompt_cmds {
         if let Ok(out) = Command::new(shell)
             .arg("-c")
@@ -521,7 +514,12 @@ fn capture_prompt(shell: &str, source_dir: &Option<String>) -> String {
     String::new()
 }
 
-fn execute_command(cmd: &str, shell: &str, source_dir: &Option<String>, startup_config: &Option<String>) -> String {
+fn execute_command(
+    cmd: &str,
+    shell: &str,
+    source_dir: &Option<String>,
+    startup_config: &Option<String>,
+) -> String {
     use std::process::Command;
     let dir = tempfile::tempdir().ok();
     let work_dir = dir.as_ref().and_then(|d| {

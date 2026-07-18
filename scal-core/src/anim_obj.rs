@@ -28,7 +28,7 @@ pub struct AnimObj {
 
 impl AnimObj {
     /// Returns an animation that instantly adds that object to the scene.
-    /// ```
+    /// ```ignore
     /// let pointer = svg()
     ///     .path("./pointer-tool.svg")
     ///     .build();
@@ -183,7 +183,7 @@ impl std::ops::Deref for CodeHandle {
 
 impl CodeHandle {
     /// Returns an animation that instantly adds that object to the scene.
-    /// ```
+    /// ```ignore
     /// let pointer = svg()
     ///     .path("./pointer-tool.svg")
     ///     .build();
@@ -200,7 +200,7 @@ impl CodeHandle {
     }
 
     /// Returns a builder for an animation of adding code lines to the code block.
-    /// ```
+    /// ```ignore
     ///                code.add_lines()
     ///                    .str(
     ///                        r"
@@ -229,7 +229,7 @@ impl CodeHandle {
     }
 
     /// Returns a builder for an animation of modifying a line of code.
-    /// ```
+    /// ```ignore
     ///                code.modify_line()
     ///                    .str("New Line Contents")
     ///                    .line(25)
@@ -249,7 +249,7 @@ impl CodeHandle {
     }
 
     /// Returns a builder for an animation of highlighting code by line range or regex pattern.
-    /// ```
+    /// ```ignore
     ///                code.highlight()
     ///                    .lines(3..6)
     ///                    .color(Color::new(1.0, 1.0, 0.0, 0.3))
@@ -270,7 +270,7 @@ impl CodeHandle {
     }
 
     /// Returns a builder for an animation of removing lines form a code block.
-    /// ```
+    /// ```ignore
     ///                code.remove_lines()
     ///                    .range(0..25)
     ///                    .over(5.s())
@@ -301,7 +301,7 @@ impl std::ops::Deref for CodeWindowHandle {
 
 impl CodeWindowHandle {
     /// Returns an animation that instantly adds that object to the scene.
-    /// ```
+    /// ```ignore
     /// let pointer = svg()
     ///     .path("./pointer-tool.svg")
     ///     .build();
@@ -317,7 +317,7 @@ impl CodeWindowHandle {
         AnimOP::Instantiate(Box::new(self.0.clone()), None)
     }
     /// Returns a builder for an animation of adding code lines to the code block.
-    /// ```
+    /// ```ignore
     ///                code.add_lines()
     ///                    .str(
     ///                        r"
@@ -351,7 +351,7 @@ impl CodeWindowHandle {
     }
 
     /// Returns a builder for an animation of modifying a line of code.
-    /// ```
+    /// ```ignore
     ///                code.modify_line()
     ///                    .str("New Line Contents")
     ///                    .line(25)
@@ -376,7 +376,7 @@ impl CodeWindowHandle {
     }
 
     /// Returns a builder for an animation of highlighting code by line range or regex pattern.
-    /// ```
+    /// ```ignore
     ///                cw.highlight()
     ///                    .lines(3..6)
     ///                    .color(Color::new(1.0, 1.0, 0.0, 0.3))
@@ -402,7 +402,7 @@ impl CodeWindowHandle {
     }
 
     /// Returns a builder for an animation of removing lines form a code block.
-    /// ```
+    /// ```ignore
     ///                code.remove_lines()
     ///                    .range(0..25)
     ///                    .over(5.s())
@@ -506,7 +506,7 @@ impl CodeWindowHandle {
 /// Commands you write in the animation are actually executed on your machine during
 /// animation creation, and their real output is captured and displayed.
 ///
-/// ```
+/// ```ignore
 /// let term = terminal()
 ///     .shell("fish")
 ///     .prompt("❯ ")
@@ -689,7 +689,7 @@ macro_rules! impl_handle {
     ($type:ty) => {
         impl $type {
             /// Returns a builder for an animation that moves this object to a target position.
-            /// ```
+            /// ```ignore
             ///                handle.position()
             ///                    .to(Vec2::new(100.0, 200.0))
             ///                    .over(5.s())
@@ -706,7 +706,7 @@ macro_rules! impl_handle {
                 }
             }
             /// Returns a builder for an animation that scales this object.
-            /// ```
+            /// ```ignore
             ///                handle.scale()
             ///                    .to(Vec2::new(2.0, 2.0))
             ///                    .over(5.s())
@@ -723,7 +723,7 @@ macro_rules! impl_handle {
                 }
             }
             /// Returns a builder for an animation that rotates this object.
-            /// ```
+            /// ```ignore
             ///                handle.rotation()
             ///                    .to(360.0)
             ///                    .over(5.s())

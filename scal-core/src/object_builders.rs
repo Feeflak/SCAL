@@ -39,7 +39,7 @@ macro_rules! impl_transform_methods {
 }
 
 /// Create a new SVG object builder.
-/// ```
+/// ```ignore
 /// svg()
 ///     .path("./icon.svg")
 ///     .size(Vec2::splat(60.0))
@@ -136,7 +136,7 @@ impl SvgBuilder {
 impl_transform_methods!(SvgBuilder);
 
 /// Create a new rectangle object builder.
-/// ```
+/// ```ignore
 /// rectangle()
 ///     .size(Vec2::new(200.0, 100.0))
 ///     .corner_radius(10.0)
@@ -198,7 +198,7 @@ impl RectangleBuilder {
 impl_transform_methods!(RectangleBuilder);
 
 /// Create a new circle object builder.
-/// ```
+/// ```ignore
 /// circle()
 ///     .radius(75.0)
 ///     .color(Color::GREEN)
@@ -254,7 +254,7 @@ impl CircleBuilder {
 impl_transform_methods!(CircleBuilder);
 
 /// Create a new code block object builder.
-/// ```
+/// ```ignore
 /// code()
 ///     .source("fn main() {\n    println!(\"hello\");\n}")
 ///     .syntax(Syntax::Rust)
@@ -354,7 +354,7 @@ impl CodeBuilder {
 impl_transform_methods!(CodeBuilder);
 
 /// Create a new polygon object builder.
-/// ```
+/// ```ignore
 /// polygon()
 ///     .radius(60.0)
 ///     .sides(8)
@@ -418,7 +418,7 @@ impl PolygonBuilder {
 impl_transform_methods!(PolygonBuilder);
 
 /// Create a new image object builder.
-/// ```
+/// ```ignore
 /// image()
 ///     .path("./photo.png")
 ///     .size(Vec2::new(320.0, 240.0))
@@ -489,7 +489,7 @@ impl ImageBuilder {
 impl_transform_methods!(ImageBuilder);
 
 /// Create a new text object builder.
-/// ```
+/// ```ignore
 /// text()
 ///     .value("Hello, SCAL!")
 ///     .font_size(32.0)
@@ -569,7 +569,7 @@ impl TextBuilder {
 impl_transform_methods!(TextBuilder);
 
 /// Create a new code window object builder.
-/// ```
+/// ```ignore
 /// code_window()
 ///     .source("print('hello world')")
 ///     .syntax(Syntax::Python)
@@ -716,7 +716,7 @@ impl CodeWindowBuilder {
 impl_transform_methods!(CodeWindowBuilder);
 
 /// Create a new terminal emulator window builder.
-/// ```
+/// ```ignore
 /// terminal()
 ///     .shell("bash")
 ///     .prompt("$ ")

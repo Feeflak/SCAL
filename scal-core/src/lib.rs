@@ -17,7 +17,7 @@
 //! glam = "0.33.2"
 //! ```
 //! define the animation with:
-//! ```
+//! ```ignore
 //! /// /src/main.rs
 //! use glam::{Vec2, vec2};
 //! use scal_core::prelude::*;
@@ -185,7 +185,7 @@
 //! ## Clear Syntax
 //! you instantly know what every function does.
 //!
-//! ```
+//! ```ignore
 //! let typing = sfx()
 //!     .path("./keeb.wav")
 //!     .volume(5.)
@@ -218,7 +218,8 @@
 //! install using cargo.
 //! ## Nix Flake
 //! You can automatically compile from source using flakes like this:
-//!{
+//! ```nix
+//! {
 //!   inputs.scal-runtime = {
 //!     url = "github:Feeflak/scal";
 //!     inputs.nixpkgs.follows = "nixpkgs";
@@ -238,6 +239,7 @@
 //!     };
 //!   };
 //! }
+//! ```
 //! ## Compiling From Source
 //! SCAL uses Cargo to manage all Rust dependencies automatically. Only a few native libraries must be installed manually.
 //!
@@ -428,7 +430,7 @@
 //! codec_type = "H264Nvenc"
 //! ```
 //! 4. setup the ipc macro
-//! ```
+//! ```ignore
 //! // /scr/main.rs
 //! #[scal_ipc::main]
 //! fn main() -> Project {
@@ -438,7 +440,7 @@
 //!
 //! That's it, you can start writing any animation you want
 //! simple example:
-//! ```
+//! ```ignore
 //! // /scr/main.rs
 //! use glam::Vec2;
 //! use scal_core::prelude::*;

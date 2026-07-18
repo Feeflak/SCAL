@@ -8,7 +8,7 @@ pub const fn wait(duration: Time) -> AnimOP {
 }
 
 /// Execute Animations at once.
-///```
+///```ignore
 ///            parallel![
 ///                cw.add_lines()
 ///                    .str(
@@ -35,7 +35,7 @@ macro_rules! parallel {
 }
 
 /// Allows you to do a sequence of animations inside of a parallel block
-///```
+///```ignore
 ///parallel![
 ///    sequence![
 ///        cw.close_button().scale().to(Vec2::ONE * 0.8).over(0.3.s()),

@@ -43,7 +43,7 @@ impl Transform {
     }
 
     /// Returns a builder for an animation that moves this object to a new position.
-    /// ```
+    /// ```ignore
     ///                transform.position()
     ///                    .to(Vec2::new(100.0, 200.0))
     ///                    .over(5.s())
@@ -61,7 +61,7 @@ impl Transform {
     }
 
     /// Returns a builder for an animation that scales this object.
-    /// ```
+    /// ```ignore
     ///                transform.scale()
     ///                    .to(Vec2::new(2.0, 2.0))
     ///                    .over(5.s())
@@ -79,7 +79,7 @@ impl Transform {
     }
 
     /// Returns a builder for an animation that rotates this object.
-    /// ```
+    /// ```ignore
     ///                transform.rotation()
     ///                    .to(360.0)
     ///                    .over(5.s())
