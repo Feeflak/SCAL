@@ -284,7 +284,6 @@ async fn run_loop(
         Some(AudioEngine::new(scheduled))
     };
 
-    animations.reverse();
     info!("Starting rendering loop...");
     if !(rendering_settings.width * 4).is_multiple_of(256) {
         bail!("Wgpu needs the bytes_per_row(width * 4) value to be multiple of 256");

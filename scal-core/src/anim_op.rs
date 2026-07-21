@@ -111,6 +111,8 @@ pub enum TerminalOutputAction {
     Push(String),
     /// Reveal all remaining output (animated).
     PullAll,
+    /// Reveal output from the current position to the end of the current line (animated).
+    PullLine,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]

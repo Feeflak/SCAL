@@ -1,4 +1,6 @@
+use std::collections::HashMap;
 use std::ops::Range;
+use std::sync::{LazyLock, Mutex};
 
 use uuid::Uuid;
 
@@ -362,8 +364,23 @@ impl TerminalInputBuilder {
     #[must_use]
     pub fn value(mut self, cmd: impl Into<String>) -> Self {
         let cmd: String = cmd.into();
-        let output = execute_command(&cmd, &self.shell, &self.source_dir, &self.startup_config);
-        let prompt = capture_prompt(&self.shell, &self.source_dir);
+        let session_cwd = SESSIONS.lock().unwrap()
+            .get(&self.uuid.to_string())
+            .and_then(|s| {
+                if s.cwd.as_os_str().is_empty() {
+                    None
+                } else {
+                    Some(s.base_dir.path().join(&s.cwd))
+                }
+            });
+        let prompt = capture_prompt(&self.shell, &self.source_dir, session_cwd.as_deref());
+        let output = execute_command(
+            &cmd,
+            &self.uuid.to_string(),
+            &self.shell,
+            &self.source_dir,
+            &self.startup_config,
+        );
         self.command = cmd;
         self.captured_output = output;
         self.captured_prompt = prompt;
@@ -457,6 +474,12 @@ impl TerminalOutputBuilder {
         self.action = Some(TerminalOutputAction::PullAll);
         self
     }
+    /// Reveal output from the current position to the end of the current line (animated over the duration)
+    #[must_use]
+    pub fn pull_line(mut self) -> Self {
+        self.action = Some(TerminalOutputAction::PullLine);
+        self
+    }
     /// Duration of the reveal animation
     #[must_use]
     pub const fn over(mut self, duration: Time) -> Self {
@@ -490,9 +513,9 @@ impl IntoAnimOp for TerminalOutputBuilder {
     }
 }
 
-fn capture_prompt(shell: &str, source_dir: &Option<String>) -> String {
+fn capture_prompt(shell: &str, source_dir: &Option<String>, cwd: Option<&std::path::Path>) -> String {
     use std::process::Command;
-    let work_dir = source_dir.as_ref().map(std::path::Path::new);
+    let work_dir = cwd.or_else(|| source_dir.as_ref().map(std::path::Path::new));
     let prompt_cmds = ["starship prompt 2>/dev/null", "fish_prompt 2>/dev/null"];
     for prompt_cmd in &prompt_cmds {
         if let Ok(out) = Command::new(shell)
@@ -514,51 +537,134 @@ fn capture_prompt(shell: &str, source_dir: &Option<String>) -> String {
     String::new()
 }
 
+struct SessionState {
+    base_dir: tempfile::TempDir,
+    cwd: std::path::PathBuf,
+    startup_done: bool,
+}
+
+static SESSIONS: LazyLock<Mutex<HashMap<String, SessionState>>> = LazyLock::new(|| Mutex::new(HashMap::new()));
+
 fn execute_command(
     cmd: &str,
+    session_key: &str,
     shell: &str,
     source_dir: &Option<String>,
     startup_config: &Option<String>,
 ) -> String {
     use std::process::Command;
-    let dir = tempfile::tempdir().ok();
-    let work_dir = dir.as_ref().and_then(|d| {
+
+    let mut sessions = SESSIONS.lock().unwrap();
+    let session = if let Some(s) = sessions.get_mut(session_key) {
+        s
+    } else {
+        let dir = tempfile::tempdir();
+        let dir = match dir {
+            Ok(d) => d,
+            Err(e) => return format!("<error: failed to create temp dir: {e}>"),
+        };
         if let Some(ref src) = *source_dir {
-            copy_dir_recursive(std::path::Path::new(src), d.path()).ok();
+            let _ = copy_dir_recursive(std::path::Path::new(src), dir.path());
         }
-        Some(d.path().to_path_buf())
-    });
-    let full_cmd = if let Some(ref config) = *startup_config {
-        format!("{config}\n{cmd}")
+        sessions.insert(
+            session_key.to_string(),
+            SessionState {
+                base_dir: dir,
+                cwd: std::path::PathBuf::new(),
+                startup_done: false,
+            },
+        );
+        sessions.get_mut(session_key).unwrap()
+    };
+
+    let abs_cwd = if session.cwd.as_os_str().is_empty() {
+        session.base_dir.path().to_path_buf()
+    } else {
+        session.base_dir.path().join(&session.cwd)
+    };
+
+    let trimmed = cmd.trim();
+    if let Some(rest) = trimmed.strip_prefix("cd ") {
+        let target = rest.trim();
+        if target.is_empty() || target.starts_with('#') {
+            return String::new();
+        }
+        let new_cwd = if target == "-" {
+            session.cwd.clone()
+        } else {
+            let base = if session.cwd.as_os_str().is_empty() {
+                std::path::PathBuf::new()
+            } else {
+                session.cwd.clone()
+            };
+            let resolved = base.join(target);
+            let mut normalized = std::path::PathBuf::new();
+            for component in resolved.components() {
+                match component {
+                    std::path::Component::Normal(c) => normalized.push(c),
+                    std::path::Component::ParentDir => { normalized.pop(); }
+                    _ => {}
+                }
+            }
+            normalized
+        };
+        session.cwd = new_cwd;
+        return String::new();
+    }
+
+    let cmd_str = if let Some(ref config) = *startup_config {
+        if !session.startup_done {
+            session.startup_done = true;
+            format!("{config}\n{cmd}")
+        } else {
+            cmd.to_string()
+        }
     } else {
         cmd.to_string()
     };
+
     let output = Command::new(shell)
         .arg("-c")
-        .arg(&full_cmd)
-        .current_dir(work_dir.as_deref().unwrap_or(std::path::Path::new(".")))
+        .arg(&cmd_str)
+        .current_dir(&abs_cwd)
         .env("TERM", "xterm-256color")
         .env("COLORTERM", "truecolor")
         .env("CLICOLOR_FORCE", "1")
         .env("CARGO_TERM_COLOR", "always")
         .env("FORCE_COLOR", "1")
         .output();
+
     match output {
         Ok(out) => {
             let mut result = String::new();
             if !out.stdout.is_empty() {
-                result.push_str(&String::from_utf8_lossy(&out.stdout));
+                result.push_str(&sanitize_output(&String::from_utf8_lossy(&out.stdout)));
             }
             if !out.stderr.is_empty() {
                 if !result.is_empty() {
                     result.push('\n');
                 }
-                result.push_str(&String::from_utf8_lossy(&out.stderr));
+                result.push_str(&sanitize_output(&String::from_utf8_lossy(&out.stderr)));
             }
             result
         }
         Err(e) => format!("<error: {e}>"),
     }
+}
+
+fn sanitize_output(output: &str) -> String {
+    let mut result = String::with_capacity(output.len());
+    for line in output.split('\n') {
+        if let Some(last) = line.rsplit('\r').next() {
+            if !last.is_empty() {
+                if !result.is_empty() {
+                    result.push('\n');
+                }
+                result.push_str(last);
+            }
+        }
+    }
+    result
 }
 
 fn copy_dir_recursive(src: &std::path::Path, dst: &std::path::Path) -> std::io::Result<()> {
