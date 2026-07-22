@@ -2308,6 +2308,15 @@ impl PreviewRenderer {
         }
 
         self.animator = animator;
+        // Upload the glyph atlas — the fast-forward loop above rasterized
+        // glyphs into the fresh atlas but discarded every glyph_update_data
+        // return value, so the GPU texture is stale.  Without this, any
+        // change that alters glyph rasterization (e.g. font-size) corrupts
+        // the preview until the next frame advance that happens to upload.
+        self.animator.text_manager.atlas.dirty = true;
+        if let Some(glyph_data) = self.animator.text_manager.atlas.get_glyph_update_data() {
+            self.text_renderer.update_glyphs_if_needed(glyph_data, &self.queue);
+        }
 
         if let Some(ref player) = self.audio_player {
             player.seek_to(self.current_time());
