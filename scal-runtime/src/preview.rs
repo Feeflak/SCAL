@@ -2466,6 +2466,16 @@ impl PreviewRenderer {
             self.text_resolution_multiplier,
         )?;
 
+        // Upload the new glyph atlas — the GPU texture still has the old atlas
+        // data from the previous animation.  Without this, any change to text
+        // content (value, font-size, etc.) would render with stale glyph pixels
+        // until the next frame advance that happens to upload.
+        self.animator.text_manager.atlas.dirty = true;
+        if let Some(glyph_data) = self.animator.text_manager.atlas.get_glyph_update_data() {
+            self.text_renderer
+                .update_glyphs_if_needed(glyph_data, &self.queue);
+        }
+
         // Re-init audio (starts paused; unpaused on first frame advance)
         let (audio_player, waveform, sound_markers) =
             Self::init_audio(&self.original_animations, self.surface_config.width, true);
