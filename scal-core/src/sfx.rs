@@ -97,10 +97,10 @@ impl SfxBuilder {
     }
     #[must_use]
     /// Consume the builder and return a `PlaySoundBuilder` to configure playback
-    pub fn play(self) -> PlaySoundBuilder {
+    pub fn play(&self) -> PlaySoundBuilder {
         PlaySoundBuilder {
             sfx: Sfx {
-                path: self.path,
+                path: self.path.clone(),
                 volume: self.volume,
                 pitch: self.pitch,
                 time_offset: self.time_offset,
