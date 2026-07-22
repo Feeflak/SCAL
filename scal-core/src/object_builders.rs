@@ -1118,3 +1118,64 @@ impl LayoutBuilder {
 }
 
 impl_transform_methods!(LayoutBuilder);
+
+/// Create a new invisible padding/spacer object to add spacing between items in a layout.
+/// ```ignore
+/// layout()
+///     .direction(LayoutDir::Column)
+///     .gap(10.0)
+///     .item(rect1)
+///     .item(padding().height(30.0).build())
+///     .item(rect2)
+///     .build(),
+/// ```
+pub fn padding() -> PaddingBuilder {
+    PaddingBuilder::default()
+}
+
+#[must_use]
+pub struct PaddingBuilder {
+    size: Vec2,
+    transform: Transform,
+}
+
+impl Default for PaddingBuilder {
+    fn default() -> Self {
+        Self {
+            size: Vec2::ZERO,
+            transform: Transform::new(Vec3::ZERO),
+        }
+    }
+}
+
+#[allow(clippy::return_self_not_must_use)]
+impl PaddingBuilder {
+    /// Set the width of the padding
+    pub const fn width(mut self, w: f32) -> Self {
+        self.size.x = w;
+        self
+    }
+    /// Set the height of the padding
+    pub const fn height(mut self, h: f32) -> Self {
+        self.size.y = h;
+        self
+    }
+    /// Set the size of the padding
+    pub const fn size(mut self, size: Vec2) -> Self {
+        self.size = size;
+        self
+    }
+    #[must_use]
+    pub const fn build(self) -> AnimObj {
+        let id = self.transform.uuid;
+        AnimObj {
+            id,
+            transform: self.transform,
+            kind: AnimObjKind::Padding {
+                size: self.size,
+            },
+        }
+    }
+}
+
+impl_transform_methods!(PaddingBuilder);

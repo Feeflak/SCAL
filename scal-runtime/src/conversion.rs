@@ -356,6 +356,9 @@ fn convert_core_anim_obj(
         scal_core::anim_obj::AnimObjKind::Terminal { .. } => {
             bail!("Terminal should be handled by build_terminal_op")
         }
+        scal_core::anim_obj::AnimObjKind::Padding { size } => Ok(RenderObj(Box::new(
+            crate::anim_object::padding::Padding { size, transform },
+        ))),
         scal_core::anim_obj::AnimObjKind::Group { .. } => {
             bail!("Group object conversion not yet implemented")
         }

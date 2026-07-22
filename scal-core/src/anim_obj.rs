@@ -141,6 +141,9 @@ pub enum AnimObjKind {
         source_dir: Option<String>,
         startup_config: Option<String>,
     },
+    Padding {
+        size: Vec2,
+    },
     Group {
         children: Vec<AnimObj>,
     },

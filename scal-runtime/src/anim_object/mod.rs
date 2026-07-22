@@ -14,6 +14,7 @@ pub mod code_window;
 pub mod compose;
 pub mod image;
 pub mod object_trait;
+pub mod padding;
 pub mod primitive_shapes;
 pub mod render;
 pub mod svg;
