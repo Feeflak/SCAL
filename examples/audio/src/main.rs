@@ -94,11 +94,13 @@ fn fib(n: u32) -> u32 {
                 ],
                 click.play(),
             ],
+            click.play(),
             cw.transform
                 .scale()
                 .to(Vec2::ZERO)
                 .over(0.5)
                 .ease(Ease::OutCubic),
+            typing.play(),
             cw.transform
                 .position()
                 .to((WINDOW - vec2(CW_WIDTH, CW_HEIGHT)) / 2.)

@@ -2,8 +2,8 @@ use glam::{Vec2, Vec3};
 use uuid::Uuid;
 
 use crate::anim_obj::{
-    AnimObj, AnimObjKind, CodeHandle, CodeWindowHandle, StretchMode, Syntax, TerminalHandle,
-    TextAlign,
+    AnimObj, AnimObjKind, CodeHandle, CodeWindowHandle, ModificationType, StretchMode, Syntax,
+    TerminalHandle, TextAlign, TextModifier,
 };
 use crate::color::Color;
 use crate::theme::Theme;
@@ -508,6 +508,7 @@ pub struct TextBuilder {
     color: Color,
     font_size: f32,
     transform: Transform,
+    modifications: Vec<TextModifier>,
 }
 
 impl Default for TextBuilder {
@@ -519,6 +520,7 @@ impl Default for TextBuilder {
             color: Color::WHITE,
             font_size: 24.0,
             transform: Transform::new(Vec3::ZERO),
+            modifications: Vec::new(),
         }
     }
 }
@@ -549,6 +551,11 @@ impl TextBuilder {
         self.font_size = size;
         self
     }
+    /// Add a text modifier (shadow, outline, infill effect)
+    pub fn modifier(mut self, modifier: TextModifier) -> Self {
+        self.modifications.push(modifier);
+        self
+    }
     #[must_use]
     pub fn build(self) -> AnimObj {
         let id = self.transform.uuid;
@@ -561,12 +568,110 @@ impl TextBuilder {
                 alignment: self.alignment,
                 color: self.color,
                 font_size: self.font_size,
+                modifications: self.modifications,
             },
         }
     }
 }
 
 impl_transform_methods!(TextBuilder);
+
+/// Create a new text modifier builder for an outline effect.
+/// ```ignore
+/// text()
+///     .value("Hello")
+///     .modifier(
+///         text_outline()
+///             .color(Color::BLACK)
+///             .softness(1.0)
+///             .pos(Vec2::new(2.0, 2.0))
+///             .build()
+///     )
+///     .build(),
+/// ```
+pub fn text_outline() -> TextModifierBuilder {
+    TextModifierBuilder {
+        modification_type: ModificationType::Outline,
+        color: Color::BLACK,
+        softness: 0.0,
+        pos_offset: Vec3::ZERO,
+        rotation: 0.0,
+        scale: Vec2::ONE,
+    }
+}
+
+/// Create a new text modifier builder for an infill effect.
+/// ```ignore
+/// text()
+///     .value("Hello")
+///     .modifier(
+///         text_infill()
+///             .color(Color::new(0.0, 0.0, 0.0, 0.3))
+///             .build()
+///     )
+///     .build(),
+/// ```
+pub fn text_infill() -> TextModifierBuilder {
+    TextModifierBuilder {
+        modification_type: ModificationType::Infill,
+        color: Color::new(0.0, 0.0, 0.0, 0.3),
+        softness: 0.0,
+        pos_offset: Vec3::ZERO,
+        rotation: 0.0,
+        scale: Vec2::ONE,
+    }
+}
+
+/// Builder for constructing a [`TextModifier`].
+#[must_use]
+pub struct TextModifierBuilder {
+    modification_type: ModificationType,
+    color: Color,
+    softness: f32,
+    pos_offset: Vec3,
+    rotation: f32,
+    scale: Vec2,
+}
+
+#[allow(clippy::return_self_not_must_use)]
+impl TextModifierBuilder {
+    /// Set the color of the modifier effect
+    pub const fn color(mut self, color: Color) -> Self {
+        self.color = color;
+        self
+    }
+    /// Set the softness/blur amount. For outlines this expands the shape, for infills it contracts it.
+    pub const fn softness(mut self, softness: f32) -> Self {
+        self.softness = softness;
+        self
+    }
+    /// Set the 2D position offset relative to the text
+    pub const fn pos(mut self, pos: Vec2) -> Self {
+        self.pos_offset = pos.extend(self.pos_offset.z);
+        self
+    }
+    /// Set the rotation in degrees
+    pub const fn rot(mut self, rotation: f32) -> Self {
+        self.rotation = rotation;
+        self
+    }
+    /// Set the scale factor
+    pub const fn scale(mut self, scale: Vec2) -> Self {
+        self.scale = scale;
+        self
+    }
+    /// Build the modifier
+    pub const fn build(self) -> TextModifier {
+        TextModifier {
+            modification_type: self.modification_type,
+            color: self.color,
+            softness: self.softness,
+            pos_offset: self.pos_offset,
+            rotation: self.rotation,
+            scale: self.scale,
+        }
+    }
+}
 
 /// Create a new code window object builder.
 /// ```ignore

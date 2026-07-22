@@ -1,6 +1,6 @@
 use std::ops::Range;
 
-use glam::Vec2;
+use glam::{Vec2, Vec3};
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
@@ -68,6 +68,7 @@ pub enum AnimObjKind {
         alignment: TextAlign,
         color: Color,
         font_size: f32,
+        modifications: Vec<TextModifier>,
     },
     Code {
         source_code: String,
@@ -757,3 +758,29 @@ pub struct RectangleHandle(pub Uuid);
 impl_handle!(CircleHandle);
 impl_handle!(TextHandle);
 impl_handle!(RectangleHandle);
+
+/// The type of text modification effect.
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
+#[allow(missing_docs)]
+pub enum ModificationType {
+    Outline,
+    Infill,
+}
+
+/// A modification applied to text at creation time (shadow, outline, infill effect).
+/// Multiple modifications can be added to a single text object.
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct TextModifier {
+    /// Whether this is an outline or infill effect
+    pub modification_type: ModificationType,
+    /// The color of the modifier effect
+    pub color: Color,
+    /// Softness/blur amount - for outlines expands the shape, for infills contracts it
+    pub softness: f32,
+    /// Position offset relative to the text origin
+    pub pos_offset: Vec3,
+    /// Rotation in degrees
+    pub rotation: f32,
+    /// Scale factor
+    pub scale: Vec2,
+}

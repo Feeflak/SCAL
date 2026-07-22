@@ -36,3 +36,4 @@ target
 /flake.lock
 /examples/git_clone/test.mov
 /examples/git_clone/test.mov
+/examples/text/test.mov

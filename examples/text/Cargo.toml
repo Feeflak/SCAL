@@ -1,0 +1,9 @@
+[package]
+name = "text"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+scal-core = { path = "../../scal-core" }
+scal-ipc = { path = "../../scal-ipc" }
+glam = { version = "0.33.2" }

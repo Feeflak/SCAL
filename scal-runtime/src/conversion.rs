@@ -256,6 +256,7 @@ fn convert_core_anim_obj(
             alignment,
             color,
             font_size,
+            modifications,
         } => {
             let align = match alignment {
                 scal_core::anim_obj::TextAlign::Center => crate::anim_object::text::Align::Center,
@@ -271,6 +272,7 @@ fn convert_core_anim_obj(
                 font_size,
                 transform,
                 cached_size: None,
+                modifications,
             })))
         }
         scal_core::anim_obj::AnimObjKind::Svg {

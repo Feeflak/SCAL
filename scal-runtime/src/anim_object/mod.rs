@@ -80,6 +80,7 @@ pub fn text(
     alignment: Align,
     color: Color,
     font_size: f32,
+    modifications: Vec<scal_core::TextModifier>,
 ) -> DynAnimObj {
     DynAnimObj(Box::new(Text {
         id: transform.uuid,
@@ -90,6 +91,7 @@ pub fn text(
         font_size,
         transform,
         cached_size: None,
+        modifications,
     }))
 }
 

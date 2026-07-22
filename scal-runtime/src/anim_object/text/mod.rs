@@ -17,7 +17,7 @@ use crate::{
 use anyhow::{Context, Result};
 use cosmic_text::{Attrs, Buffer, Family, FontSystem, Metrics, Shaping};
 use glam::Vec2;
-use scal_core::Color;
+use scal_core::{Color, TextModifier as CoreTextModifier};
 use tree_sitter_highlight::Highlighter;
 use uuid::Uuid;
 /// RGBA
@@ -56,6 +56,7 @@ pub struct Text {
     pub font_size: f32,
     pub transform: Transform,
     pub cached_size: Option<Vec2>,
+    pub modifications: Vec<CoreTextModifier>,
 }
 
 impl AnimObjectTrait for Text {

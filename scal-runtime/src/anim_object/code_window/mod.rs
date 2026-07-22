@@ -167,6 +167,7 @@ pub fn code_window(
         Align::Left,
         b[5], // base05
         title_font_size,
+        vec![],
     );
 
     let mut code = Code::new(
