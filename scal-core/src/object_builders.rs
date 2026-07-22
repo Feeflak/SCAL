@@ -2,8 +2,8 @@ use glam::{Vec2, Vec3};
 use uuid::Uuid;
 
 use crate::anim_obj::{
-    AnimObj, AnimObjKind, CodeHandle, CodeWindowHandle, StretchMode, Syntax, TerminalHandle,
-    TextAlign, TextModifier,
+    Alignment, AnimObj, AnimObjKind, CodeHandle, CodeWindowHandle, LayoutDir, StretchMode, Syntax,
+    TerminalHandle, TextAlign, TextModifier,
 };
 use crate::color::Color;
 use crate::theme::Theme;
@@ -968,3 +968,153 @@ impl TerminalBuilder {
 }
 
 impl_transform_methods!(TerminalBuilder);
+
+/// Create a new layout container builder.
+/// ```ignore
+/// layout()
+///     .direction(LayoutDir::Column)
+///     .alignment(Alignment::Center)
+///     .gap(10.0)
+///     .padding(20.0)
+///     .background_color(Color::new(0.1, 0.1, 0.2, 1.0))
+///     .corner_radius(8.0)
+///     .item(rect1)
+///     .item(rect2)
+///     .build(),
+/// ```
+pub fn layout() -> LayoutBuilder {
+    LayoutBuilder::default()
+}
+
+#[must_use]
+pub struct LayoutBuilder {
+    children: Vec<AnimObj>,
+    direction: LayoutDir,
+    alignment: Alignment,
+    gap: f32,
+    padding_top: f32,
+    padding_bottom: f32,
+    padding_left: f32,
+    padding_right: f32,
+    min_width: f32,
+    min_height: f32,
+    background_color: Color,
+    corner_radius: f32,
+    transform: Transform,
+}
+
+impl Default for LayoutBuilder {
+    fn default() -> Self {
+        Self {
+            children: Vec::new(),
+            direction: LayoutDir::Column,
+            alignment: Alignment::Center,
+            gap: 0.0,
+            padding_top: 0.0,
+            padding_bottom: 0.0,
+            padding_left: 0.0,
+            padding_right: 0.0,
+            min_width: 0.0,
+            min_height: 0.0,
+            background_color: Color::new(0.15, 0.15, 0.2, 1.0),
+            corner_radius: 0.0,
+            transform: Transform::new(Vec3::ZERO),
+        }
+    }
+}
+
+#[allow(clippy::return_self_not_must_use)]
+impl LayoutBuilder {
+    /// Add an item to the layout
+    pub fn item(mut self, obj: AnimObj) -> Self {
+        self.children.push(obj);
+        self
+    }
+    /// Set the layout direction (column or row)
+    pub const fn direction(mut self, dir: LayoutDir) -> Self {
+        self.direction = dir;
+        self
+    }
+    /// Set the layout alignment
+    pub const fn alignment(mut self, align: Alignment) -> Self {
+        self.alignment = align;
+        self
+    }
+    /// Set the gap between items
+    pub const fn gap(mut self, gap: f32) -> Self {
+        self.gap = gap;
+        self
+    }
+    /// Set uniform padding on all sides
+    pub const fn padding(mut self, pad: f32) -> Self {
+        self.padding_top = pad;
+        self.padding_bottom = pad;
+        self.padding_left = pad;
+        self.padding_right = pad;
+        self
+    }
+    /// Set top padding
+    pub const fn padding_top(mut self, pad: f32) -> Self {
+        self.padding_top = pad;
+        self
+    }
+    /// Set bottom padding
+    pub const fn padding_bottom(mut self, pad: f32) -> Self {
+        self.padding_bottom = pad;
+        self
+    }
+    /// Set left padding
+    pub const fn padding_left(mut self, pad: f32) -> Self {
+        self.padding_left = pad;
+        self
+    }
+    /// Set right padding
+    pub const fn padding_right(mut self, pad: f32) -> Self {
+        self.padding_right = pad;
+        self
+    }
+    /// Set minimum width of the layout background
+    pub const fn min_width(mut self, w: f32) -> Self {
+        self.min_width = w;
+        self
+    }
+    /// Set minimum height of the layout background
+    pub const fn min_height(mut self, h: f32) -> Self {
+        self.min_height = h;
+        self
+    }
+    /// Set the background color
+    pub const fn background_color(mut self, color: Color) -> Self {
+        self.background_color = color;
+        self
+    }
+    /// Set the corner radius of the background rect
+    pub const fn corner_radius(mut self, radius: f32) -> Self {
+        self.corner_radius = radius;
+        self
+    }
+    #[must_use]
+    pub fn build(self) -> AnimObj {
+        let id = self.transform.uuid;
+        AnimObj {
+            id,
+            transform: self.transform,
+            kind: AnimObjKind::Layout {
+                children: self.children,
+                direction: self.direction,
+                alignment: self.alignment,
+                gap: self.gap,
+                padding_top: self.padding_top,
+                padding_bottom: self.padding_bottom,
+                padding_left: self.padding_left,
+                padding_right: self.padding_right,
+                min_width: self.min_width,
+                min_height: self.min_height,
+                background_color: self.background_color,
+                corner_radius: self.corner_radius,
+            },
+        }
+    }
+}
+
+impl_transform_methods!(LayoutBuilder);

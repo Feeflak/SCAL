@@ -144,6 +144,20 @@ pub enum AnimObjKind {
     Group {
         children: Vec<AnimObj>,
     },
+    Layout {
+        children: Vec<AnimObj>,
+        direction: LayoutDir,
+        alignment: Alignment,
+        gap: f32,
+        padding_top: f32,
+        padding_bottom: f32,
+        padding_left: f32,
+        padding_right: f32,
+        min_width: f32,
+        min_height: f32,
+        background_color: Color,
+        corner_radius: f32,
+    },
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
@@ -169,6 +183,21 @@ pub enum Syntax {
 pub enum StretchMode {
     Fit,
     Fill,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
+#[allow(missing_docs)]
+pub enum LayoutDir {
+    Column,
+    Row,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
+#[allow(missing_docs)]
+pub enum Alignment {
+    Start,
+    Center,
+    End,
 }
 
 /// Wrapper around the ``AnimObj`` struct that allows for clean animation construction for specific

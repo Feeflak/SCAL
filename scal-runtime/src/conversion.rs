@@ -2,7 +2,14 @@ use anyhow::{Result, bail};
 use scal_core::{CodeAnimationStyle, Sfx, Theme};
 
 use crate::{
-    anim_object::{code_window, text::Align},
+    anim_object::{
+        code_window,
+        compose::{
+            Alignment as RuntimeAlignment, LayoutBackground, LayoutDir as RuntimeLayoutDir,
+            LayoutItem, PinPoint,
+        },
+        text::Align,
+    },
     anim_op::AnimOperation,
 };
 fn convert_anim_op(
@@ -38,6 +45,12 @@ fn convert_anim_op(
                 op
             } else if let scal_core::anim_obj::AnimObjKind::Terminal { .. } = &core_obj.kind {
                 let mut op = build_terminal_op(*core_obj, default_theme)?;
+                if let AnimOperation::Instantiate(_, ref mut l) = op {
+                    *l = loc;
+                }
+                op
+            } else if let scal_core::anim_obj::AnimObjKind::Layout { .. } = &core_obj.kind {
+                let mut op = build_layout_op(*core_obj, default_theme)?;
                 if let AnimOperation::Instantiate(_, ref mut l) = op {
                     *l = loc;
                 }
@@ -346,6 +359,92 @@ fn convert_core_anim_obj(
         scal_core::anim_obj::AnimObjKind::Group { .. } => {
             bail!("Group object conversion not yet implemented")
         }
+        scal_core::anim_obj::AnimObjKind::Layout { .. } => {
+            bail!("Layout should be handled by build_layout_op")
+        }
+    }
+}
+
+fn build_layout_op(
+    obj: scal_core::AnimObj,
+    default_theme: &scal_core::Theme,
+) -> Result<AnimOperation> {
+    let layout_result = build_layout_result_from_core(obj, default_theme)?;
+    Ok(layout_result.instantiate())
+}
+
+fn build_layout_result_from_core(
+    obj: scal_core::AnimObj,
+    default_theme: &scal_core::Theme,
+) -> Result<crate::anim_object::compose::LayoutResult> {
+    use scal_core::anim_obj::{Alignment as CoreAlignment, AnimObjKind, LayoutDir as CoreLayoutDir};
+    if let AnimObjKind::Layout {
+        children,
+        direction,
+        alignment,
+        gap,
+        padding_top,
+        padding_bottom,
+        padding_left,
+        padding_right,
+        min_width,
+        min_height,
+        background_color,
+        corner_radius,
+    } = obj.kind
+    {
+        let mut items = Vec::with_capacity(children.len());
+        for child in children {
+            items.push(convert_to_layout_item(child, default_theme)?);
+        }
+
+        let layout_dir = match direction {
+            CoreLayoutDir::Column => RuntimeLayoutDir::Column,
+            CoreLayoutDir::Row => RuntimeLayoutDir::Row,
+        };
+        let align = match alignment {
+            CoreAlignment::Start => RuntimeAlignment::Start,
+            CoreAlignment::Center => RuntimeAlignment::Center,
+            CoreAlignment::End => RuntimeAlignment::End,
+        };
+
+        Ok(crate::anim_object::compose::layout(
+            obj.transform.position,
+            PinPoint::C,
+            items,
+            LayoutBackground {
+                color: background_color,
+                corner_radius,
+            },
+            layout_dir,
+            align,
+            gap,
+            padding_top,
+            padding_bottom,
+            padding_left,
+            padding_right,
+            min_width,
+            min_height,
+        ))
+    } else {
+        bail!("build_layout_result_from_core called on non-Layout kind")
+    }
+}
+
+fn convert_to_layout_item(
+    child: scal_core::AnimObj,
+    default_theme: &scal_core::Theme,
+) -> Result<LayoutItem> {
+    let is_layout = matches!(
+        child.kind,
+        scal_core::anim_obj::AnimObjKind::Layout { .. }
+    );
+    if is_layout {
+        let layout_result = build_layout_result_from_core(child, default_theme)?;
+        Ok(LayoutItem::Layout(layout_result))
+    } else {
+        let dyn_obj = convert_core_anim_obj(child, default_theme)?;
+        Ok(LayoutItem::Object(dyn_obj))
     }
 }
 
