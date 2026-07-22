@@ -2,8 +2,8 @@ use glam::{Vec2, Vec3};
 use uuid::Uuid;
 
 use crate::anim_obj::{
-    AnimObj, AnimObjKind, CodeHandle, CodeWindowHandle, ModificationType, StretchMode, Syntax,
-    TerminalHandle, TextAlign, TextModifier,
+    AnimObj, AnimObjKind, CodeHandle, CodeWindowHandle, StretchMode, Syntax, TerminalHandle,
+    TextAlign, TextModifier,
 };
 use crate::color::Color;
 use crate::theme::Theme;
@@ -576,45 +576,24 @@ impl TextBuilder {
 
 impl_transform_methods!(TextBuilder);
 
-/// Create a new text modifier builder for an outline effect.
+/// Create a new text modifier builder for a shadow, outline, or glow effect.
 /// ```ignore
 /// text()
 ///     .value("Hello")
 ///     .modifier(
-///         text_outline()
+///         text_modifier()
 ///             .color(Color::BLACK)
-///             .softness(1.0)
-///             .pos(Vec2::new(2.0, 2.0))
+///             .thickness(2.0)
+///             .softness(4.0)
+///             .pos(Vec2::new(3.0, 3.0))
 ///             .build()
 ///     )
 ///     .build(),
 /// ```
-pub fn text_outline() -> TextModifierBuilder {
+pub fn text_modifier() -> TextModifierBuilder {
     TextModifierBuilder {
-        modification_type: ModificationType::Outline,
         color: Color::BLACK,
-        softness: 0.0,
-        pos_offset: Vec3::ZERO,
-        rotation: 0.0,
-        scale: Vec2::ONE,
-    }
-}
-
-/// Create a new text modifier builder for an infill effect.
-/// ```ignore
-/// text()
-///     .value("Hello")
-///     .modifier(
-///         text_infill()
-///             .color(Color::new(0.0, 0.0, 0.0, 0.3))
-///             .build()
-///     )
-///     .build(),
-/// ```
-pub fn text_infill() -> TextModifierBuilder {
-    TextModifierBuilder {
-        modification_type: ModificationType::Infill,
-        color: Color::new(0.0, 0.0, 0.0, 0.3),
+        thickness: 0.0,
         softness: 0.0,
         pos_offset: Vec3::ZERO,
         rotation: 0.0,
@@ -625,8 +604,8 @@ pub fn text_infill() -> TextModifierBuilder {
 /// Builder for constructing a [`TextModifier`].
 #[must_use]
 pub struct TextModifierBuilder {
-    modification_type: ModificationType,
     color: Color,
+    thickness: f32,
     softness: f32,
     pos_offset: Vec3,
     rotation: f32,
@@ -640,7 +619,14 @@ impl TextModifierBuilder {
         self.color = color;
         self
     }
-    /// Set the softness/blur amount. For outlines this expands the shape, for infills it contracts it.
+    /// Set the thickness of the effect — positive expands outward (shadow/outline),
+    /// negative contracts inward (inset).
+    pub const fn thickness(mut self, thickness: f32) -> Self {
+        self.thickness = thickness;
+        self
+    }
+    /// Set the softness/blur amount. Higher values produce softer, more diffuse edges
+    /// (useful for soft shadows and glows).
     pub const fn softness(mut self, softness: f32) -> Self {
         self.softness = softness;
         self
@@ -663,8 +649,8 @@ impl TextModifierBuilder {
     /// Build the modifier
     pub const fn build(self) -> TextModifier {
         TextModifier {
-            modification_type: self.modification_type,
             color: self.color,
+            thickness: self.thickness,
             softness: self.softness,
             pos_offset: self.pos_offset,
             rotation: self.rotation,

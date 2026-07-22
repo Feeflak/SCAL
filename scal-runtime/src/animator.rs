@@ -320,7 +320,7 @@ mod tests {
     }
 
     fn make_animator() -> Animator {
-        let anim = AnimOperation::Wait(0.0, None);
+        let anim = AnimOperation::Wait(0.001, None);
         let camera = Camera::new(Vec2::new(100.0, 100.0), Vec2::ZERO, 1.0);
         Animator::new(vec![anim], 60, camera, 1.0).unwrap()
     }

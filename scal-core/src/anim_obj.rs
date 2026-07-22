@@ -759,23 +759,20 @@ impl_handle!(CircleHandle);
 impl_handle!(TextHandle);
 impl_handle!(RectangleHandle);
 
-/// The type of text modification effect.
-#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
-#[allow(missing_docs)]
-pub enum ModificationType {
-    Outline,
-    Infill,
-}
-
-/// A modification applied to text at creation time (shadow, outline, infill effect).
+/// A modification applied to text at creation time (shadow, outline, glow, etc.).
 /// Multiple modifications can be added to a single text object.
+///
+/// Positive `thickness` expands the shape outward (like an outline or drop shadow).
+/// Negative `thickness` contracts it inward (like an inset shadow).
+/// `softness` controls how blurry/feathered the edges appear by layering copies
+/// at decreasing opacity.
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct TextModifier {
-    /// Whether this is an outline or infill effect
-    pub modification_type: ModificationType,
     /// The color of the modifier effect
     pub color: Color,
-    /// Softness/blur amount - for outlines expands the shape, for infills contracts it
+    /// How many units the shape is expanded (positive) or contracted (negative)
+    pub thickness: f32,
+    /// Softness/blur amount — higher values produce softer, more diffuse edges
     pub softness: f32,
     /// Position offset relative to the text origin
     pub pos_offset: Vec3,

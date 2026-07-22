@@ -1,4 +1,4 @@
-use scal_core::{Color, ModificationType, TextModifier as CoreTextModifier};
+use scal_core::{Color, TextModifier};
 
 use crate::{
     anim_object::{
@@ -18,6 +18,28 @@ struct GlyphQuad {
     uv_max: Vec2,
     is_color: bool,
 }
+
+const SOFTNESS_LAYERS: usize = 5;
+const OUTLINE_DIRS: usize = 16;
+
+const OUTLINE_DIR_VECTORS: [(f32, f32); OUTLINE_DIRS] = [
+    (1.0, 0.0),
+    (0.92388, 0.382683),
+    (0.707107, 0.707107),
+    (0.382683, 0.92388),
+    (0.0, 1.0),
+    (-0.382683, 0.92388),
+    (-0.707107, 0.707107),
+    (-0.92388, 0.382683),
+    (-1.0, 0.0),
+    (-0.92388, -0.382683),
+    (-0.707107, -0.707107),
+    (-0.382683, -0.92388),
+    (0.0, -1.0),
+    (0.382683, -0.92388),
+    (0.707107, -0.707107),
+    (0.92388, -0.382683),
+];
 
 pub fn generate_text_mesh(
     manager: &mut TextManager,
@@ -74,7 +96,7 @@ pub fn generate_text_mesh(
     let mut indices = vec![];
 
     for modifier in &text.modifications {
-        emit_modifier_quads(&modifier, &quads, center, &mut vertices, &mut indices);
+        emit_modifier_quads(modifier, &quads, center, &mut vertices, &mut indices);
     }
 
     emit_base_quads(text.color, &quads, center, &mut vertices, &mut indices);
@@ -147,7 +169,7 @@ fn emit_base_quads(
 }
 
 fn emit_modifier_quads(
-    modifier: &CoreTextModifier,
+    modifier: &TextModifier,
     quads: &[GlyphQuad],
     center: Vec2,
     vertices: &mut Vec<Vertex>,
@@ -157,47 +179,76 @@ fn emit_modifier_quads(
     let cos = rot_rad.cos();
     let sin = rot_rad.sin();
 
-    for q in quads {
-        let color = if q.is_color { Color::WHITE } else { modifier.color };
+    let abs_thickness = modifier.thickness.abs();
 
-        let (qx, qy, qw, qh) = match modifier.modification_type {
-            ModificationType::Outline => {
-                let s = modifier.softness;
-                (q.x - s, q.y - s, q.w + 2.0 * s, q.h + 2.0 * s)
-            }
-            ModificationType::Infill => {
-                let s = modifier.softness;
-                (q.x + s, q.y + s, (q.w - 2.0 * s).max(0.1), (q.h - 2.0 * s).max(0.1))
-            }
+    let layer_count = if modifier.softness > 0.0 && abs_thickness > 0.0 {
+        SOFTNESS_LAYERS
+    } else {
+        1
+    };
+
+    for layer in 0..layer_count {
+        let t = if layer_count > 1 {
+            layer as f32 / (layer_count as f32 - 1.0)
+        } else {
+            0.0
         };
 
-        let mut cx = qx + qw * 0.5;
-        let mut cy = qy + qh * 0.5;
+        let radius = abs_thickness + modifier.softness * t;
 
-        let dx = cx - center.x;
-        let dy = cy - center.y;
-        let sx = dx * modifier.scale.x;
-        let sy = dy * modifier.scale.y;
-        let rx = sx * cos - sy * sin;
-        let ry = sx * sin + sy * cos;
-        cx = center.x + rx;
-        cy = center.y + ry;
-        let final_w = qw * modifier.scale.x;
-        let final_h = qh * modifier.scale.y;
-
-        let x0 = cx - final_w * 0.5 + modifier.pos_offset.x;
-        let y0 = cy - final_h * 0.5 + modifier.pos_offset.y;
-
-        emit_quad(
-            x0 - center.x,
-            y0 - center.y,
-            final_w,
-            final_h,
-            color,
-            q.uv_min,
-            q.uv_max,
-            vertices,
-            indices,
+        let layer_alpha = if layer_count > 1 {
+            let weight = 1.0 - t * 0.8;
+            let weight_sum = 3.0;
+            modifier.color.a * weight / weight_sum
+        } else {
+            modifier.color.a
+        };
+        let layer_color = Color::new(
+            modifier.color.r,
+            modifier.color.g,
+            modifier.color.b,
+            layer_alpha,
         );
+
+        for q in quads {
+            let color = if q.is_color { Color::WHITE } else { layer_color };
+
+            let q_cx = q.x + q.w * 0.5;
+            let q_cy = q.y + q.h * 0.5;
+
+            for &(dir_x, dir_y) in &OUTLINE_DIR_VECTORS {
+                let ox = q_cx + dir_x * radius;
+                let oy = q_cy + dir_y * radius;
+
+                let qx = ox - q.w * 0.5;
+                let qy = oy - q.h * 0.5;
+
+                let dx = qx + q.w * 0.5 - center.x;
+                let dy = qy + q.h * 0.5 - center.y;
+                let sx = dx * modifier.scale.x;
+                let sy = dy * modifier.scale.y;
+                let rx = sx * cos - sy * sin;
+                let ry = sx * sin + sy * cos;
+                let final_cx = center.x + rx;
+                let final_cy = center.y + ry;
+                let final_w = q.w * modifier.scale.x;
+                let final_h = q.h * modifier.scale.y;
+
+                let x0 = final_cx - final_w * 0.5 + modifier.pos_offset.x;
+                let y0 = final_cy - final_h * 0.5 + modifier.pos_offset.y;
+
+                emit_quad(
+                    x0 - center.x,
+                    y0 - center.y,
+                    final_w,
+                    final_h,
+                    color,
+                    q.uv_min,
+                    q.uv_max,
+                    vertices,
+                    indices,
+                );
+            }
+        }
     }
 }

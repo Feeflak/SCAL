@@ -79,6 +79,11 @@ impl AnimOperation {
     }
 }
 
+fn ensure_duration(d: Time, label: &str) -> Result<()> {
+    anyhow::ensure!(d > 0.0, "{label} duration must be > 0, got {d}");
+    Ok(())
+}
+
 pub fn resolve_op(op: AnimOperation) -> Result<Animation> {
     Ok(match op {
         AnimOperation::Instantiate(anim_obj, _loc) => {
@@ -90,6 +95,7 @@ pub fn resolve_op(op: AnimOperation) -> Result<Animation> {
         }
         AnimOperation::TransformMovePos(uuid, pos, duration, curve, _loc) => {
             debug!("TransformMovePos uuid={uuid}");
+            ensure_duration(duration, "TransformMovePos")?;
             transform::move_pos(uuid, pos, duration, curve)
         }
         AnimOperation::TransformMoveToObj(
@@ -101,6 +107,7 @@ pub fn resolve_op(op: AnimOperation) -> Result<Animation> {
             _loc,
         ) => {
             debug!("TransformMoveToObj moving={moving_uuid} target={target_uuid}");
+            ensure_duration(duration, "TransformMoveToObj")?;
             Animation::new(
                 duration,
                 curve,
@@ -128,36 +135,48 @@ pub fn resolve_op(op: AnimOperation) -> Result<Animation> {
         }
         AnimOperation::TransformRotate(uuid, target, duration, curve, _loc) => {
             debug!("TransformRotate uuid={uuid}");
+            ensure_duration(duration, "TransformRotate")?;
             transform::rotate_to(uuid, target, duration, curve)
         }
         AnimOperation::TransformScale(uuid, target, duration, curve, _loc) => {
             debug!("TransformScale uuid={uuid}");
+            ensure_duration(duration, "TransformScale")?;
             transform::scale_to(uuid, target, duration, curve)
         }
 
         AnimOperation::CodeAddLines(uuid, text, from_line, duration, curve, style, _loc) => {
             debug!("CodeAddLines uuid={uuid}");
-
+            ensure_duration(duration, "CodeAddLines")?;
             code::add_lines(uuid, text, from_line, duration, curve, style)
         }
         AnimOperation::CodeModifyLine(uuid, line, new_text, duration, curve, style, _loc) => {
             debug!("CodeModifyLine uuid={uuid}");
+            ensure_duration(duration, "CodeModifyLine")?;
             code::modify_line(uuid, line, new_text, duration, curve, style)
         }
         AnimOperation::CodeRemoveLines(uuid, lines, duration, curve, style, _loc) => {
             debug!("CodeRemoveLines uuid={uuid}");
+            ensure_duration(duration, "CodeRemoveLines")?;
             code::remove_lines(uuid, lines, duration, curve, style)
         }
         AnimOperation::CodeHighlight(uuid, action, _loc) => {
             let (duration, curve) = action.duration_and_curve();
+            ensure_duration(duration, "CodeHighlight")?;
             code::highlight_fade_in(uuid, action, duration, curve)
         }
         AnimOperation::TerminalTypeInput(uuid, command, display_override, captured_output, captured_prompt, duration, curve, style, _loc) => {
             debug!("TerminalTypeInput uuid={uuid}");
+            ensure_duration(duration, "TerminalTypeInput")?;
             self::terminal::type_input(uuid, command, display_override, captured_output, captured_prompt, duration, curve, style)
         }
         AnimOperation::TerminalOutput(uuid, action, duration, curve, style, _loc) => {
             debug!("TerminalOutput uuid={uuid} action={action:?}");
+            match action {
+                TerminalOutputAction::Pull(_) | TerminalOutputAction::PullAll | TerminalOutputAction::PullLine => {
+                    ensure_duration(duration, "TerminalOutput")?;
+                }
+                _ => {}
+            }
             self::terminal::output(uuid, action, duration, curve, style)
         }
         AnimOperation::All(anim_ops, _loc) => get_all_animation(anim_ops)?,
@@ -180,12 +199,15 @@ pub fn resolve_op(op: AnimOperation) -> Result<Animation> {
         //     animator.animations_left.push(anim_op);
         //     Ok(())
         // })),
-        AnimOperation::Wait(duration, _loc) => Animation::new(
-            duration,
-            Ease::Linear,
-            Box::new(|_, _| Ok(())),
-            Some(Box::new(|_, _, _| Ok(()))),
-        ),
+        AnimOperation::Wait(duration, _loc) => {
+            ensure_duration(duration, "Wait")?;
+            Animation::new(
+                duration,
+                Ease::Linear,
+                Box::new(|_, _| Ok(())),
+                Some(Box::new(|_, _, _| Ok(()))),
+            )
+        }
         AnimOperation::PlaySound(_, _, _) => Animation::instant(Box::new(|_, _| Ok(()))),
     })
 }
