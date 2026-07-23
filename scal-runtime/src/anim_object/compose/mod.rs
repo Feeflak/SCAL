@@ -82,6 +82,7 @@ pub struct LayoutContainer {
     pub gap: f32,
     pub direction: LayoutDir,
     pub alignment: Alignment,
+    pub main_alignment: Alignment,
     pub min_width: f32,
     pub min_height: f32,
 }
@@ -92,6 +93,7 @@ impl LayoutContainer {
         child_uuids: Vec<Uuid>,
         direction: LayoutDir,
         alignment: Alignment,
+        main_alignment: Alignment,
         gap: f32,
         padding_top: f32,
         padding_bottom: f32,
@@ -106,6 +108,7 @@ impl LayoutContainer {
             child_uuids,
             direction,
             alignment,
+            main_alignment,
             gap,
             padding_top,
             padding_bottom,
@@ -122,6 +125,7 @@ impl LayoutContainer {
         child_uuids: Vec<Uuid>,
         direction: LayoutDir,
         alignment: Alignment,
+        main_alignment: Alignment,
         gap: f32,
         padding_top: f32,
         padding_bottom: f32,
@@ -145,6 +149,7 @@ impl LayoutContainer {
             child_uuids,
             direction,
             alignment,
+            main_alignment,
             gap,
             padding_top,
             padding_bottom,
@@ -236,11 +241,37 @@ fn relayout_nested_children(bg_size: Vec2, container: &LayoutContainer, items: &
     let content_bottom = bg_size.y / 2.0 - container.padding_bottom;
     let content_top = -bg_size.y / 2.0 + container.padding_top;
 
-    let mut y = content_top;
-    let mut x = content_left;
+    let sizes: Vec<Vec2> = items.iter().map(|c| c.size()).collect();
+    let gaps = container.gap * (items.len() as f32 - 1.0).max(0.0);
 
-    for (_i, child) in items.iter_mut().enumerate() {
-        let s = child.size();
+    let (start_y, start_x) = match container.direction {
+        LayoutDir::Column => {
+            let total_content_h: f32 = sizes.iter().map(|s| s.y).sum();
+            let content_size = content_bottom - content_top;
+            let start = match container.main_alignment {
+                Alignment::Start => content_top,
+                Alignment::Center => content_top + (content_size - (total_content_h + gaps)) / 2.0,
+                Alignment::End => content_bottom - (total_content_h + gaps),
+            };
+            (start, content_left)
+        }
+        LayoutDir::Row => {
+            let total_content_w: f32 = sizes.iter().map(|s| s.x).sum();
+            let content_size = content_right - content_left;
+            let start = match container.main_alignment {
+                Alignment::Start => content_left,
+                Alignment::Center => content_left + (content_size - (total_content_w + gaps)) / 2.0,
+                Alignment::End => content_right - (total_content_w + gaps),
+            };
+            (content_top, start)
+        }
+    };
+
+    let mut y = start_y;
+    let mut x = start_x;
+
+    for (i, child) in items.iter_mut().enumerate() {
+        let s = sizes[i];
         let (child_x, child_y) = match container.direction {
             LayoutDir::Column => {
                 let cx = match container.alignment {
@@ -274,6 +305,7 @@ pub fn layout(
     background: LayoutBackground,
     layout_dir: LayoutDir,
     alignment: Alignment,
+    main_alignment: Alignment,
     gap: f32,
     padding_top: f32,
     padding_bottom: f32,
@@ -289,6 +321,7 @@ pub fn layout(
         background,
         layout_dir,
         alignment,
+        main_alignment,
         gap,
         padding_top,
         padding_bottom,
@@ -308,6 +341,7 @@ pub fn layout_with_ids(
     background: LayoutBackground,
     layout_dir: LayoutDir,
     alignment: Alignment,
+    main_alignment: Alignment,
     gap: f32,
     padding_top: f32,
     padding_bottom: f32,
@@ -332,11 +366,23 @@ pub fn layout_with_ids(
 
     let sizes: Vec<Vec2> = anim_items.iter().map(|item| item.size()).collect();
 
-    let max_w = sizes.iter().map(|s| s.x).fold(0.0f32, f32::max);
-    let content_h: f32 = sizes.iter().map(|s| s.y).sum();
     let gaps = gap * (anim_items.len() as f32 - 1.0).max(0.0);
-    let total_w = (max_w + padding_left + padding_right).max(min_width);
-    let total_h = (content_h + padding_top + padding_bottom + gaps).max(min_height);
+    let (total_w, total_h) = match layout_dir {
+        LayoutDir::Row => {
+            let content_w: f32 = sizes.iter().map(|s| s.x).sum();
+            let max_h = sizes.iter().map(|s| s.y).fold(0.0f32, f32::max);
+            let total_w = (content_w + padding_left + padding_right + gaps).max(min_width);
+            let total_h = (max_h + padding_top + padding_bottom).max(min_height);
+            (total_w, total_h)
+        }
+        LayoutDir::Column => {
+            let max_w = sizes.iter().map(|s| s.x).fold(0.0f32, f32::max);
+            let content_h: f32 = sizes.iter().map(|s| s.y).sum();
+            let total_w = (max_w + padding_left + padding_right).max(min_width);
+            let total_h = (content_h + padding_top + padding_bottom + gaps).max(min_height);
+            (total_w, total_h)
+        }
+    };
 
     let mut bg = match bg_uuid_override {
         Some(u) => crate::anim_object::rectangle(
@@ -363,6 +409,7 @@ pub fn layout_with_ids(
             child_uuids,
             layout_dir,
             alignment,
+            main_alignment,
             gap,
             padding_top,
             padding_bottom,
@@ -376,6 +423,7 @@ pub fn layout_with_ids(
             child_uuids,
             layout_dir,
             alignment,
+            main_alignment,
             gap,
             padding_top,
             padding_bottom,
@@ -388,11 +436,14 @@ pub fn layout_with_ids(
     let container_uuid = container_inner.id;
     let container_obj = DynAnimObj(Box::new(container_inner));
 
-    // Stretch Rectangle children to fill total width and center them at background center
+    // Stretch Rectangle children to fill the cross-axis of the layout
     let mut sizes = sizes;
     for (i, item) in anim_items.iter_mut().enumerate() {
         if let Some(rect) = item.as_any_mut().downcast_mut::<Rectangle>() {
-            rect.size.x = total_w;
+            match layout_dir {
+                LayoutDir::Column => rect.size.x = total_w,
+                LayoutDir::Row => rect.size.y = total_h - padding_top - padding_bottom,
+            }
         }
         sizes[i] = item.size();
     }
@@ -423,7 +474,15 @@ pub fn layout_with_ids(
 
     match layout_dir {
         LayoutDir::Column => {
-            let mut y = content_top;
+            let total_h_content: f32 = sizes.iter().map(|s| s.y).sum();
+            let content_size_y = content_bottom - content_top;
+            let mut y = match main_alignment {
+                Alignment::Start => content_top,
+                Alignment::Center => {
+                    content_top + (content_size_y - (total_h_content + gaps)) / 2.0
+                }
+                Alignment::End => content_bottom - (total_h_content + gaps),
+            };
             for (i, item) in anim_items.iter_mut().enumerate() {
                 let s = sizes[i];
                 let is_stretched = item.as_any().downcast_ref::<Rectangle>().is_some();
@@ -459,7 +518,15 @@ pub fn layout_with_ids(
             }
         }
         LayoutDir::Row => {
-            let mut x = content_left;
+            let total_w_content: f32 = sizes.iter().map(|s| s.x).sum();
+            let content_size_x = content_right - content_left;
+            let mut x = match main_alignment {
+                Alignment::Start => content_left,
+                Alignment::Center => {
+                    content_left + (content_size_x - (total_w_content + gaps)) / 2.0
+                }
+                Alignment::End => content_right - (total_w_content + gaps),
+            };
             for (i, item) in anim_items.iter_mut().enumerate() {
                 let s = sizes[i];
                 let is_stretched = item.as_any().downcast_ref::<Rectangle>().is_some();

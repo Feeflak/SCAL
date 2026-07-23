@@ -616,6 +616,9 @@ fn reload_animation(
     let project: scal_core::Project =
         bincode::deserialize(&rest[..len]).context("Failed to deserialize project")?;
 
+    preview.background_color = project.scene_settings.background_color;
+    preview.camera = project.scene_settings.camera;
+
     let render_animations = convert_anim_ops(project.timeline, default_theme)?;
     preview.reload(render_animations)?;
 
@@ -763,6 +766,7 @@ fn op_label(op: &AnimOperation) -> &'static str {
         AnimOperation::Wait(..) => "Wait",
         AnimOperation::TerminalTypeInput(..) => "Type Input",
         AnimOperation::TerminalOutput(..) => "Output",
+        AnimOperation::ObjectColor(..) => "Color",
         AnimOperation::PlaySound(..) => "Sound",
     }
 }
@@ -779,6 +783,7 @@ fn op_kind(op: &AnimOperation) -> OpKind {
         | AnimOperation::CodeRemoveLines(..)
         | AnimOperation::CodeHighlight(..) => OpKind::Code,
         AnimOperation::TerminalTypeInput(..) | AnimOperation::TerminalOutput(..) => OpKind::Terminal,
+        AnimOperation::ObjectColor(..) => OpKind::Transform,
         AnimOperation::All(..) | AnimOperation::Sequence(..) => OpKind::Composite,
         AnimOperation::Wait(..) => OpKind::Wait,
         AnimOperation::PlaySound(..) => OpKind::Sound,
@@ -810,6 +815,7 @@ fn op_source_loc(op: &AnimOperation) -> Option<scal_core::SourceLoc> {
         | AnimOperation::CodeHighlight(_, _, loc)
         | AnimOperation::TerminalTypeInput(_, _, _, _, _, _, _, _, loc)
         | AnimOperation::TerminalOutput(_, _, _, _, _, loc)
+        | AnimOperation::ObjectColor(_, _, _, _, loc)
         | AnimOperation::All(_, loc)
         | AnimOperation::Sequence(_, loc)
         | AnimOperation::Wait(_, loc)
@@ -849,6 +855,7 @@ pub fn flatten_ops(ops: &[AnimOperation]) -> (Vec<TimelineOp>, f32) {
                 }
                 AnimOperation::TerminalTypeInput(_, _, _, _, _, d, _, _, _)
                 | AnimOperation::TerminalOutput(_, _, d, _, _, _) => time += d,
+                AnimOperation::ObjectColor(_, _, d, _, _) => time += d,
                 AnimOperation::PlaySound(_, _, _) => {}
                 AnimOperation::Instantiate(..) => {}
             }

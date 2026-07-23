@@ -90,6 +90,9 @@ fn convert_anim_op(
         scal_core::AnimOP::TerminalOutput(u, action, d, e, style, loc) => {
             AnimOperation::TerminalOutput(u, action, d, e, style, loc)
         }
+        scal_core::AnimOP::ObjectColor(u, c, d, e, loc) => {
+            AnimOperation::ObjectColor(u, c, d, e, loc)
+        }
     })
 }
 
@@ -385,6 +388,7 @@ fn build_layout_result_from_core(
         children,
         direction,
         alignment,
+        main_alignment,
         gap,
         padding_top,
         padding_bottom,
@@ -410,6 +414,11 @@ fn build_layout_result_from_core(
             CoreAlignment::Center => RuntimeAlignment::Center,
             CoreAlignment::End => RuntimeAlignment::End,
         };
+        let main_align = match main_alignment {
+            CoreAlignment::Start => RuntimeAlignment::Start,
+            CoreAlignment::Center => RuntimeAlignment::Center,
+            CoreAlignment::End => RuntimeAlignment::End,
+        };
 
         Ok(crate::anim_object::compose::layout(
             obj.transform.position,
@@ -421,6 +430,7 @@ fn build_layout_result_from_core(
             },
             layout_dir,
             align,
+            main_align,
             gap,
             padding_top,
             padding_bottom,

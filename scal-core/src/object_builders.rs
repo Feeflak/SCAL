@@ -991,6 +991,7 @@ pub struct LayoutBuilder {
     children: Vec<AnimObj>,
     direction: LayoutDir,
     alignment: Alignment,
+    main_alignment: Alignment,
     gap: f32,
     padding_top: f32,
     padding_bottom: f32,
@@ -1009,6 +1010,7 @@ impl Default for LayoutBuilder {
             children: Vec::new(),
             direction: LayoutDir::Column,
             alignment: Alignment::Center,
+            main_alignment: Alignment::Start,
             gap: 0.0,
             padding_top: 0.0,
             padding_bottom: 0.0,
@@ -1035,9 +1037,14 @@ impl LayoutBuilder {
         self.direction = dir;
         self
     }
-    /// Set the layout alignment
+    /// Set the cross-axis alignment for items
     pub const fn alignment(mut self, align: Alignment) -> Self {
         self.alignment = align;
+        self
+    }
+    /// Set the main-axis alignment for items
+    pub const fn main_alignment(mut self, align: Alignment) -> Self {
+        self.main_alignment = align;
         self
     }
     /// Set the gap between items
@@ -1103,6 +1110,7 @@ impl LayoutBuilder {
                 children: self.children,
                 direction: self.direction,
                 alignment: self.alignment,
+                main_alignment: self.main_alignment,
                 gap: self.gap,
                 padding_top: self.padding_top,
                 padding_bottom: self.padding_bottom,

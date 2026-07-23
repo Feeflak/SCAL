@@ -232,7 +232,8 @@ async fn run_loop(
             | AnimOperation::TransformRotate(_, _, dur, _, _)
             | AnimOperation::TransformScale(_, _, dur, _, _)
             | AnimOperation::TerminalTypeInput(_, _, _, _, _, dur, _, _, _)
-            | AnimOperation::TerminalOutput(_, _, dur, _, _, _) => start_time + dur,
+            | AnimOperation::TerminalOutput(_, _, dur, _, _, _)
+            | AnimOperation::ObjectColor(_, _, dur, _, _) => start_time + dur,
             AnimOperation::CodeHighlight(_, action, _) => {
                 start_time + action.duration_and_curve().0
             }

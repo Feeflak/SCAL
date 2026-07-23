@@ -3,6 +3,7 @@ use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
 use crate::anim_op::{AnimOP, IntoAnimOp};
+use crate::color::Color;
 use crate::ease::Ease;
 use crate::seconds::Time;
 
@@ -249,6 +250,53 @@ impl From<RotateBuilder> for AnimOP {
 }
 
 impl IntoAnimOp for RotateBuilder {
+    fn into_anim_op(self) -> AnimOP {
+        self.into()
+    }
+}
+
+/// Builder for an animation that changes an object's color
+pub struct ColorBuilder {
+    pub(crate) uuid: Uuid,
+    pub(crate) target: Option<Color>,
+    pub(crate) duration: Time,
+    pub(crate) ease: Ease,
+}
+
+#[allow(clippy::return_self_not_must_use)]
+impl ColorBuilder {
+    /// Set the target color
+    pub const fn to(mut self, target: Color) -> Self {
+        self.target = Some(target);
+        self
+    }
+
+    /// Set the duration of the color animation
+    pub const fn over(mut self, duration: Time) -> Self {
+        self.duration = duration;
+        self
+    }
+
+    /// Set the easing function and return the animation
+    pub fn ease(mut self, ease: Ease) -> AnimOP {
+        self.ease = ease;
+        self.into()
+    }
+}
+
+impl From<ColorBuilder> for AnimOP {
+    fn from(b: ColorBuilder) -> Self {
+        Self::ObjectColor(
+            b.uuid,
+            b.target.unwrap_or(Color::WHITE),
+            b.duration,
+            b.ease,
+            None,
+        )
+    }
+}
+
+impl IntoAnimOp for ColorBuilder {
     fn into_anim_op(self) -> AnimOP {
         self.into()
     }

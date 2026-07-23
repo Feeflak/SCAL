@@ -173,14 +173,27 @@ impl Animator {
             Ok(s) => s,
             Err(_) => return Ok(()),
         };
-        let max_w = sizes.iter().map(|s| s.x).fold(0.0f32, f32::max);
-        let total_h: f32 = sizes.iter().map(|s| s.y).sum();
-
         let gaps = container.gap * (container.child_uuids.len() as f32 - 1.0).max(0.0);
-        let new_w =
-            (max_w + container.padding_left + container.padding_right).max(container.min_width);
-        let new_h = (total_h + container.padding_top + container.padding_bottom + gaps)
-            .max(container.min_height);
+        let (new_w, new_h) = match container.direction {
+            LayoutDir::Row => {
+                let content_w: f32 = sizes.iter().map(|s| s.x).sum();
+                let max_h = sizes.iter().map(|s| s.y).fold(0.0f32, f32::max);
+                let new_w = (content_w + container.padding_left + container.padding_right + gaps)
+                    .max(container.min_width);
+                let new_h =
+                    (max_h + container.padding_top + container.padding_bottom).max(container.min_height);
+                (new_w, new_h)
+            }
+            LayoutDir::Column => {
+                let max_w = sizes.iter().map(|s| s.x).fold(0.0f32, f32::max);
+                let content_h: f32 = sizes.iter().map(|s| s.y).sum();
+                let new_w =
+                    (max_w + container.padding_left + container.padding_right).max(container.min_width);
+                let new_h = (content_h + container.padding_top + container.padding_bottom + gaps)
+                    .max(container.min_height);
+                (new_w, new_h)
+            }
+        };
 
         let old_bg_size: Vec2;
         let old_bg_pos: Vec3;
@@ -241,12 +254,25 @@ impl Animator {
             };
             let obj = self.get_object_mut(child_id)?;
             let is_stretched = obj.anim_data.as_any().downcast_ref::<Rectangle>().is_some();
-            obj.anim_data.transform_mut().position.x = if is_stretched { 0.0 } else { child_x };
-            obj.anim_data.transform_mut().position.y = child_y;
+            match container.direction {
+                LayoutDir::Column => {
+                    obj.anim_data.transform_mut().position.x = if is_stretched { 0.0 } else { child_x };
+                    obj.anim_data.transform_mut().position.y = child_y;
+                }
+                LayoutDir::Row => {
+                    obj.anim_data.transform_mut().position.x = child_x;
+                    obj.anim_data.transform_mut().position.y = if is_stretched { 0.0 } else { child_y };
+                }
+            }
 
             let mut regen = false;
             if let Some(rect) = obj.anim_data.as_any_mut().downcast_mut::<Rectangle>() {
-                rect.size.x = new_w;
+                match container.direction {
+                    LayoutDir::Column => rect.size.x = new_w,
+                    LayoutDir::Row => {
+                        rect.size.y = new_h - container.padding_top - container.padding_bottom;
+                    }
+                }
                 regen = true;
             }
             if regen {

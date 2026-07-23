@@ -151,6 +151,7 @@ pub enum AnimObjKind {
         children: Vec<AnimObj>,
         direction: LayoutDir,
         alignment: Alignment,
+        main_alignment: Alignment,
         gap: f32,
         padding_top: f32,
         padding_bottom: f32,
@@ -765,6 +766,22 @@ macro_rules! impl_handle {
             #[must_use]
             pub const fn rotation(&self) -> crate::transform::RotateBuilder {
                 crate::transform::RotateBuilder {
+                    uuid: self.0,
+                    target: None,
+                    duration: 1.0,
+                    ease: Ease::Linear,
+                }
+            }
+            /// Returns a builder for an animation that changes this object's color.
+            /// ```ignore
+            ///                handle.color()
+            ///                    .to(Color::RED)
+            ///                    .over(1.s())
+            ///                    .ease(Ease::InOutCubic),
+            /// ```
+            #[must_use]
+            pub const fn color(&self) -> crate::transform::ColorBuilder {
+                crate::transform::ColorBuilder {
                     uuid: self.0,
                     target: None,
                     duration: 1.0,

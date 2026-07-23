@@ -2,13 +2,17 @@ pub mod code;
 pub mod terminal;
 mod transform;
 
+use std::any::Any;
+
+use crate::types::Seconds;
+
 use std::ops::Range;
 
 use anyhow::{Context, Result};
 use glam::{Vec2, Vec4Swizzles, vec3};
 use log::debug;
 use scal_core::{
-    CodeAnimationStyle, CodeHighlightAction, Ease, TerminalOutputAction, Time, Sfx, SourceLoc,
+    CodeAnimationStyle, CodeHighlightAction, Color, Ease, TerminalOutputAction, Time, Sfx, SourceLoc,
 };
 use uuid::Uuid;
 
@@ -51,6 +55,7 @@ pub enum AnimOperation {
     CodeHighlight(Uuid, CodeHighlightAction, Option<SourceLoc>),
     TerminalTypeInput(Uuid, String, Option<String>, String, String, Time, Ease, Option<CodeAnimationStyle>, Option<SourceLoc>),
     TerminalOutput(Uuid, TerminalOutputAction, Time, Ease, Option<CodeAnimationStyle>, Option<SourceLoc>),
+    ObjectColor(Uuid, Color, Time, Ease, Option<SourceLoc>),
     All(Vec<AnimOperation>, Option<SourceLoc>),
     Sequence(Vec<AnimOperation>, Option<SourceLoc>),
     Wait(Time, Option<SourceLoc>),
@@ -71,6 +76,7 @@ impl AnimOperation {
             | AnimOperation::CodeHighlight(_, _, l)
             | AnimOperation::TerminalTypeInput(_, _, _, _, _, _, _, _, l)
             | AnimOperation::TerminalOutput(_, _, _, _, _, l)
+            | AnimOperation::ObjectColor(_, _, _, _, l)
             | AnimOperation::All(_, l)
             | AnimOperation::Sequence(_, l)
             | AnimOperation::Wait(_, l)
@@ -142,6 +148,11 @@ pub fn resolve_op(op: AnimOperation) -> Result<Animation> {
             debug!("TransformScale uuid={uuid}");
             ensure_duration(duration, "TransformScale")?;
             transform::scale_to(uuid, target, duration, curve)
+        }
+        AnimOperation::ObjectColor(uuid, target, duration, curve, _loc) => {
+            debug!("ObjectColor uuid={uuid}");
+            ensure_duration(duration, "ObjectColor")?;
+            color_to(uuid, target, duration, curve)
         }
 
         AnimOperation::CodeAddLines(uuid, text, from_line, duration, curve, style, _loc) => {
@@ -358,6 +369,65 @@ pub fn get_all_animation(ops: Vec<AnimOperation>) -> Result<Animation> {
     };
 
     Ok(Animation::new(dur, Ease::Linear, start, update))
+}
+
+fn set_object_color(obj: &mut dyn Any, color: Color) {
+    if let Some(rect) = obj.downcast_mut::<crate::anim_object::primitive_shapes::Rectangle>() {
+        rect.color = color;
+    } else if let Some(circle) = obj.downcast_mut::<crate::anim_object::primitive_shapes::Circle>() {
+        circle.color = color;
+    } else if let Some(poly) = obj.downcast_mut::<crate::anim_object::primitive_shapes::Polygon>() {
+        poly.color = color;
+    } else if let Some(text) = obj.downcast_mut::<crate::anim_object::text::Text>() {
+        text.color = color;
+    } else if let Some(image) = obj.downcast_mut::<crate::anim_object::image::Image>() {
+        image.color = color;
+    }
+}
+
+fn get_object_color(obj: &dyn Any) -> Option<Color> {
+    if let Some(rect) = obj.downcast_ref::<crate::anim_object::primitive_shapes::Rectangle>() {
+        Some(rect.color)
+    } else if let Some(circle) = obj.downcast_ref::<crate::anim_object::primitive_shapes::Circle>() {
+        Some(circle.color)
+    } else if let Some(poly) = obj.downcast_ref::<crate::anim_object::primitive_shapes::Polygon>() {
+        Some(poly.color)
+    } else if let Some(text) = obj.downcast_ref::<crate::anim_object::text::Text>() {
+        Some(text.color)
+    } else if let Some(image) = obj.downcast_ref::<crate::anim_object::image::Image>() {
+        Some(image.color)
+    } else {
+        None
+    }
+}
+
+fn color_to(uuid: Uuid, target: Color, duration: Seconds, curve: Ease) -> Animation {
+    Animation::new(
+        duration,
+        curve,
+        Box::new(move |animator, storage| {
+            let obj = animator.get_object(&uuid)?;
+            if let Some(initial) = get_object_color(obj.anim_data.as_any()) {
+                storage.push(initial.r);
+                storage.push(initial.g);
+                storage.push(initial.b);
+                storage.push(initial.a);
+            }
+            Ok(())
+        }),
+        Some(Box::new(move |animator, t, storage| {
+            if storage.len() < 4 {
+                return Ok(());
+            }
+            let r = storage[0] + t * (target.r - storage[0]);
+            let g = storage[1] + t * (target.g - storage[1]);
+            let b = storage[2] + t * (target.b - storage[2]);
+            let a = storage[3] + t * (target.a - storage[3]);
+            let obj = animator.get_object_mut(&uuid)?;
+            set_object_color(obj.anim_data.as_any_mut(), Color::new(r, g, b, a));
+            Ok(())
+        })),
+    )
 }
 
 type StartAnimationFunction = Box<dyn Fn(&mut Animator, &mut Vec<f32>) -> Result<()>>;
