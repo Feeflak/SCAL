@@ -420,10 +420,13 @@ impl ApplicationHandler for PreviewState {
     fn about_to_wait(&mut self, _event_loop: &ActiveEventLoop) {
         if self.reload_rx.has_changed().unwrap_or(false) {
             self.reload_requested = true;
+            // Mark the change as seen so has_changed() doesn't keep returning true
+            // on every frame, which would cause an infinite reload loop.
+            // IMPORTANT: only call borrow_and_update() when we actually saw a change;
+            // calling it unconditionally races with a value arriving between the
+            // has_changed() check and the borrow, which caused reloads to be missed.
+            self.reload_rx.borrow_and_update();
         }
-        // Mark the change as seen so has_changed() doesn't keep returning true
-        // on every frame, which would cause an infinite reload loop.
-        self.reload_rx.borrow_and_update();
         if let Some(ref window) = self.window {
             window.request_redraw();
         }

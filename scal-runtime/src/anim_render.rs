@@ -29,11 +29,12 @@ pub struct AnimationState {
 
 impl AnimationState {
     pub fn new(anim: AnimOperation) -> Result<Self> {
+        let loc_str = anim.location().map(|l| l.to_string()).unwrap_or_default();
         Ok(Self {
             storage: vec![],
             anim_op: anim
                 .try_into()
-                .context("couldn't convert anim_op to animation")?,
+                .with_context(|| format!("couldn't validate initial anim_op {loc_str}"))?,
             time: 0.0,
         })
     }
