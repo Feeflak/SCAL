@@ -13,18 +13,35 @@ pub struct Base16 {
 impl Base16 {
     #[must_use]
     /// <https://github.com/tinted-theming/schemes/tree/spec-0.11/base16>
-    /// Use normal hex colors and just remove # from the front and replace it with 0x
+    /// Parse a Base16 palette from a string of 16 hex colors.
+    ///
+    /// Colors may be separated by whitespace or commas and may optionally include
+    /// a leading `#`.
     /// ```ignore
-    /// let theme = Theme::from_base16(Base16::from_hex([
-    ///     0x11121d, 0x1A1B2A, 0x212234, 0x282c34, 0x4a5057, 0xa0a8cd, 0xa0a8cd, 0xa0a8cd, 0xee6d85,
-    ///     0xf6955b, 0xd7a65f, 0x95c561, 0x38a89d, 0x7199ee, 0xa485dd, 0x773440,
-    /// ]));
+    /// let theme = Theme::from_base16(Base16::from_hex(
+    ///     "#11121d #1A1B2A #212234 #282c34 #4a5057 #a0a8cd #a0a8cd #a0a8cd \
+    ///      #ee6d85 #f6955b #d7a65f #95c561 #38a89d #7199ee #a485dd #773440",
+    /// ));
     /// ```
-    pub fn from_hex(hex: [u32; 16]) -> Self {
-        let mut colors = [Color::BLACK; 16];
-        for (i, &h) in hex.iter().enumerate() {
-            colors[i] = Color::from(h);
+    pub fn from_hex(hex: &str) -> Self {
+        let parts: Vec<&str> = hex
+            .split(|c: char| c.is_whitespace() || c == ',')
+            .map(str::trim)
+            .filter(|s| !s.is_empty())
+            .collect();
+
+        if parts.len() != 16 {
+            panic!("Base16::from_hex expected 16 colors, got {}", parts.len());
         }
+
+        let mut colors = [Color::BLACK; 16];
+        for (i, part) in parts.iter().enumerate() {
+            let part = part.strip_prefix('#').unwrap_or(part);
+            let value = u32::from_str_radix(part, 16)
+                .unwrap_or_else(|_| panic!("invalid hex color: {part}"));
+            colors[i] = Color::from(value);
+        }
+
         Self { colors }
     }
 }
@@ -220,5 +237,30 @@ impl SyntaxTheme {
             .iter()
             .position(|n| n == name)
             .and_then(|idx| self.highlight_colors.get(idx).copied())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn base16_from_hex_parses_string() {
+        let base = Base16::from_hex(
+            "#11121d #1A1B2A #212234 #282c34 #4a5057 #a0a8cd #a0a8cd #a0a8cd \
+             #ee6d85 #f6955b #d7a65f #95c561 #38a89d #7199ee #a485dd #773440",
+        );
+        assert_eq!(base.colors[0], Color::from(0x11121d));
+        assert_eq!(base.colors[15], Color::from(0x773440));
+    }
+
+    #[test]
+    fn base16_from_hex_parses_comma_separated() {
+        let base = Base16::from_hex(
+            "11121d,1A1B2A,212234,282c34,4a5057,a0a8cd,a0a8cd,a0a8cd,\
+             ee6d85,f6955b,d7a65f,95c561,38a89d,7199ee,a485dd,773440",
+        );
+        assert_eq!(base.colors[0], Color::from(0x11121d));
+        assert_eq!(base.colors[15], Color::from(0x773440));
     }
 }

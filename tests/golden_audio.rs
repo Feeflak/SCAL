@@ -6,10 +6,10 @@ use scal_core::prelude::*;
 async fn golden_audio() {
     #[allow(clippy::large_digit_groups)]
     #[allow(clippy::long_liter)]
-    let theme = Theme::from_base16(Base16::from_hex([
-        0x11121d, 0x1A1B2A, 0x212234, 0x282c34, 0x4a5057, 0xa0a8cd, 0xa0a8cd, 0xa0a8cd, 0xee6d85,
-        0xf6955b, 0xd7a65f, 0x95c561, 0x38a89d, 0x7199ee, 0xa485dd, 0x773440,
-    ]));
+    let theme = Theme::from_base16(Base16::from_hex(
+        "#11121d #1A1B2A #212234 #282c34 #4a5057 #a0a8cd #a0a8cd #a0a8cd \
+         #ee6d85 #f6955b #d7a65f #95c561 #38a89d #7199ee #a485dd #773440",
+    ));
 
     let cw = code_window()
         .source("fn main() {\n    println!(\"hi\");\n}\n")
