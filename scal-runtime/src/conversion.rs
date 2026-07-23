@@ -99,6 +99,9 @@ fn convert_anim_op(
         scal_core::AnimOP::ObjectColor(u, c, d, e, loc) => {
             AnimOperation::ObjectColor(u, c, d, e, loc)
         }
+        scal_core::AnimOP::ScrollOffset(u, target, d, e, loc) => {
+            AnimOperation::ScrollOffset(u, target, d, e, loc)
+        }
     })
 }
 
@@ -422,22 +425,37 @@ fn build_scroll_layout_op(
             CoreAlignment::End => RuntimeAlignment::End,
         };
 
-        let sizes: Vec<glam::Vec2> = children.iter().map(|c| {
-            use scal_core::anim_obj::AnimObjKind;
-            match &c.kind {
-                AnimObjKind::Rectangle { size, .. } => *size,
-                AnimObjKind::Circle { radius, .. } => glam::vec2(*radius * 2.0, *radius * 2.0),
-                AnimObjKind::Text { font_size, .. } => glam::vec2(200.0, *font_size * 1.2),
-                AnimObjKind::Code { font_size, .. } => glam::vec2(400.0, *font_size * 1.5),
-                AnimObjKind::Image { size, .. } => *size,
-                AnimObjKind::Svg { size, .. } => *size,
-                AnimObjKind::Polygon { radius, .. } => glam::vec2(*radius * 2.0, *radius * 2.0),
-                AnimObjKind::Padding { size } => *size,
-                _ => glam::vec2(100.0, 100.0),
-            }
-        }).collect();
+        struct ScrollChild {
+            obj: crate::anim_object::object_trait::DynAnimObj,
+            size: glam::Vec2,
+        }
 
-        let gaps = gap * (children.len() as f32 - 1.0).max(0.0);
+        // Convert children first so we can measure their actual runtime sizes.
+        // Nested Layouts are flattened: their background becomes a scroll child and
+        // their container/items/nested layouts are instantiated separately.
+        let mut scroll_children: Vec<ScrollChild> = Vec::with_capacity(children.len());
+        let mut nested_ops: Vec<AnimOperation> = Vec::new();
+        for child in children.into_iter() {
+            match convert_to_layout_item(child, default_theme)? {
+                LayoutItem::Object(obj) => {
+                    scroll_children.push(ScrollChild {
+                        size: obj.size(),
+                        obj,
+                    });
+                }
+                LayoutItem::Layout(lr) => {
+                    let size = lr.background.size();
+                    nested_ops.push(lr.instantiate_children());
+                    scroll_children.push(ScrollChild {
+                        size,
+                        obj: lr.background,
+                    });
+                }
+            }
+        }
+
+        let sizes: Vec<glam::Vec2> = scroll_children.iter().map(|c| c.size).collect();
+        let gaps = gap * (sizes.len() as f32 - 1.0).max(0.0);
         let sb_thickness = if show_scrollbar { 8.0 } else { 0.0 };
 
         let content_w = match layout_dir {
@@ -468,10 +486,17 @@ fn build_scroll_layout_op(
         };
         let clamped_offset = scroll_offset.clamp(0.0, (content_total - viewport_size).max(0.0));
 
-        let content_left = -content_w / 2.0 + padding_left;
-        let content_right = content_w / 2.0 - padding_right - sb_thickness;
-        let content_bottom = content_h / 2.0 - padding_bottom;
-        let content_top = -content_h / 2.0 + padding_top;
+        let total_content_w: f32 = sizes.iter().map(|s| s.x).sum::<f32>() + gaps;
+        let total_content_h: f32 = sizes.iter().map(|s| s.y).sum::<f32>() + gaps;
+
+        // Position children relative to the viewport edges so that the justified
+        // starting edge sits at the viewport edge when the scroll offset is zero.
+        let content_left = -viewport_width / 2.0 + padding_left;
+        let content_right = viewport_width / 2.0 - padding_right - sb_thickness;
+        let content_bottom = viewport_height / 2.0 - padding_bottom;
+        let content_top = -viewport_height / 2.0 + padding_top;
+        let content_area_w = content_right - content_left;
+        let content_area_h = content_bottom - content_top;
 
         // Create background rectangle
         let bg = crate::anim_object::primitive_shapes::Rectangle {
@@ -491,19 +516,27 @@ fn build_scroll_layout_op(
         };
         let bg_uuid = bg.transform.uuid;
 
-        // Create children with pre-computed positions
-        let mut child_uuids = Vec::with_capacity(children.len());
-        let mut ops = Vec::with_capacity(children.len() + 2);
+        // Position children inside the scroll viewport and build instantiate ops
+        let mut child_uuids = Vec::with_capacity(scroll_children.len());
+        let mut child_base_positions: Vec<glam::Vec2> = Vec::with_capacity(scroll_children.len());
+        let mut ops = Vec::with_capacity(scroll_children.len() + nested_ops.len() + 2);
+        ops.extend(nested_ops);
 
-        let mut main_pos = match layout_dir {
-            RuntimeLayoutDir::Column => content_top,
-            RuntimeLayoutDir::Row => content_left,
+        let mut main_pos = match (layout_dir, justify_val) {
+            (RuntimeLayoutDir::Column, RuntimeAlignment::Start) => content_top,
+            (RuntimeLayoutDir::Column, RuntimeAlignment::Center) => {
+                content_top + (content_area_h - total_content_h) / 2.0
+            }
+            (RuntimeLayoutDir::Column, RuntimeAlignment::End) => content_bottom - total_content_h,
+            (RuntimeLayoutDir::Row, RuntimeAlignment::Start) => content_left,
+            (RuntimeLayoutDir::Row, RuntimeAlignment::Center) => {
+                content_left + (content_area_w - total_content_w) / 2.0
+            }
+            (RuntimeLayoutDir::Row, RuntimeAlignment::End) => content_right - total_content_w,
         };
-        main_pos -= clamped_offset;
 
-        for (i, child) in children.into_iter().enumerate() {
-            let s = sizes[i];
-            let (cx, cy) = match layout_dir {
+        for ScrollChild { obj: mut child_obj, size: s } in scroll_children.into_iter() {
+            let (base_cx, base_cy) = match layout_dir {
                 RuntimeLayoutDir::Column => {
                     let cx_val = match align_val {
                         RuntimeAlignment::Start => content_left + s.x / 2.0,
@@ -526,7 +559,14 @@ fn build_scroll_layout_op(
                 }
             };
 
-            let mut child_obj = convert_core_anim_obj(child, default_theme)?;
+            child_base_positions.push(glam::vec2(base_cx, base_cy));
+
+            // Apply the initial scroll offset to the child position.
+            let (cx, cy) = match layout_dir {
+                RuntimeLayoutDir::Column => (base_cx, base_cy - clamped_offset),
+                RuntimeLayoutDir::Row => (base_cx - clamped_offset, base_cy),
+            };
+
             child_obj.transform_mut().parent = Some(bg_uuid);
             child_obj.transform_mut().position = glam::vec3(cx, cy, 0.0);
             child_obj.transform_mut().clip_rect = Some([
@@ -539,13 +579,19 @@ fn build_scroll_layout_op(
             ops.push(child_obj.instantiate());
         }
 
-        // Create the scroll layout container
+        // Create the scroll layout container. The scrollbar is rendered by this
+        // object, so bump its z slightly above the scroll children so the scrollbar
+        // sits on top.
         let sl = ScrollLayout {
             id,
             transform: crate::anim_object::Transform {
                 uuid: id,
                 parent: None,
-                position: transform.position,
+                position: glam::vec3(
+                    transform.position.x,
+                    transform.position.y,
+                    transform.position.z + 0.3,
+                ),
                 rotation: 0.0,
                 scale: glam::Vec2::ONE,
                 layout_container: None,
@@ -553,6 +599,7 @@ fn build_scroll_layout_op(
                 clip_rect: None,
             },
             child_uuids,
+            child_base_positions,
             viewport_width,
             viewport_height,
             show_scrollbar,

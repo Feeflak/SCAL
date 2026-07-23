@@ -534,11 +534,12 @@ pub mod theme;
 pub mod transform;
 
 pub use anim_obj::{
-    Alignment, AnimObj, CodeHandle, CodeWindowHandle, LayoutDir, StretchMode, Syntax,
-    TerminalHandle, TextModifier,
+    Alignment, AnimObj, CodeHandle, CodeWindowHandle, LayoutDir, ScrollLayoutHandle, StretchMode,
+    Syntax, TerminalHandle, TextModifier,
 };
 pub use anim_op::{
-    AnimOP, CodeAnimationStyle, CodeHighlightAction, IntoAnimOp, SourceLoc, TerminalOutputAction,
+    AnimOP, CodeAnimationStyle, CodeHighlightAction, IntoAnimOp, ScrollOffsetTarget, SourceLoc,
+    TerminalOutputAction,
 };
 pub use camera::Camera;
 pub use color::Color;
@@ -556,11 +557,12 @@ pub mod prelude {
     pub use crate::anim::*;
     pub use crate::anim_builders::*;
     pub use crate::anim_obj::{
-        Alignment, AnimObj, CodeHandle, CodeWindowHandle, LayoutDir, StretchMode, Syntax,
-        TerminalHandle, TextModifier,
+        Alignment, AnimObj, CodeHandle, CodeWindowHandle, LayoutDir, ScrollLayoutHandle,
+        StretchMode, Syntax, TerminalHandle, TextModifier,
     };
     pub use crate::anim_op::{
-        AnimOP, CodeAnimationStyle, CodeHighlightAction, IntoAnimOp, TerminalOutputAction,
+        AnimOP, CodeAnimationStyle, CodeHighlightAction, IntoAnimOp, ScrollOffsetTarget,
+        TerminalOutputAction,
     };
     pub use crate::camera::Camera;
     pub use crate::color::Color;

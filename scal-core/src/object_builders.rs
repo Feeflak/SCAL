@@ -1330,9 +1330,9 @@ impl ScrollLayoutBuilder {
         self
     }
     #[must_use]
-    pub fn build(self) -> AnimObj {
+    pub fn build(self) -> ScrollLayoutHandle {
         let id = self.transform.uuid;
-        AnimObj {
+        ScrollLayoutHandle(AnimObj {
             id,
             transform: self.transform,
             kind: AnimObjKind::ScrollLayout {
@@ -1352,7 +1352,7 @@ impl ScrollLayoutBuilder {
                 background_color: self.background_color,
                 corner_radius: self.corner_radius,
             },
-        }
+        })
     }
 }
 

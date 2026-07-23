@@ -564,7 +564,7 @@ async fn load_animation(binary: &str) -> Result<(scal_core::Project, scal_core::
     }
 
     let project: scal_core::Project =
-        bincode::deserialize(&rest[..len]).context("Failed to deserialize project")?;
+        bincode::deserialize(&rest[..len]).context("Failed to deserialize project. Most likely you forgot to rebuild the scala runtime after implementing new features to the scala_core")?;
 
     let theme = project.scene_settings.default_theme.clone();
 
@@ -617,7 +617,7 @@ fn reload_animation(
     }
 
     let project: scal_core::Project =
-        bincode::deserialize(&rest[..len]).context("Failed to deserialize project")?;
+        bincode::deserialize(&rest[..len]).context("Failed to deserialize project. Most likely you forgot to rebuild the scala runtime after implementing new features to the scala_core")?;
 
     preview.background_color = project.scene_settings.background_color;
     preview.camera = project.scene_settings.camera;
@@ -720,6 +720,7 @@ pub enum OpKind {
     Terminal,
     Wait,
     Sound,
+    Scroll,
     Composite,
 }
 
@@ -770,6 +771,7 @@ fn op_label(op: &AnimOperation) -> &'static str {
         AnimOperation::TerminalTypeInput(..) => "Type Input",
         AnimOperation::TerminalOutput(..) => "Output",
         AnimOperation::ObjectColor(..) => "Color",
+        AnimOperation::ScrollOffset(..) => "Scroll",
         AnimOperation::PlaySound(..) => "Sound",
     }
 }
@@ -787,6 +789,7 @@ fn op_kind(op: &AnimOperation) -> OpKind {
         | AnimOperation::CodeHighlight(..) => OpKind::Code,
         AnimOperation::TerminalTypeInput(..) | AnimOperation::TerminalOutput(..) => OpKind::Terminal,
         AnimOperation::ObjectColor(..) => OpKind::Transform,
+        AnimOperation::ScrollOffset(..) => OpKind::Scroll,
         AnimOperation::All(..) | AnimOperation::Sequence(..) => OpKind::Composite,
         AnimOperation::Wait(..) => OpKind::Wait,
         AnimOperation::PlaySound(..) => OpKind::Sound,
@@ -801,6 +804,7 @@ fn op_color(kind: OpKind) -> [f32; 4] {
         OpKind::Terminal => [0.2, 0.9, 0.6, 1.0],
         OpKind::Wait => [0.4, 0.4, 0.4, 1.0],
         OpKind::Sound => [0.9, 0.2, 0.2, 1.0],
+        OpKind::Scroll => [0.2, 0.9, 0.9, 1.0],
         OpKind::Composite => [0.6, 0.6, 0.8, 1.0],
     }
 }
@@ -819,6 +823,7 @@ fn op_source_loc(op: &AnimOperation) -> Option<scal_core::SourceLoc> {
         | AnimOperation::TerminalTypeInput(_, _, _, _, _, _, _, _, loc)
         | AnimOperation::TerminalOutput(_, _, _, _, _, loc)
         | AnimOperation::ObjectColor(_, _, _, _, loc)
+        | AnimOperation::ScrollOffset(_, _, _, _, loc)
         | AnimOperation::All(_, loc)
         | AnimOperation::Sequence(_, loc)
         | AnimOperation::Wait(_, loc)
@@ -859,6 +864,7 @@ pub fn flatten_ops(ops: &[AnimOperation]) -> (Vec<TimelineOp>, f32) {
                 AnimOperation::TerminalTypeInput(_, _, _, _, _, d, _, _, _)
                 | AnimOperation::TerminalOutput(_, _, d, _, _, _) => time += d,
                 AnimOperation::ObjectColor(_, _, d, _, _) => time += d,
+                AnimOperation::ScrollOffset(_, _, d, _, _) => time += d,
                 AnimOperation::PlaySound(_, _, _) => {}
                 AnimOperation::Instantiate(..) => {}
             }

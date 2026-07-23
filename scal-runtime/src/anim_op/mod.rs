@@ -1,4 +1,5 @@
 pub mod code;
+mod scroll;
 pub mod terminal;
 mod transform;
 
@@ -12,7 +13,8 @@ use anyhow::{Context, Result};
 use glam::{Vec2, Vec4Swizzles, vec3};
 use log::debug;
 use scal_core::{
-    CodeAnimationStyle, CodeHighlightAction, Color, Ease, TerminalOutputAction, Time, Sfx, SourceLoc,
+    CodeAnimationStyle, CodeHighlightAction, Color, Ease, ScrollOffsetTarget, TerminalOutputAction,
+    Time, Sfx, SourceLoc,
 };
 use uuid::Uuid;
 
@@ -56,8 +58,9 @@ pub enum AnimOperation {
     TerminalTypeInput(Uuid, String, Option<String>, String, String, Time, Ease, Option<CodeAnimationStyle>, Option<SourceLoc>),
     TerminalOutput(Uuid, TerminalOutputAction, Time, Ease, Option<CodeAnimationStyle>, Option<SourceLoc>),
     ObjectColor(Uuid, Color, Time, Ease, Option<SourceLoc>),
-    All(Vec<AnimOperation>, Option<SourceLoc>),
-    Sequence(Vec<AnimOperation>, Option<SourceLoc>),
+    ScrollOffset(Uuid, ScrollOffsetTarget, Time, Ease, Option<SourceLoc>),
+    All(Vec<Self>, Option<SourceLoc>),
+    Sequence(Vec<Self>, Option<SourceLoc>),
     Wait(Time, Option<SourceLoc>),
     PlaySound(Sfx, Time, Option<SourceLoc>),
 }
@@ -77,6 +80,7 @@ impl AnimOperation {
             | AnimOperation::TerminalTypeInput(_, _, _, _, _, _, _, _, l)
             | AnimOperation::TerminalOutput(_, _, _, _, _, l)
             | AnimOperation::ObjectColor(_, _, _, _, l)
+            | AnimOperation::ScrollOffset(_, _, _, _, l)
             | AnimOperation::All(_, l)
             | AnimOperation::Sequence(_, l)
             | AnimOperation::Wait(_, l)
@@ -153,6 +157,11 @@ pub fn resolve_op(op: AnimOperation) -> Result<Animation> {
             debug!("ObjectColor uuid={uuid}");
             ensure_duration(duration, "ObjectColor")?;
             color_to(uuid, target, duration, curve)
+        }
+        AnimOperation::ScrollOffset(uuid, target, duration, curve, _loc) => {
+            debug!("ScrollOffset uuid={uuid} target={target:?}");
+            ensure_duration(duration, "ScrollOffset")?;
+            scroll::scroll_offset_to(uuid, target, duration, curve)
         }
 
         AnimOperation::CodeAddLines(uuid, text, from_line, duration, curve, style, _loc) => {

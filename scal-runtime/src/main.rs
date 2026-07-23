@@ -166,7 +166,7 @@ async fn run_render() -> Result<()> {
     }
 
     let project: scal_core::Project =
-        bincode::deserialize(&rest[..len]).context("Failed to deserialize project")?;
+        bincode::deserialize(&rest[..len]).context("Failed to deserialize project. Most likely you forgot to rebuild the scala runtime after implementing new features to the scala_core")?;
 
     log::info!(
         "Received project with {} timeline operations",
@@ -234,6 +234,7 @@ async fn run_loop(
             | AnimOperation::TerminalTypeInput(_, _, _, _, _, dur, _, _, _)
             | AnimOperation::TerminalOutput(_, _, dur, _, _, _)
             | AnimOperation::ObjectColor(_, _, dur, _, _) => start_time + dur,
+            AnimOperation::ScrollOffset(_, _, dur, _, _) => start_time + dur,
             AnimOperation::CodeHighlight(_, action, _) => {
                 start_time + action.duration_and_curve().0
             }

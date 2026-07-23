@@ -5,8 +5,8 @@ use std::sync::{LazyLock, Mutex};
 use uuid::Uuid;
 
 use crate::{
-    AnimOP, CodeAnimationStyle, CodeHighlightAction, Color, Ease, IntoAnimOp, Sfx,
-    TerminalOutputAction, Time,
+    AnimOP, CodeAnimationStyle, CodeHighlightAction, Color, Ease, IntoAnimOp, ScrollOffsetTarget,
+    Sfx, TerminalOutputAction, Time,
 };
 
 /// Builder for an animation of adding code lines to the code block.
@@ -294,6 +294,58 @@ impl From<CodeHighlightBuilder> for AnimOP {
 }
 
 impl IntoAnimOp for CodeHighlightBuilder {
+    fn into_anim_op(self) -> AnimOP {
+        self.into()
+    }
+}
+
+/// Builder for an animation that changes the scroll offset of a scroll layout.
+/// ```ignore
+/// scrol.scroll().percent(0.3).over(0.1.s()).ease(Ease::OutBack),
+/// ```
+pub struct ScrollBuilder {
+    pub(crate) uuid: Uuid,
+    pub(crate) target: Option<ScrollOffsetTarget>,
+    pub(crate) duration: Time,
+    pub(crate) ease: Ease,
+}
+
+impl ScrollBuilder {
+    /// Scroll to a percentage of the scrollable distance (0.0 = content start
+    /// aligned to the viewport start edge, 1.0 = fully scrolled).
+    #[must_use]
+    pub const fn percent(mut self, target: f32) -> Self {
+        self.target = Some(ScrollOffsetTarget::Percent(target));
+        self
+    }
+    /// Scroll to an absolute pixel offset relative to the viewport start edge.
+    #[must_use]
+    pub const fn px(mut self, target: f32) -> Self {
+        self.target = Some(ScrollOffsetTarget::Pixels(target));
+        self
+    }
+    /// Duration of the scroll animation
+    #[must_use]
+    pub const fn over(mut self, duration: Time) -> Self {
+        self.duration = duration;
+        self
+    }
+    /// Ease function for the scroll animation
+    #[must_use]
+    pub const fn ease(mut self, ease: Ease) -> Self {
+        self.ease = ease;
+        self
+    }
+}
+
+impl From<ScrollBuilder> for AnimOP {
+    fn from(b: ScrollBuilder) -> Self {
+        let target = b.target.unwrap_or(ScrollOffsetTarget::Percent(0.0));
+        Self::ScrollOffset(b.uuid, target, b.duration, b.ease, None)
+    }
+}
+
+impl IntoAnimOp for ScrollBuilder {
     fn into_anim_op(self) -> AnimOP {
         self.into()
     }

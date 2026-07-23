@@ -38,7 +38,7 @@ use crate::{
 };
 use anyhow::{Context, Result, bail};
 use glam::Mat4;
-use log::{debug, info};
+use log::debug;
 use scal_core::Camera;
 use uuid::Uuid;
 #[derive(Debug, Clone)]
@@ -261,6 +261,39 @@ impl Animator {
         self.objects
             .get_mut(*index)
             .context("index from the object lookup was out of bounds ")
+    }
+
+    pub fn apply_scroll_offset(&mut self, uuid: &Uuid) -> Result<()> {
+        let (direction, scroll_offset, child_uuids, base_positions) = {
+            let obj = self.get_object(uuid)?;
+            let scroll = obj
+                .anim_data
+                .as_any()
+                .downcast_ref::<crate::anim_object::scroll::ScrollLayout>()
+                .context("apply_scroll_offset target is not a ScrollLayout")?;
+            (
+                scroll.direction,
+                scroll.scroll_offset,
+                scroll.child_uuids.clone(),
+                scroll.child_base_positions.clone(),
+            )
+        };
+
+        for (child_uuid, base_pos) in child_uuids.iter().zip(base_positions.iter()) {
+            let child = self.get_object_mut(child_uuid)?;
+            let transform = child.anim_data.transform_mut();
+            match direction {
+                crate::anim_object::compose::LayoutDir::Column => {
+                    transform.position.x = base_pos.x;
+                    transform.position.y = base_pos.y - scroll_offset;
+                }
+                crate::anim_object::compose::LayoutDir::Row => {
+                    transform.position.x = base_pos.x - scroll_offset;
+                    transform.position.y = base_pos.y;
+                }
+            }
+        }
+        Ok(())
     }
 
     pub fn get_object_world_matrix(&self, uuid: &Uuid) -> Result<Mat4> {

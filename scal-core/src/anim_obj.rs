@@ -817,6 +817,40 @@ impl_handle!(CircleHandle);
 impl_handle!(TextHandle);
 impl_handle!(RectangleHandle);
 
+/// Wrapper around the ``AnimObj`` struct that allows for clean animation construction
+/// for scrollable layouts.
+pub struct ScrollLayoutHandle(pub AnimObj);
+
+impl std::ops::Deref for ScrollLayoutHandle {
+    type Target = AnimObj;
+    fn deref(&self) -> &AnimObj {
+        &self.0
+    }
+}
+
+impl ScrollLayoutHandle {
+    /// Returns an animation that instantly adds the scroll layout to the scene.
+    #[must_use]
+    pub fn instantiate(&self) -> crate::anim_op::AnimOP {
+        crate::anim_op::AnimOP::Instantiate(Box::new(self.0.clone()), None)
+    }
+
+    /// Returns a builder for scroll-offset animations.
+    /// ```ignore
+    /// scrol.scroll().percent(0.3).over(0.1.s()).ease(Ease::OutBack),
+    /// scrol.scroll().px(255.).over(0.5.s()).ease(Ease::InOutCubic),
+    /// ```
+    #[must_use]
+    pub const fn scroll(&self) -> crate::anim_builders::ScrollBuilder {
+        crate::anim_builders::ScrollBuilder {
+            uuid: self.0.id,
+            target: None,
+            duration: 1.0,
+            ease: crate::ease::Ease::Linear,
+        }
+    }
+}
+
 /// A modification applied to text at creation time (shadow, outline, glow, etc.).
 /// Multiple modifications can be added to a single text object.
 ///

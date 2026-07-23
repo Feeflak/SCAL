@@ -72,6 +72,7 @@ pub enum AnimOP {
     TerminalOutput(Uuid, TerminalOutputAction, Time, Ease, Option<CodeAnimationStyle>, Option<SourceLoc>),
     //               uuid, action, dur, ease, style, loc
     ObjectColor(Uuid, Color, Time, Ease, Option<SourceLoc>),
+    ScrollOffset(Uuid, ScrollOffsetTarget, Time, Ease, Option<SourceLoc>),
     All(Vec<Self>, Option<SourceLoc>),
     Sequence(Vec<Self>, Option<SourceLoc>),
     Wait(Time, Option<SourceLoc>),
@@ -94,6 +95,7 @@ impl AnimOP {
             | Self::TerminalTypeInput(_, _, _, _, _, _, _, _, l)
             | Self::TerminalOutput(_, _, _, _, _, l)
             | Self::ObjectColor(_, _, _, _, l)
+            | Self::ScrollOffset(_, _, _, _, l)
             | Self::All(_, l)
             | Self::Sequence(_, l)
             | Self::Wait(_, l)
@@ -115,6 +117,16 @@ pub enum TerminalOutputAction {
     PullAll,
     /// Reveal output from the current position to the end of the current line (animated).
     PullLine,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
+/// Target for a scroll offset animation.
+pub enum ScrollOffsetTarget {
+    /// Scroll to a percentage of the total scrollable distance (0.0 = justified edge,
+    /// 1.0 = opposite edge).
+    Percent(f32),
+    /// Scroll by an absolute pixel offset relative to the justified starting position.
+    Pixels(f32),
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
@@ -190,6 +202,7 @@ impl AnimOP {
             | Self::TerminalTypeInput(_, _, _, _, _, _, _, _, l)
             | Self::TerminalOutput(_, _, _, _, _, l)
             | Self::ObjectColor(_, _, _, _, l)
+            | Self::ScrollOffset(_, _, _, _, l)
             | Self::All(_, l)
             | Self::Sequence(_, l)
             | Self::Wait(_, l)
