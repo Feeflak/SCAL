@@ -232,7 +232,7 @@ impl Animator {
             let s = sizes[i];
             let (child_x, child_y) = match container.direction {
                 LayoutDir::Column => {
-                    let cx = match container.alignment {
+                    let cx = match container.align {
                         Alignment::Start => content_left + s.x / 2.0,
                         Alignment::Center => 0.0,
                         Alignment::End => content_right - s.x / 2.0,
@@ -243,7 +243,7 @@ impl Animator {
                 }
                 LayoutDir::Row => {
                     let cx = x + s.x / 2.0;
-                    let cy = match container.alignment {
+                    let cy = match container.align {
                         Alignment::Start => content_bottom - s.y / 2.0,
                         Alignment::Center => 0.0,
                         Alignment::End => content_top + s.y / 2.0,
@@ -328,7 +328,7 @@ impl Animator {
             let s = sizes[i];
             let (child_x, child_y) = match container.direction {
                 LayoutDir::Column => {
-                    let cx = match container.alignment {
+                    let cx = match container.align {
                         Alignment::Start => content_left + s.x / 2.0,
                         Alignment::Center => 0.0,
                         Alignment::End => content_right - s.x / 2.0,
@@ -339,7 +339,7 @@ impl Animator {
                 }
                 LayoutDir::Row => {
                     let cx = x + s.x / 2.0;
-                    let cy = match container.alignment {
+                    let cy = match container.align {
                         Alignment::Start => content_bottom - s.y / 2.0,
                         Alignment::Center => 0.0,
                         Alignment::End => content_top + s.y / 2.0,

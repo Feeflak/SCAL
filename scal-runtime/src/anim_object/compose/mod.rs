@@ -81,8 +81,8 @@ pub struct LayoutContainer {
     pub padding_right: f32,
     pub gap: f32,
     pub direction: LayoutDir,
-    pub alignment: Alignment,
-    pub main_alignment: Alignment,
+    pub align: Alignment,
+    pub justify: Alignment,
     pub min_width: f32,
     pub min_height: f32,
 }
@@ -92,8 +92,8 @@ impl LayoutContainer {
         background_uuid: Uuid,
         child_uuids: Vec<Uuid>,
         direction: LayoutDir,
-        alignment: Alignment,
-        main_alignment: Alignment,
+        align: Alignment,
+        justify: Alignment,
         gap: f32,
         padding_top: f32,
         padding_bottom: f32,
@@ -107,8 +107,8 @@ impl LayoutContainer {
             background_uuid,
             child_uuids,
             direction,
-            alignment,
-            main_alignment,
+            align,
+            justify,
             gap,
             padding_top,
             padding_bottom,
@@ -124,8 +124,8 @@ impl LayoutContainer {
         background_uuid: Uuid,
         child_uuids: Vec<Uuid>,
         direction: LayoutDir,
-        alignment: Alignment,
-        main_alignment: Alignment,
+        align: Alignment,
+        justify: Alignment,
         gap: f32,
         padding_top: f32,
         padding_bottom: f32,
@@ -148,8 +148,8 @@ impl LayoutContainer {
             background_uuid,
             child_uuids,
             direction,
-            alignment,
-            main_alignment,
+            align,
+            justify,
             gap,
             padding_top,
             padding_bottom,
@@ -248,7 +248,7 @@ fn relayout_nested_children(bg_size: Vec2, container: &LayoutContainer, items: &
         LayoutDir::Column => {
             let total_content_h: f32 = sizes.iter().map(|s| s.y).sum();
             let content_size = content_bottom - content_top;
-            let start = match container.main_alignment {
+            let start = match container.justify {
                 Alignment::Start => content_top,
                 Alignment::Center => content_top + (content_size - (total_content_h + gaps)) / 2.0,
                 Alignment::End => content_bottom - (total_content_h + gaps),
@@ -258,7 +258,7 @@ fn relayout_nested_children(bg_size: Vec2, container: &LayoutContainer, items: &
         LayoutDir::Row => {
             let total_content_w: f32 = sizes.iter().map(|s| s.x).sum();
             let content_size = content_right - content_left;
-            let start = match container.main_alignment {
+            let start = match container.justify {
                 Alignment::Start => content_left,
                 Alignment::Center => content_left + (content_size - (total_content_w + gaps)) / 2.0,
                 Alignment::End => content_right - (total_content_w + gaps),
@@ -274,7 +274,7 @@ fn relayout_nested_children(bg_size: Vec2, container: &LayoutContainer, items: &
         let s = sizes[i];
         let (child_x, child_y) = match container.direction {
             LayoutDir::Column => {
-                let cx = match container.alignment {
+                let cx = match container.align {
                     Alignment::Start => content_left + s.x / 2.0,
                     Alignment::Center => 0.0,
                     Alignment::End => content_right - s.x / 2.0,
@@ -285,7 +285,7 @@ fn relayout_nested_children(bg_size: Vec2, container: &LayoutContainer, items: &
             }
             LayoutDir::Row => {
                 let cx = x + s.x / 2.0;
-                let cy = match container.alignment {
+                let cy = match container.align {
                     Alignment::Start => content_bottom - s.y / 2.0,
                     Alignment::Center => 0.0,
                     Alignment::End => content_top + s.y / 2.0,
@@ -304,8 +304,8 @@ pub fn layout(
     items: Vec<LayoutItem>,
     background: LayoutBackground,
     layout_dir: LayoutDir,
-    alignment: Alignment,
-    main_alignment: Alignment,
+    align: Alignment,
+    justify: Alignment,
     gap: f32,
     padding_top: f32,
     padding_bottom: f32,
@@ -320,8 +320,8 @@ pub fn layout(
         items,
         background,
         layout_dir,
-        alignment,
-        main_alignment,
+        align,
+        justify,
         gap,
         padding_top,
         padding_bottom,
@@ -340,8 +340,8 @@ pub fn layout_with_ids(
     items: Vec<LayoutItem>,
     background: LayoutBackground,
     layout_dir: LayoutDir,
-    alignment: Alignment,
-    main_alignment: Alignment,
+    align: Alignment,
+    justify: Alignment,
     gap: f32,
     padding_top: f32,
     padding_bottom: f32,
@@ -408,8 +408,8 @@ pub fn layout_with_ids(
             bg_uuid,
             child_uuids,
             layout_dir,
-            alignment,
-            main_alignment,
+            align,
+            justify,
             gap,
             padding_top,
             padding_bottom,
@@ -422,8 +422,8 @@ pub fn layout_with_ids(
             bg_uuid,
             child_uuids,
             layout_dir,
-            alignment,
-            main_alignment,
+            align,
+            justify,
             gap,
             padding_top,
             padding_bottom,
@@ -476,7 +476,7 @@ pub fn layout_with_ids(
         LayoutDir::Column => {
             let total_h_content: f32 = sizes.iter().map(|s| s.y).sum();
             let content_size_y = content_bottom - content_top;
-            let mut y = match main_alignment {
+            let mut y = match justify {
                 Alignment::Start => content_top,
                 Alignment::Center => {
                     content_top + (content_size_y - (total_h_content + gaps)) / 2.0
@@ -489,7 +489,7 @@ pub fn layout_with_ids(
                 let x = if is_stretched {
                     0.0
                 } else {
-                    match alignment {
+                    match align {
                         Alignment::Start => content_left + s.x / 2.0,
                         Alignment::Center => 0.0,
                         Alignment::End => content_right - s.x / 2.0,
@@ -520,7 +520,7 @@ pub fn layout_with_ids(
         LayoutDir::Row => {
             let total_w_content: f32 = sizes.iter().map(|s| s.x).sum();
             let content_size_x = content_right - content_left;
-            let mut x = match main_alignment {
+            let mut x = match justify {
                 Alignment::Start => content_left,
                 Alignment::Center => {
                     content_left + (content_size_x - (total_w_content + gaps)) / 2.0
@@ -533,7 +533,7 @@ pub fn layout_with_ids(
                 let y = if is_stretched {
                     0.0
                 } else {
-                    match alignment {
+                    match align {
                         Alignment::Start => content_bottom - s.y / 2.0,
                         Alignment::Center => 0.0,
                         Alignment::End => content_top + s.y / 2.0,

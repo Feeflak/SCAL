@@ -12,9 +12,9 @@ use std::ops::Range;
 
 use crate::{
     anim_object::{
-        Transform,
+        Alignment, Transform,
         object_trait::{AnimObjectTrait, BindGroupLoader, DynAnimObj, MeshResult},
-        text::{Align, code::highliter::CodeHighlighter},
+        text::code::highliter::CodeHighlighter,
     },
     anim_op::AnimOperation,
 };
@@ -105,7 +105,7 @@ pub struct Code {
     pub source_code: String,
     pub theme: Theme,
     pub font_family: String,
-    pub alignment: Align,
+    pub align: Alignment,
     pub font_size: f32,
     pub syntax: Syntax,
     pub lines: Vec<TextLine>,
@@ -217,7 +217,7 @@ impl Code {
         syntax: Syntax,
         theme: Theme,
         font_family: String,
-        alignment: Align,
+        align: Alignment,
         font_size: f32,
         transform: Transform,
         padding: f32,
@@ -225,7 +225,7 @@ impl Code {
         Self {
             id: transform.uuid,
             transform,
-            alignment,
+            align,
             source_code: text,
             syntax,
             theme,

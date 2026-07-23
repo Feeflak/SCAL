@@ -3,7 +3,7 @@ use uuid::Uuid;
 
 use crate::anim_obj::{
     Alignment, AnimObj, AnimObjKind, CodeHandle, CodeWindowHandle, LayoutDir, StretchMode, Syntax,
-    TerminalHandle, TextAlign, TextModifier,
+    TerminalHandle, TextModifier,
 };
 use crate::color::Color;
 use crate::theme::Theme;
@@ -504,7 +504,7 @@ pub fn text() -> TextBuilder {
 pub struct TextBuilder {
     value: String,
     font_family: String,
-    alignment: TextAlign,
+    align: Alignment,
     color: Color,
     font_size: f32,
     transform: Transform,
@@ -516,7 +516,7 @@ impl Default for TextBuilder {
         Self {
             value: String::new(),
             font_family: "sans-serif".to_string(),
-            alignment: TextAlign::Center,
+            align: Alignment::Center,
             color: Color::WHITE,
             font_size: 24.0,
             transform: Transform::new(Vec3::ZERO),
@@ -537,8 +537,8 @@ impl TextBuilder {
         self
     }
     /// Set the alignment of the text
-    pub const fn alignment(mut self, align: TextAlign) -> Self {
-        self.alignment = align;
+    pub const fn align(mut self, a: Alignment) -> Self {
+        self.align = a;
         self
     }
     /// Set the color of the text
@@ -565,7 +565,7 @@ impl TextBuilder {
             kind: AnimObjKind::Text {
                 value: self.value,
                 font_family: self.font_family,
-                alignment: self.alignment,
+                align: self.align,
                 color: self.color,
                 font_size: self.font_size,
                 modifications: self.modifications,
@@ -973,7 +973,7 @@ impl_transform_methods!(TerminalBuilder);
 /// ```ignore
 /// layout()
 ///     .direction(LayoutDir::Column)
-///     .alignment(Alignment::Center)
+///     .align(Alignment::Center)
 ///     .gap(10.0)
 ///     .padding(20.0)
 ///     .background_color(Color::new(0.1, 0.1, 0.2, 1.0))
@@ -990,8 +990,8 @@ pub fn layout() -> LayoutBuilder {
 pub struct LayoutBuilder {
     children: Vec<AnimObj>,
     direction: LayoutDir,
-    alignment: Alignment,
-    main_alignment: Alignment,
+    align: Alignment,
+    justify: Alignment,
     gap: f32,
     padding_top: f32,
     padding_bottom: f32,
@@ -1009,8 +1009,8 @@ impl Default for LayoutBuilder {
         Self {
             children: Vec::new(),
             direction: LayoutDir::Column,
-            alignment: Alignment::Center,
-            main_alignment: Alignment::Start,
+            align: Alignment::Center,
+            justify: Alignment::Start,
             gap: 0.0,
             padding_top: 0.0,
             padding_bottom: 0.0,
@@ -1037,14 +1037,14 @@ impl LayoutBuilder {
         self.direction = dir;
         self
     }
-    /// Set the cross-axis alignment for items
-    pub const fn alignment(mut self, align: Alignment) -> Self {
-        self.alignment = align;
+    /// Set the cross-axis alignment for items (CSS align-items)
+    pub const fn align(mut self, a: Alignment) -> Self {
+        self.align = a;
         self
     }
-    /// Set the main-axis alignment for items
-    pub const fn main_alignment(mut self, align: Alignment) -> Self {
-        self.main_alignment = align;
+    /// Set the main-axis alignment for items (CSS justify-content)
+    pub const fn justify(mut self, a: Alignment) -> Self {
+        self.justify = a;
         self
     }
     /// Set the gap between items
@@ -1109,8 +1109,8 @@ impl LayoutBuilder {
             kind: AnimObjKind::Layout {
                 children: self.children,
                 direction: self.direction,
-                alignment: self.alignment,
-                main_alignment: self.main_alignment,
+                align: self.align,
+                justify: self.justify,
                 gap: self.gap,
                 padding_top: self.padding_top,
                 padding_bottom: self.padding_bottom,

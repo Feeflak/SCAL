@@ -15,7 +15,7 @@ use crate::{
         },
         object_trait::{AnimObjectTrait, BindGroupLoader, DynAnimObj, MeshResult},
         render::PipelineKind,
-        text::{Align, TextManager},
+        text::TextManager,
     },
     anim_op::AnimOperation,
     renderer::{Index, Vertex},
@@ -520,7 +520,7 @@ pub fn terminal(
         Transform::with_uuid(title_id, Vec3::ZERO),
         title,
         "sans-serif".to_string(),
-        Align::Left,
+        LayoutAlignment::Start,
         b[5], // base05
         title_font_size,
         vec![],

@@ -32,7 +32,7 @@ pub use self::compose::{
 use self::image::Image;
 use self::primitive_shapes::{Circle, Polygon, Rectangle};
 use self::svg::Svg;
-use self::text::{Align, Text, code::Code, code::TextLine};
+use self::text::{Text, code::Code, code::TextLine};
 
 pub fn transform(position: Vec3) -> Transform {
     Transform::new(None, position, 0., Vec2::ONE)
@@ -43,7 +43,7 @@ pub fn code(
     source_code: String,
     theme: Theme,
     font_family: String,
-    alignment: Align,
+    align: Alignment,
     font_size: f32,
     syntax: Syntax,
     lines: Vec<TextLine>,
@@ -55,7 +55,7 @@ pub fn code(
         source_code,
         theme,
         font_family,
-        alignment,
+        align,
         font_size,
         syntax,
         lines,
@@ -78,7 +78,7 @@ pub fn text(
     transform: Transform,
     value: String,
     font_family: String,
-    alignment: Align,
+    align: Alignment,
     color: Color,
     font_size: f32,
     modifications: Vec<scal_core::TextModifier>,
@@ -86,7 +86,7 @@ pub fn text(
     DynAnimObj(Box::new(Text {
         id: transform.uuid,
         font_family,
-        alignment,
+        align,
         value,
         color,
         font_size,

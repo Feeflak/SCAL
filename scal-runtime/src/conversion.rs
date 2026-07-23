@@ -8,7 +8,6 @@ use crate::{
             Alignment as RuntimeAlignment, LayoutBackground, LayoutDir as RuntimeLayoutDir,
             LayoutItem, PinPoint,
         },
-        text::Align,
     },
     anim_op::AnimOperation,
 };
@@ -144,7 +143,7 @@ fn build_code_window_op(
             source_code,
             th,
             font_family,
-            Align::Left,
+            RuntimeAlignment::Start,
             font_size,
             syntax,
             title,
@@ -269,21 +268,21 @@ fn convert_core_anim_obj(
         scal_core::anim_obj::AnimObjKind::Text {
             value,
             font_family,
-            alignment,
+            align,
             color,
             font_size,
             modifications,
         } => {
-            let align = match alignment {
-                scal_core::anim_obj::TextAlign::Center => crate::anim_object::text::Align::Center,
-                scal_core::anim_obj::TextAlign::Left => crate::anim_object::text::Align::Left,
-                scal_core::anim_obj::TextAlign::Right => crate::anim_object::text::Align::Right,
+            let align_val = match align {
+                scal_core::anim_obj::Alignment::Center => RuntimeAlignment::Center,
+                scal_core::anim_obj::Alignment::Start => RuntimeAlignment::Start,
+                scal_core::anim_obj::Alignment::End => RuntimeAlignment::End,
             };
             Ok(RenderObj(Box::new(crate::anim_object::text::Text {
                 id: obj.id,
                 value,
                 font_family,
-                alignment: align,
+                align: align_val,
                 color,
                 font_size,
                 transform,
@@ -341,7 +340,7 @@ fn convert_core_anim_obj(
             show_line_numbers,
             line_number_color,
             transform,
-            alignment: crate::anim_object::text::Align::Left,
+            align: RuntimeAlignment::Start,
             lines: vec![],
             dirty: true,
             anim_reveal: 1.0,
@@ -387,8 +386,8 @@ fn build_layout_result_from_core(
     if let AnimObjKind::Layout {
         children,
         direction,
-        alignment,
-        main_alignment,
+        align,
+        justify,
         gap,
         padding_top,
         padding_bottom,
@@ -409,12 +408,12 @@ fn build_layout_result_from_core(
             CoreLayoutDir::Column => RuntimeLayoutDir::Column,
             CoreLayoutDir::Row => RuntimeLayoutDir::Row,
         };
-        let align = match alignment {
+        let align_val = match align {
             CoreAlignment::Start => RuntimeAlignment::Start,
             CoreAlignment::Center => RuntimeAlignment::Center,
             CoreAlignment::End => RuntimeAlignment::End,
         };
-        let main_align = match main_alignment {
+        let justify_val = match justify {
             CoreAlignment::Start => RuntimeAlignment::Start,
             CoreAlignment::Center => RuntimeAlignment::Center,
             CoreAlignment::End => RuntimeAlignment::End,
@@ -429,8 +428,8 @@ fn build_layout_result_from_core(
                 corner_radius,
             },
             layout_dir,
-            align,
-            main_align,
+            align_val,
+            justify_val,
             gap,
             padding_top,
             padding_bottom,

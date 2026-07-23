@@ -5,10 +5,11 @@ pub(crate) mod pipeline;
 pub(crate) mod render;
 
 use std::collections::HashMap;
+use std::sync::{Mutex, OnceLock};
 
 use crate::{
     anim_object::{
-        Transform,
+        Alignment, Transform,
         object_trait::{AnimObjectTrait, BindGroupLoader, MeshResult},
         text::code::{Code, highliter::CodeHighlighter},
     },
@@ -22,22 +23,31 @@ use tree_sitter_highlight::Highlighter;
 use uuid::Uuid;
 /// RGBA
 
-#[derive(Debug, Eq, PartialEq, Clone, Copy)]
-pub enum Align {
-    Left,
-    Right,
-    Center,
-    Justified,
-    End,
+fn measure_text_width(value: &str, font_family: &str, font_size: f32) -> f32 {
+    static FONT_SYSTEM: OnceLock<Mutex<FontSystem>> = OnceLock::new();
+    let mut font_system = FONT_SYSTEM
+        .get_or_init(|| Mutex::new(FontSystem::new()))
+        .lock()
+        .expect("font system lock poisoned");
+
+    let metrics = Metrics::new(font_size, font_size * 1.2);
+    let mut buffer = Buffer::new(&mut *font_system, metrics);
+    let attrs = Attrs::new().family(Family::Name(font_family));
+    buffer.set_text(value, &attrs, Shaping::Advanced, None);
+    buffer.shape_until_scroll(&mut *font_system, false);
+
+    buffer
+        .layout_runs()
+        .map(|run| run.line_w)
+        .fold(0.0f32, f32::max)
 }
-impl Into<cosmic_text::Align> for Align {
-    fn into(self) -> cosmic_text::Align {
-        match self {
-            Align::Left => cosmic_text::Align::Left,
-            Align::Right => cosmic_text::Align::Right,
-            Align::Center => cosmic_text::Align::Center,
-            Align::Justified => cosmic_text::Align::Justified,
-            Align::End => cosmic_text::Align::End,
+
+impl From<Alignment> for cosmic_text::Align {
+    fn from(a: Alignment) -> Self {
+        match a {
+            Alignment::Start => cosmic_text::Align::Left,
+            Alignment::Center => cosmic_text::Align::Center,
+            Alignment::End => cosmic_text::Align::Right,
         }
     }
 }
@@ -50,7 +60,7 @@ pub enum FontSpec {
 pub struct Text {
     pub id: Uuid,
     pub font_family: String,
-    pub alignment: Align,
+    pub align: Alignment,
     pub value: String,
     pub color: Color,
     pub font_size: f32,
@@ -72,8 +82,11 @@ impl AnimObjectTrait for Text {
         }
         let line_count = self.value.lines().count().max(1);
         let height = line_count as f32 * self.font_size * 1.2;
-        let max_line_len = self.value.lines().map(|l| l.len()).max().unwrap_or(0).max(1);
-        let width = max_line_len as f32 * self.font_size * 0.5;
+        let width = if self.value.is_empty() {
+            1.0
+        } else {
+            measure_text_width(&self.value, &self.font_family, self.font_size)
+        };
         glam::vec2(width, height)
     }
     fn generate_mesh(&mut self, mgr: &mut TextManager) -> MeshResult {
@@ -165,7 +178,7 @@ impl TextManager {
             rich_spans,
             &default_attrs,
             Shaping::Advanced,
-            Some(code.alignment.into()),
+            Some(cosmic_text::Align::from(code.align)),
         );
 
         buffer.shape_until_scroll(&mut self.font_system, false);
@@ -183,15 +196,23 @@ impl TextManager {
         let mut buffer = Buffer::new(&mut self.font_system, metrics);
         let attrs = Attrs::new().family(cosmic_text::Family::Name(&text.font_family));
 
+        buffer.set_text(&text.value, &attrs, Shaping::Advanced, None);
+        buffer.shape_until_scroll(&mut self.font_system, false);
+
+        let max_width = buffer
+            .layout_runs()
+            .map(|run| run.line_w)
+            .fold(0.0f32, f32::max);
+
+        buffer.set_size(Some(max_width), None);
+
         buffer.set_text(
             &text.value,
             &attrs,
             Shaping::Advanced,
-            Some(text.alignment.into()),
+            Some(cosmic_text::Align::from(text.align)),
         );
-
-        const PRUNE: bool = false;
-        buffer.shape_until_scroll(&mut self.font_system, PRUNE);
+        buffer.shape_until_scroll(&mut self.font_system, false);
 
         buffer
     }

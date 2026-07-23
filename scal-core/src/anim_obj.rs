@@ -65,7 +65,7 @@ pub enum AnimObjKind {
     Text {
         value: String,
         font_family: String,
-        alignment: TextAlign,
+        align: Alignment,
         color: Color,
         font_size: f32,
         modifications: Vec<TextModifier>,
@@ -150,8 +150,8 @@ pub enum AnimObjKind {
     Layout {
         children: Vec<AnimObj>,
         direction: LayoutDir,
-        alignment: Alignment,
-        main_alignment: Alignment,
+        align: Alignment,
+        justify: Alignment,
         gap: f32,
         padding_top: f32,
         padding_bottom: f32,
@@ -162,14 +162,6 @@ pub enum AnimObjKind {
         background_color: Color,
         corner_radius: f32,
     },
-}
-
-#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
-#[allow(missing_docs)]
-pub enum TextAlign {
-    Center,
-    Left,
-    Right,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Hash, Eq)]

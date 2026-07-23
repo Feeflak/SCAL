@@ -535,7 +535,7 @@ pub mod transform;
 
 pub use anim_obj::{
     Alignment, AnimObj, CodeHandle, CodeWindowHandle, LayoutDir, StretchMode, Syntax,
-    TerminalHandle, TextAlign, TextModifier,
+    TerminalHandle, TextModifier,
 };
 pub use anim_op::{
     AnimOP, CodeAnimationStyle, CodeHighlightAction, IntoAnimOp, SourceLoc, TerminalOutputAction,
@@ -557,7 +557,7 @@ pub mod prelude {
     pub use crate::anim_builders::*;
     pub use crate::anim_obj::{
         Alignment, AnimObj, CodeHandle, CodeWindowHandle, LayoutDir, StretchMode, Syntax,
-        TerminalHandle, TextAlign, TextModifier,
+        TerminalHandle, TextModifier,
     };
     pub use crate::anim_op::{
         AnimOP, CodeAnimationStyle, CodeHighlightAction, IntoAnimOp, TerminalOutputAction,

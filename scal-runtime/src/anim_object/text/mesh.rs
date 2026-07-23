@@ -2,7 +2,7 @@ use scal_core::{Color, TextModifier};
 
 use crate::{
     anim_object::{
-        render::PipelineKind,
+        Alignment, render::PipelineKind,
         text::{Text, TextManager},
     },
     renderer::Vertex,
@@ -90,16 +90,21 @@ pub fn generate_text_mesh(
         min_y = min_y.min(q.y);
         max_y = max_y.max(q.y + q.h);
     }
-    let center = vec2((min + max) * 0.5, (min_y + max_y) * 0.5);
+    let center_x = match text.align {
+        Alignment::Start => min,
+        Alignment::Center => (min + max) * 0.5,
+        Alignment::End => max,
+    };
+    let origin = vec2(center_x, (min_y + max_y) * 0.5);
 
     let mut vertices = vec![];
     let mut indices = vec![];
 
     for modifier in &text.modifications {
-        emit_modifier_quads(modifier, &quads, center, &mut vertices, &mut indices);
+        emit_modifier_quads(modifier, &quads, origin, &mut vertices, &mut indices);
     }
 
-    emit_base_quads(text.color, &quads, center, &mut vertices, &mut indices);
+    emit_base_quads(text.color, &quads, origin, &mut vertices, &mut indices);
 
     text.cached_size = Some(vec2(max - min, max_y - min_y));
 
