@@ -13,8 +13,8 @@ use anyhow::{Context, Result};
 use glam::{Vec2, Vec4Swizzles, vec3};
 use log::debug;
 use scal_core::{
-    CodeAnimationStyle, CodeHighlightAction, Color, Ease, ScrollOffsetTarget, TerminalOutputAction,
-    Time, Sfx, SourceLoc,
+    CodeAnimationStyle, CodeHighlightAction, Color, Ease, ScrollOffsetTarget, Sfx, SourceLoc,
+    TerminalOutputAction, Time,
 };
 use uuid::Uuid;
 
@@ -55,8 +55,25 @@ pub enum AnimOperation {
         Option<SourceLoc>,
     ),
     CodeHighlight(Uuid, CodeHighlightAction, Option<SourceLoc>),
-    TerminalTypeInput(Uuid, String, Option<String>, String, String, Time, Ease, Option<CodeAnimationStyle>, Option<SourceLoc>),
-    TerminalOutput(Uuid, TerminalOutputAction, Time, Ease, Option<CodeAnimationStyle>, Option<SourceLoc>),
+    TerminalTypeInput(
+        Uuid,
+        String,
+        Option<String>,
+        String,
+        String,
+        Time,
+        Ease,
+        Option<CodeAnimationStyle>,
+        Option<SourceLoc>,
+    ),
+    TerminalOutput(
+        Uuid,
+        TerminalOutputAction,
+        Time,
+        Ease,
+        Option<CodeAnimationStyle>,
+        Option<SourceLoc>,
+    ),
     ObjectColor(Uuid, Color, Time, Ease, Option<SourceLoc>),
     ScrollOffset(Uuid, ScrollOffsetTarget, Time, Ease, Option<SourceLoc>),
     All(Vec<Self>, Option<SourceLoc>),
@@ -184,15 +201,36 @@ pub fn resolve_op(op: AnimOperation) -> Result<Animation> {
             ensure_duration(duration, "CodeHighlight")?;
             code::highlight_fade_in(uuid, action, duration, curve)
         }
-        AnimOperation::TerminalTypeInput(uuid, command, display_override, captured_output, captured_prompt, duration, curve, style, _loc) => {
+        AnimOperation::TerminalTypeInput(
+            uuid,
+            command,
+            display_override,
+            captured_output,
+            captured_prompt,
+            duration,
+            curve,
+            style,
+            _loc,
+        ) => {
             debug!("TerminalTypeInput uuid={uuid}");
             ensure_duration(duration, "TerminalTypeInput")?;
-            self::terminal::type_input(uuid, command, display_override, captured_output, captured_prompt, duration, curve, style)
+            self::terminal::type_input(
+                uuid,
+                command,
+                display_override,
+                captured_output,
+                captured_prompt,
+                duration,
+                curve,
+                style,
+            )
         }
         AnimOperation::TerminalOutput(uuid, action, duration, curve, style, _loc) => {
             debug!("TerminalOutput uuid={uuid} action={action:?}");
             match action {
-                TerminalOutputAction::Pull(_) | TerminalOutputAction::PullAll | TerminalOutputAction::PullLine => {
+                TerminalOutputAction::Pull(_)
+                | TerminalOutputAction::PullAll
+                | TerminalOutputAction::PullLine => {
                     ensure_duration(duration, "TerminalOutput")?;
                 }
                 _ => {}
@@ -299,9 +337,10 @@ pub fn get_sequence_animation(ops: Vec<AnimOperation>) -> Result<Animation> {
                         let mut temp_store =
                             store[store_index + 1..store_index + 1 + to_read].to_vec();
                         if let Some(update) = anim.update {
-                            (*update)(animator, local_t, &mut temp_store).with_context(|| {
-                                format!("child[{i}] update failed for op {op_debug}")
-                            })?;
+                            (*update)(animator, anim.curve.apply(local_t), &mut temp_store)
+                                .with_context(|| {
+                                    format!("child[{i}] update failed for op {op_debug}")
+                                })?;
                         }
                         store[store_index + 1..store_index + 1 + to_read]
                             .copy_from_slice(&temp_store);
@@ -359,12 +398,11 @@ pub fn get_all_animation(ops: Vec<AnimOperation>) -> Result<Animation> {
                     })?;
                     let to_read = store[store_index] as usize;
                     // +1 to skip the to_read;
-                    let mut temp_store =
-                        store[store_index + 1..store_index + 1 + to_read].to_vec();
+                    let mut temp_store = store[store_index + 1..store_index + 1 + to_read].to_vec();
                     if let Some(update) = anim.update {
-                        (*update)(animator, t, &mut temp_store).with_context(|| {
-                            format!("child[{child_idx}] update failed for op {op_debug}")
-                        })?;
+                        (*update)(animator, anim.curve.apply(t), &mut temp_store).with_context(
+                            || format!("child[{child_idx}] update failed for op {op_debug}"),
+                        )?;
                     }
                     store_index += to_read + 1;
                     updated_store.push(temp_store.len() as f32);
@@ -385,7 +423,8 @@ pub fn get_all_animation(ops: Vec<AnimOperation>) -> Result<Animation> {
 fn set_object_color(obj: &mut dyn Any, color: Color) {
     if let Some(rect) = obj.downcast_mut::<crate::anim_object::primitive_shapes::Rectangle>() {
         rect.color = color;
-    } else if let Some(circle) = obj.downcast_mut::<crate::anim_object::primitive_shapes::Circle>() {
+    } else if let Some(circle) = obj.downcast_mut::<crate::anim_object::primitive_shapes::Circle>()
+    {
         circle.color = color;
     } else if let Some(poly) = obj.downcast_mut::<crate::anim_object::primitive_shapes::Polygon>() {
         poly.color = color;
@@ -396,10 +435,118 @@ fn set_object_color(obj: &mut dyn Any, color: Color) {
     }
 }
 
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::anim_object::Transform;
+    use crate::anim_object::object_trait::DynAnimObj;
+    use crate::anim_object::primitive_shapes::Rectangle;
+    use crate::anim_object::render::{ObjectRenderData, PipelineKind};
+    use crate::animator::{Animator, Object};
+    use glam::{Mat4, Vec2, Vec3};
+    use scal_core::{Camera, Color};
+    use uuid::Uuid;
+
+    fn make_rect_obj(uuid: Uuid, parent: Option<Uuid>) -> Object {
+        Object {
+            anim_data: DynAnimObj(Box::new(Rectangle {
+                size: Vec2::new(10.0, 10.0),
+                corner_radius: 0.0,
+                color: Color::WHITE,
+                transform: Transform {
+                    uuid,
+                    parent,
+                    position: Vec3::ZERO,
+                    rotation: 0.0,
+                    scale: Vec2::ONE,
+                    layout_container: None,
+                    world_uniform: None,
+                    clip_rect: None,
+                },
+            })),
+            render_data: ObjectRenderData {
+                world_matrix_cache: Mat4::ZERO,
+                vertices_base_index: 0,
+                vertices: vec![],
+                indices_base_index: 0,
+                indices_count: 0,
+                pipeline: PipelineKind::Shape,
+                object_bind_groups: vec![],
+            },
+        }
+    }
+
+    fn make_animator_with_rect(uuid: Uuid) -> Animator {
+        let camera = Camera::new(Vec2::new(100.0, 100.0), Vec2::ZERO, 1.0);
+        let mut animator =
+            Animator::new(vec![AnimOperation::Wait(0.001, None)], 60, camera, 1.0).unwrap();
+        animator.objects.push(make_rect_obj(uuid, None));
+        animator.objects_lookup.insert(uuid, 0);
+        animator
+    }
+
+    #[test]
+    fn parallel_applies_child_ease() {
+        let uuid = Uuid::new_v4();
+        let mut animator = make_animator_with_rect(uuid);
+        let op = AnimOperation::All(
+            vec![AnimOperation::TransformMovePos(
+                uuid,
+                Vec2::new(100.0, 0.0),
+                1.0,
+                Ease::OutCubic,
+                None,
+            )],
+            None,
+        );
+        let anim = resolve_op(op).unwrap();
+        let mut store = vec![];
+        (anim.start)(&mut animator, &mut store).unwrap();
+        (anim.update.unwrap())(&mut animator, 0.5, &mut store).unwrap();
+
+        let pos = animator.get_object(&uuid).unwrap().transform().position;
+        let expected = Ease::OutCubic.apply(0.5) * 100.0;
+        assert!(
+            (pos.x - expected).abs() < 0.01,
+            "expected x={expected}, got {}",
+            pos.x
+        );
+    }
+
+    #[test]
+    fn sequence_applies_child_ease() {
+        let uuid = Uuid::new_v4();
+        let mut animator = make_animator_with_rect(uuid);
+        let op = AnimOperation::Sequence(
+            vec![AnimOperation::TransformMovePos(
+                uuid,
+                Vec2::new(100.0, 0.0),
+                1.0,
+                Ease::OutCubic,
+                None,
+            )],
+            None,
+        );
+        let anim = resolve_op(op).unwrap();
+        let mut store = vec![];
+        (anim.start)(&mut animator, &mut store).unwrap();
+        (anim.update.unwrap())(&mut animator, 0.5, &mut store).unwrap();
+
+        let pos = animator.get_object(&uuid).unwrap().transform().position;
+        let expected = Ease::OutCubic.apply(0.5) * 100.0;
+        assert!(
+            (pos.x - expected).abs() < 0.01,
+            "expected x={expected}, got {}",
+            pos.x
+        );
+    }
+}
+
 fn get_object_color(obj: &dyn Any) -> Option<Color> {
     if let Some(rect) = obj.downcast_ref::<crate::anim_object::primitive_shapes::Rectangle>() {
         Some(rect.color)
-    } else if let Some(circle) = obj.downcast_ref::<crate::anim_object::primitive_shapes::Circle>() {
+    } else if let Some(circle) = obj.downcast_ref::<crate::anim_object::primitive_shapes::Circle>()
+    {
         Some(circle.color)
     } else if let Some(poly) = obj.downcast_ref::<crate::anim_object::primitive_shapes::Polygon>() {
         Some(poly.color)

@@ -368,9 +368,12 @@ fn convert_core_anim_obj(
         scal_core::anim_obj::AnimObjKind::Terminal { .. } => {
             bail!("Terminal should be handled by build_terminal_op")
         }
-        scal_core::anim_obj::AnimObjKind::Padding { size } => Ok(RenderObj(Box::new(
-            crate::anim_object::padding::Padding { size, transform },
-        ))),
+        scal_core::anim_obj::AnimObjKind::Padding { size } => {
+            Ok(RenderObj(Box::new(crate::anim_object::padding::Padding {
+                size,
+                transform,
+            })))
+        }
         scal_core::anim_obj::AnimObjKind::Group { .. } => {
             bail!("Group object conversion not yet implemented")
         }
@@ -387,9 +390,11 @@ fn build_scroll_layout_op(
     obj: scal_core::AnimObj,
     default_theme: &scal_core::Theme,
 ) -> Result<AnimOperation> {
-    use scal_core::anim_obj::{Alignment as CoreAlignment, AnimObjKind, LayoutDir as CoreLayoutDir};
-    use uuid::Uuid;
     use crate::anim_object::object_trait::AnimObjectTrait;
+    use scal_core::anim_obj::{
+        Alignment as CoreAlignment, AnimObjKind, LayoutDir as CoreLayoutDir,
+    };
+    use uuid::Uuid;
     let id = obj.id;
     let transform = make_transform(&obj);
     if let AnimObjKind::ScrollLayout {
@@ -552,7 +557,11 @@ fn build_scroll_layout_op(
             (RuntimeLayoutDir::Row, RuntimeAlignment::End) => content_right - total_content_w,
         };
 
-        for ScrollChild { obj: mut child_obj, size: s } in scroll_children.into_iter() {
+        for ScrollChild {
+            obj: mut child_obj,
+            size: s,
+        } in scroll_children.into_iter()
+        {
             let (base_cx, base_cy) = match layout_dir {
                 RuntimeLayoutDir::Column => {
                     let cx_val = match align_val {
@@ -648,7 +657,9 @@ fn build_layout_result_from_core(
     obj: scal_core::AnimObj,
     default_theme: &scal_core::Theme,
 ) -> Result<crate::anim_object::compose::LayoutResult> {
-    use scal_core::anim_obj::{Alignment as CoreAlignment, AnimObjKind, LayoutDir as CoreLayoutDir};
+    use scal_core::anim_obj::{
+        Alignment as CoreAlignment, AnimObjKind, LayoutDir as CoreLayoutDir,
+    };
     if let AnimObjKind::Layout {
         children,
         direction,
@@ -715,10 +726,7 @@ fn convert_to_layout_item(
     child: scal_core::AnimObj,
     default_theme: &scal_core::Theme,
 ) -> Result<LayoutItem> {
-    let is_layout = matches!(
-        child.kind,
-        scal_core::anim_obj::AnimObjKind::Layout { .. }
-    );
+    let is_layout = matches!(child.kind, scal_core::anim_obj::AnimObjKind::Layout { .. });
     let is_scroll = matches!(
         child.kind,
         scal_core::anim_obj::AnimObjKind::ScrollLayout { .. }

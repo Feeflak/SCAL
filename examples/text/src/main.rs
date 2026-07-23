@@ -105,7 +105,6 @@ fn main() -> Project {
             title.instantiate(),
             subtitle.instantiate(),
             feature.instantiate(),
-
             // Panel and title scale in together.
             parallel![
                 panel
@@ -125,9 +124,7 @@ fn main() -> Project {
                     .over(0.9.s())
                     .ease(Ease::OutBack),
             ],
-
             wait(0.15.s()),
-
             // Badge pops in under the title.
             badge
                 .transform
@@ -135,9 +132,7 @@ fn main() -> Project {
                 .to(Vec2::ONE)
                 .over(0.45.s())
                 .ease(Ease::OutBack),
-
             wait(0.15.s()),
-
             // Subtitle slides up and fades in.
             parallel![
                 subtitle_handle
@@ -151,9 +146,7 @@ fn main() -> Project {
                     .over(0.6.s())
                     .ease(Ease::OutCubic),
             ],
-
             wait(0.25.s()),
-
             // Feature label pops in with a little rotation.
             parallel![
                 feature_handle
@@ -167,9 +160,7 @@ fn main() -> Project {
                     .over(0.5.s())
                     .ease(Ease::OutBack),
             ],
-
             wait(0.6.s()),
-
             // Title color pulse + subtle scale bounce.
             parallel![
                 title_handle
@@ -195,7 +186,6 @@ fn main() -> Project {
                     .over(0.35.s())
                     .ease(Ease::InOutCubic),
             ],
-
             wait(1.0.s()),
         ],
     }

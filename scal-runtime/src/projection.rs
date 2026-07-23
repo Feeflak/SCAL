@@ -2,7 +2,6 @@ use glam::{Mat4, Quat, Vec2, Vec3, vec3};
 
 use crate::anim_object::Transform;
 
-
 impl Transform {
     pub fn get_local_matrix(&self) -> Mat4 {
         Mat4::from_scale_rotation_translation(
@@ -12,4 +11,3 @@ impl Transform {
         )
     }
 }
-

@@ -421,7 +421,9 @@ impl TerminalInputBuilder {
     #[must_use]
     pub fn value(mut self, cmd: impl Into<String>) -> Self {
         let cmd: String = cmd.into();
-        let session_cwd = SESSIONS.lock().unwrap()
+        let session_cwd = SESSIONS
+            .lock()
+            .unwrap()
             .get(&self.uuid.to_string())
             .and_then(|s| {
                 if s.cwd.as_os_str().is_empty() {
@@ -570,7 +572,11 @@ impl IntoAnimOp for TerminalOutputBuilder {
     }
 }
 
-fn capture_prompt(shell: &str, source_dir: &Option<String>, cwd: Option<&std::path::Path>) -> String {
+fn capture_prompt(
+    shell: &str,
+    source_dir: &Option<String>,
+    cwd: Option<&std::path::Path>,
+) -> String {
     use std::process::Command;
     let work_dir = cwd.or_else(|| source_dir.as_ref().map(std::path::Path::new));
     let prompt_cmds = ["starship prompt 2>/dev/null", "fish_prompt 2>/dev/null"];
@@ -600,7 +606,8 @@ struct SessionState {
     startup_done: bool,
 }
 
-static SESSIONS: LazyLock<Mutex<HashMap<String, SessionState>>> = LazyLock::new(|| Mutex::new(HashMap::new()));
+static SESSIONS: LazyLock<Mutex<HashMap<String, SessionState>>> =
+    LazyLock::new(|| Mutex::new(HashMap::new()));
 
 fn execute_command(
     cmd: &str,
@@ -659,7 +666,9 @@ fn execute_command(
             for component in resolved.components() {
                 match component {
                     std::path::Component::Normal(c) => normalized.push(c),
-                    std::path::Component::ParentDir => { normalized.pop(); }
+                    std::path::Component::ParentDir => {
+                        normalized.pop();
+                    }
                     _ => {}
                 }
             }

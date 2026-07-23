@@ -127,8 +127,9 @@ impl Animator {
         loop {
             let op = self.anim_state.anim_op.clone();
             let loc_str = op.location().map(|l| l.to_string()).unwrap_or_default();
-            let animation: Animation = resolve_op(op)
-                .with_context(|| format!("while converting anim_op to animation for the next frame {loc_str}"))?;
+            let animation: Animation = resolve_op(op).with_context(|| {
+                format!("while converting anim_op to animation for the next frame {loc_str}")
+            })?;
 
             let mut storage = self.anim_state.storage.clone();
 

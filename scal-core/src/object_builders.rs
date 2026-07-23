@@ -1293,9 +1293,7 @@ impl PaddingBuilder {
         AnimObj {
             id,
             transform: self.transform,
-            kind: AnimObjKind::Padding {
-                size: self.size,
-            },
+            kind: AnimObjKind::Padding { size: self.size },
         }
     }
 }

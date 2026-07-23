@@ -6,11 +6,7 @@ use scal_core::{CodeAnimationStyle, Color};
 use uuid::Uuid;
 
 use crate::{
-    anim_object::{
-        render::PipelineKind,
-        text::TextManager,
-        text::code::Code,
-    },
+    anim_object::{render::PipelineKind, text::TextManager, text::code::Code},
     renderer::Vertex,
 };
 
@@ -153,10 +149,26 @@ pub fn generate_code_mesh(
                 };
                 let color = Color::new(1.0, 1.0, 1.0, alpha);
                 vertices.extend([
-                    Vertex { position: vec2(x, y), color, uv: glyph_info.uv_min },
-                    Vertex { position: vec2(x + w, y), color, uv: vec2(glyph_info.uv_max.x, glyph_info.uv_min.y) },
-                    Vertex { position: vec2(x + w, y + h), color, uv: glyph_info.uv_max },
-                    Vertex { position: vec2(x, y + h), color, uv: vec2(glyph_info.uv_min.x, glyph_info.uv_max.y) },
+                    Vertex {
+                        position: vec2(x, y),
+                        color,
+                        uv: glyph_info.uv_min,
+                    },
+                    Vertex {
+                        position: vec2(x + w, y),
+                        color,
+                        uv: vec2(glyph_info.uv_max.x, glyph_info.uv_min.y),
+                    },
+                    Vertex {
+                        position: vec2(x + w, y + h),
+                        color,
+                        uv: glyph_info.uv_max,
+                    },
+                    Vertex {
+                        position: vec2(x, y + h),
+                        color,
+                        uv: vec2(glyph_info.uv_min.x, glyph_info.uv_max.y),
+                    },
                 ]);
                 indices.extend([base, base + 1, base + 2, base + 2, base + 3, base]);
                 continue;
@@ -247,5 +259,3 @@ pub fn generate_code_mesh(
 
     Ok((vertices, indices, PipelineKind::Text))
 }
-
-

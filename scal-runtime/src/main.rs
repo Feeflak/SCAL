@@ -23,7 +23,7 @@ pub use scal_core::{self, Color, Ease, Time as CoreSeconds};
 
 use std::path::PathBuf;
 
-use scal_core::{CodecType, EncodingSettings, Project, RenderingSettings, Time, Sfx};
+use scal_core::{CodecType, EncodingSettings, Project, RenderingSettings, Sfx, Time};
 use tokio::runtime::Handle;
 
 #[derive(serde::Deserialize, Clone)]

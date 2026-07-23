@@ -56,10 +56,26 @@ pub fn generate_rectangle_mesh_data(
 pub fn generate_circle_mesh_data(circle: &Circle) -> (Vec<Vertex>, Vec<Index>, PipelineKind) {
     let r = circle.radius;
     let vertices = vec![
-        Vertex { position: vec2(-r, -r), color: circle.color, uv: vec2(r, 0.0) },
-        Vertex { position: vec2(r, -r), color: circle.color, uv: vec2(r, 0.0) },
-        Vertex { position: vec2(r, r), color: circle.color, uv: vec2(r, 0.0) },
-        Vertex { position: vec2(-r, r), color: circle.color, uv: vec2(r, 0.0) },
+        Vertex {
+            position: vec2(-r, -r),
+            color: circle.color,
+            uv: vec2(r, 0.0),
+        },
+        Vertex {
+            position: vec2(r, -r),
+            color: circle.color,
+            uv: vec2(r, 0.0),
+        },
+        Vertex {
+            position: vec2(r, r),
+            color: circle.color,
+            uv: vec2(r, 0.0),
+        },
+        Vertex {
+            position: vec2(-r, r),
+            color: circle.color,
+            uv: vec2(r, 0.0),
+        },
     ];
     let indices = vec![0, 1, 2, 0, 2, 3];
     (vertices, indices, PipelineKind::Shape)

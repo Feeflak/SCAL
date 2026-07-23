@@ -5,7 +5,7 @@ use uuid::Uuid;
 use crate::{
     anim_object::{
         Transform, TransformUniform,
-        object_trait::{DynAnimObj, AnimObjectTrait, BindGroupLoader, MeshResult},
+        object_trait::{AnimObjectTrait, BindGroupLoader, DynAnimObj, MeshResult},
         primitive_shapes::Rectangle,
         render::PipelineKind,
         text::TextManager,

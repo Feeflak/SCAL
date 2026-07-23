@@ -2,12 +2,13 @@ use scal_core::{Color, TextModifier};
 
 use crate::{
     anim_object::{
-        Alignment, render::PipelineKind,
+        Alignment,
+        render::PipelineKind,
         text::{Text, TextManager},
     },
     renderer::Vertex,
 };
-use glam::{vec2, Vec2};
+use glam::{Vec2, vec2};
 
 struct GlyphQuad {
     x: f32,
@@ -216,7 +217,11 @@ fn emit_modifier_quads(
         );
 
         for q in quads {
-            let color = if q.is_color { Color::WHITE } else { layer_color };
+            let color = if q.is_color {
+                Color::WHITE
+            } else {
+                layer_color
+            };
 
             let q_cx = q.x + q.w * 0.5;
             let q_cy = q.y + q.h * 0.5;

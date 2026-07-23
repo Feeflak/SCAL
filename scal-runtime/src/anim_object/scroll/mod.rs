@@ -2,13 +2,11 @@ use glam::{Vec2, vec2};
 use scal_core::Color;
 use uuid::Uuid;
 
-use crate::{
-    anim_object::{
-        Transform,
-        object_trait::{AnimObjectTrait, BindGroupLoader, MeshResult},
-        primitive_shapes::{Rectangle, mesh::generate_rectangle_mesh_data},
-        render::PipelineKind,
-    },
+use crate::anim_object::{
+    Transform,
+    object_trait::{AnimObjectTrait, BindGroupLoader, MeshResult},
+    primitive_shapes::{Rectangle, mesh::generate_rectangle_mesh_data},
+    render::PipelineKind,
 };
 
 #[derive(Clone, Debug)]
@@ -60,7 +58,9 @@ impl AnimObjectTrait for ScrollLayout {
         vec2(self.viewport_width, self.viewport_height)
     }
     fn generate_mesh(&mut self, _mgr: &mut crate::anim_object::text::TextManager) -> MeshResult {
-        if !self.show_scrollbar || self.content_total <= self.viewport_height.max(self.viewport_width) {
+        if !self.show_scrollbar
+            || self.content_total <= self.viewport_height.max(self.viewport_width)
+        {
             return Ok((vec![], vec![], PipelineKind::Shape));
         }
 
@@ -93,7 +93,8 @@ impl AnimObjectTrait for ScrollLayout {
                 let track_w = TRACK_WIDTH;
                 let track_h = self.viewport_height - 2.0 * TRACK_PADDING;
                 let thumb_x = track_x;
-                let thumb_y = -self.viewport_height / 2.0 + TRACK_PADDING + thumb_pos + thumb_len / 2.0;
+                let thumb_y =
+                    -self.viewport_height / 2.0 + TRACK_PADDING + thumb_pos + thumb_len / 2.0;
                 let thumb_w = THUMB_WIDTH;
                 let thumb_h = thumb_len;
                 (
@@ -108,7 +109,8 @@ impl AnimObjectTrait for ScrollLayout {
                 let track_y = -self.viewport_height / 2.0 + TRACK_PADDING + TRACK_WIDTH / 2.0;
                 let track_w = self.viewport_width - 2.0 * TRACK_PADDING;
                 let track_h = TRACK_WIDTH;
-                let thumb_x = -self.viewport_width / 2.0 + TRACK_PADDING + thumb_pos + thumb_len / 2.0;
+                let thumb_x =
+                    -self.viewport_width / 2.0 + TRACK_PADDING + thumb_pos + thumb_len / 2.0;
                 let thumb_y = track_y;
                 let thumb_w = thumb_len;
                 let thumb_h = THUMB_WIDTH;

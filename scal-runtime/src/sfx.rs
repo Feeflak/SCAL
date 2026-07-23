@@ -101,33 +101,47 @@ impl AudioEngine {
             .audio()
             .context("failed to create audio decoder")?;
 
-        let mut resampler: Option<ffmpeg::software::resampling::Context> = None;
         let mut pcm_stereo: Vec<f32> = vec![];
-        let is_pcm = input_stream.parameters().id() == ffmpeg::codec::Id::PCM_S16LE;
+        let codec_name = input_stream.parameters().id().name();
+        let is_pcm = codec_name.starts_with("pcm_");
 
-        for (stream, packet) in ictx.packets() {
-            if stream.index() != input_stream_index {
-                continue;
+        if is_pcm {
+            let mut src_f32: Vec<f32> = vec![];
+            let src_rate = decoder.rate();
+            let channels = decoder.channels() as usize;
+
+            for (stream, packet) in ictx.packets() {
+                if stream.index() != input_stream_index {
+                    continue;
+                }
+                decoder.send_packet(&packet)?;
+
+                let mut decoded = ffmpeg::frame::Audio::empty();
+                while decoder.receive_frame(&mut decoded).is_ok() {
+                    push_pcm_samples_as_f32(&decoded, &mut src_f32)?;
+                }
             }
-            decoder.send_packet(&packet)?;
 
-            let mut decoded = ffmpeg::frame::Audio::empty();
-            loop {
-                match decoder.receive_frame(&mut decoded) {
-                    Ok(()) => {
-                        if is_pcm {
-                            let n = decoded.samples();
-                            let data = decoded.data(0);
-                            let i16_data = unsafe {
-                                std::slice::from_raw_parts(
-                                    data.as_ptr() as *const i16,
-                                    n * decoded.channels() as usize,
-                                )
-                            };
-                            for &s in i16_data {
-                                pcm_stereo.push((s as f32) * (1.0 / 32768.0));
-                            }
-                        } else {
+            decoder.send_eof()?;
+            let mut remaining = ffmpeg::frame::Audio::empty();
+            while decoder.receive_frame(&mut remaining).is_ok() {
+                push_pcm_samples_as_f32(&remaining, &mut src_f32)?;
+            }
+
+            pcm_stereo = resample_linear(&src_f32, src_rate, OUTPUT_SAMPLE_RATE, channels);
+        } else {
+            let mut resampler: Option<ffmpeg::software::resampling::Context> = None;
+
+            for (stream, packet) in ictx.packets() {
+                if stream.index() != input_stream_index {
+                    continue;
+                }
+                decoder.send_packet(&packet)?;
+
+                let mut decoded = ffmpeg::frame::Audio::empty();
+                loop {
+                    match decoder.receive_frame(&mut decoded) {
+                        Ok(()) => {
                             if resampler.is_none() {
                                 let input_ch_layout = if decoded.channel_layout().is_empty() {
                                     ffmpeg::ChannelLayout::default(decoded.channels() as i32)
@@ -187,71 +201,61 @@ impl AudioEngine {
                                 pcm_stereo.extend_from_slice(float_data);
                             }
                         }
+                        Err(ffmpeg::Error::Eof) => break,
+                        Err(_) => break,
+                    }
+                }
+            }
+
+            decoder.send_eof()?;
+            let mut remaining = ffmpeg::frame::Audio::empty();
+            loop {
+                match decoder.receive_frame(&mut remaining) {
+                    Ok(()) => {
+                        if let Some(rsmpl) = resampler.as_mut() {
+                            let mut converted = ffmpeg::frame::Audio::empty();
+                            let converted_valid = match rsmpl.run(&remaining, &mut converted) {
+                                Ok(_) => true,
+                                Err(ffmpeg::Error::InputChanged) => {
+                                    let input_ch_layout = if remaining.channel_layout().is_empty() {
+                                        ffmpeg::ChannelLayout::default(remaining.channels() as i32)
+                                    } else {
+                                        remaining.channel_layout()
+                                    };
+                                    if let Ok(new_rsmpl) =
+                                        ffmpeg::software::resampling::Context::get(
+                                            remaining.format(),
+                                            input_ch_layout,
+                                            remaining.rate(),
+                                            ffmpeg::format::Sample::F32(
+                                                ffmpeg::format::sample::Type::Packed,
+                                            ),
+                                            ffmpeg::ChannelLayout::default(2),
+                                            OUTPUT_SAMPLE_RATE,
+                                        )
+                                    {
+                                        *rsmpl = new_rsmpl;
+                                        rsmpl.run(&remaining, &mut converted).is_ok()
+                                    } else {
+                                        false
+                                    }
+                                }
+                                Err(_) => false,
+                            };
+
+                            if converted_valid {
+                                let n = converted.samples();
+                                let data = converted.data(0);
+                                let float_data = unsafe {
+                                    std::slice::from_raw_parts(data.as_ptr() as *const f32, n * 2)
+                                };
+                                pcm_stereo.extend_from_slice(float_data);
+                            }
+                        }
                     }
                     Err(ffmpeg::Error::Eof) => break,
                     Err(_) => break,
                 }
-            }
-        }
-
-        decoder.send_eof()?;
-        let mut remaining = ffmpeg::frame::Audio::empty();
-        loop {
-            match decoder.receive_frame(&mut remaining) {
-                Ok(()) => {
-                    if is_pcm {
-                        let n = remaining.samples();
-                        let data = remaining.data(0);
-                        let i16_data = unsafe {
-                            std::slice::from_raw_parts(
-                                data.as_ptr() as *const i16,
-                                n * remaining.channels() as usize,
-                            )
-                        };
-                        for &s in i16_data {
-                            pcm_stereo.push((s as f32) * (1.0 / 32768.0));
-                        }
-                    } else if let Some(rsmpl) = resampler.as_mut() {
-                        let mut converted = ffmpeg::frame::Audio::empty();
-                        let converted_valid = match rsmpl.run(&remaining, &mut converted) {
-                            Ok(_) => true,
-                            Err(ffmpeg::Error::InputChanged) => {
-                                let input_ch_layout = if remaining.channel_layout().is_empty() {
-                                    ffmpeg::ChannelLayout::default(remaining.channels() as i32)
-                                } else {
-                                    remaining.channel_layout()
-                                };
-                                if let Ok(new_rsmpl) = ffmpeg::software::resampling::Context::get(
-                                    remaining.format(),
-                                    input_ch_layout,
-                                    remaining.rate(),
-                                    ffmpeg::format::Sample::F32(
-                                        ffmpeg::format::sample::Type::Packed,
-                                    ),
-                                    ffmpeg::ChannelLayout::default(2),
-                                    OUTPUT_SAMPLE_RATE,
-                                ) {
-                                    *rsmpl = new_rsmpl;
-                                    rsmpl.run(&remaining, &mut converted).is_ok()
-                                } else {
-                                    false
-                                }
-                            }
-                            Err(_) => false,
-                        };
-
-                        if converted_valid {
-                            let n = converted.samples();
-                            let data = converted.data(0);
-                            let float_data = unsafe {
-                                std::slice::from_raw_parts(data.as_ptr() as *const f32, n * 2)
-                            };
-                            pcm_stereo.extend_from_slice(float_data);
-                        }
-                    }
-                }
-                Err(ffmpeg::Error::Eof) => break,
-                Err(_) => break,
             }
         }
 
@@ -286,6 +290,152 @@ impl AudioEngine {
 
         Ok(pcm_stereo)
     }
+}
+
+fn pcm_integer_scale(format: ffmpeg::format::Sample) -> f32 {
+    let bits = match format {
+        ffmpeg::format::Sample::I16(_) => 16,
+        ffmpeg::format::Sample::I32(_) => 32,
+        ffmpeg::format::Sample::I64(_) => 64,
+        ffmpeg::format::Sample::U8(_) => 8,
+        _ => 32,
+    };
+    let max = if bits == 64 {
+        (1_i64 << (bits - 1)) as f32
+    } else {
+        (1_i32 << (bits - 1)) as f32
+    };
+    1.0 / max
+}
+
+fn push_pcm_samples_as_f32(decoded: &ffmpeg::frame::Audio, out: &mut Vec<f32>) -> Result<()> {
+    let n = decoded.samples();
+    let channels = decoded.channels() as usize;
+    let format = decoded.format();
+
+    if channels == 0 || n == 0 {
+        return Ok(());
+    }
+
+    if format.is_planar() {
+        let scale = pcm_integer_scale(format);
+        for i in 0..n {
+            for ch in 0..channels {
+                let data = decoded.data(ch);
+                let sample = match format {
+                    ffmpeg::format::Sample::I16(_) => {
+                        let slice =
+                            unsafe { std::slice::from_raw_parts(data.as_ptr() as *const i16, n) };
+                        slice[i] as f32 * scale
+                    }
+                    ffmpeg::format::Sample::I32(_) => {
+                        let slice =
+                            unsafe { std::slice::from_raw_parts(data.as_ptr() as *const i32, n) };
+                        slice[i] as f32 * scale
+                    }
+                    ffmpeg::format::Sample::I64(_) => {
+                        let slice =
+                            unsafe { std::slice::from_raw_parts(data.as_ptr() as *const i64, n) };
+                        slice[i] as f32 * scale
+                    }
+                    ffmpeg::format::Sample::U8(_) => {
+                        let slice =
+                            unsafe { std::slice::from_raw_parts(data.as_ptr() as *const u8, n) };
+                        (slice[i] as f32 - 128.0) / 128.0
+                    }
+                    ffmpeg::format::Sample::F32(_) => {
+                        let slice =
+                            unsafe { std::slice::from_raw_parts(data.as_ptr() as *const f32, n) };
+                        slice[i]
+                    }
+                    ffmpeg::format::Sample::F64(_) => {
+                        let slice =
+                            unsafe { std::slice::from_raw_parts(data.as_ptr() as *const f64, n) };
+                        slice[i] as f32
+                    }
+                    _ => anyhow::bail!("unsupported planar PCM sample format: {:?}", format),
+                };
+                out.push(sample);
+            }
+        }
+    } else {
+        let data = decoded.data(0);
+        match format {
+            ffmpeg::format::Sample::I16(_) => {
+                let scale = pcm_integer_scale(format);
+                let samples = unsafe {
+                    std::slice::from_raw_parts(data.as_ptr() as *const i16, n * channels)
+                };
+                for &s in samples {
+                    out.push(s as f32 * scale);
+                }
+            }
+            ffmpeg::format::Sample::I32(_) => {
+                let scale = pcm_integer_scale(format);
+                let samples = unsafe {
+                    std::slice::from_raw_parts(data.as_ptr() as *const i32, n * channels)
+                };
+                for &s in samples {
+                    out.push(s as f32 * scale);
+                }
+            }
+            ffmpeg::format::Sample::I64(_) => {
+                let scale = pcm_integer_scale(format);
+                let samples = unsafe {
+                    std::slice::from_raw_parts(data.as_ptr() as *const i64, n * channels)
+                };
+                for &s in samples {
+                    out.push(s as f32 * scale);
+                }
+            }
+            ffmpeg::format::Sample::U8(_) => {
+                let samples =
+                    unsafe { std::slice::from_raw_parts(data.as_ptr() as *const u8, n * channels) };
+                for &s in samples {
+                    out.push((s as f32 - 128.0) / 128.0);
+                }
+            }
+            ffmpeg::format::Sample::F32(_) => {
+                let samples = unsafe {
+                    std::slice::from_raw_parts(data.as_ptr() as *const f32, n * channels)
+                };
+                out.extend_from_slice(samples);
+            }
+            ffmpeg::format::Sample::F64(_) => {
+                let samples = unsafe {
+                    std::slice::from_raw_parts(data.as_ptr() as *const f64, n * channels)
+                };
+                for &s in samples {
+                    out.push(s as f32);
+                }
+            }
+            _ => anyhow::bail!("unsupported packed PCM sample format: {:?}", format),
+        }
+    }
+
+    Ok(())
+}
+
+fn resample_linear(src: &[f32], src_rate: u32, dst_rate: u32, channels: usize) -> Vec<f32> {
+    if src_rate == dst_rate || src.is_empty() || channels == 0 {
+        return src.to_vec();
+    }
+    let src_frames = src.len() / channels;
+    let dst_frames = (src_frames as f64 * dst_rate as f64 / src_rate as f64).ceil() as usize;
+    let mut dst = vec![0.0_f32; dst_frames * channels];
+    for i in 0..dst_frames {
+        let t = i as f64 * src_rate as f64 / dst_rate as f64;
+        let src_i = t as usize;
+        let frac = (t - src_i as f64) as f32;
+        let src_i = src_i.min(src_frames.saturating_sub(1));
+        let src_j = (src_i + 1).min(src_frames.saturating_sub(1));
+        for ch in 0..channels {
+            let a = src[src_i * channels + ch];
+            let b = src[src_j * channels + ch];
+            dst[i * channels + ch] = a + (b - a) * frac;
+        }
+    }
+    dst
 }
 
 #[cfg(test)]
@@ -355,6 +505,77 @@ mod tests {
         assert!(result.is_empty());
         let result = apply_pitch_and_volume(vec![], 0.5, 2.0);
         assert!(result.is_empty());
+    }
+
+    #[test]
+    fn decode_woosh_is_non_silent() {
+        let sound = ScheduledSound {
+            path: "../ign_projects/ign/woosh.wav".to_string(),
+            volume: 20.0,
+            pitch: 1.0,
+            start_time: 0.0,
+            seek_offset: 0.2,
+            duration: 1.0,
+            source_loc: None,
+        };
+        let engine = AudioEngine::new(vec![sound]);
+        let samples = engine
+            .decode_and_transform(&engine.sounds[0])
+            .expect("decode failed");
+        assert!(!samples.is_empty(), "woosh decoded to silence");
+        let peak = samples.iter().map(|s| s.abs()).fold(0.0_f32, f32::max);
+        assert!(peak > 0.01, "woosh peak too low: {}", peak);
+        assert!(peak <= 1.0, "woosh peak too high: {}", peak);
+    }
+
+    #[test]
+    fn decode_title_zoom_sfx_is_non_silent() {
+        let sound = ScheduledSound {
+            path: "../ign_projects/ign/title_zoom_sfx.wav".to_string(),
+            volume: 1.0,
+            pitch: 1.0,
+            start_time: 0.0,
+            seek_offset: 0.2,
+            duration: 2.2,
+            source_loc: None,
+        };
+        let engine = AudioEngine::new(vec![sound]);
+        let samples = engine
+            .decode_and_transform(&engine.sounds[0])
+            .expect("decode failed");
+        assert!(!samples.is_empty(), "title_zoom_sfx decoded to silence");
+        let peak = samples.iter().map(|s| s.abs()).fold(0.0_f32, f32::max);
+        assert!(peak > 0.001, "title_zoom_sfx peak too low: {}", peak);
+        assert!(peak <= 1.0, "title_zoom_sfx peak too high: {}", peak);
+    }
+
+    #[test]
+    fn mix_ign_sfx_is_non_silent() {
+        let sounds = vec![
+            ScheduledSound {
+                path: "../ign_projects/ign/title_zoom_sfx.wav".to_string(),
+                volume: 1.0,
+                pitch: 1.0,
+                start_time: 0.0,
+                seek_offset: 0.2,
+                duration: 2.2,
+                source_loc: None,
+            },
+            ScheduledSound {
+                path: "../ign_projects/ign/woosh.wav".to_string(),
+                volume: 20.0,
+                pitch: 1.0,
+                start_time: 0.7,
+                seek_offset: 0.2,
+                duration: 1.0,
+                source_loc: None,
+            },
+        ];
+        let engine = AudioEngine::new(sounds);
+        let mixed = engine.mix().expect("mix failed");
+        assert!(!mixed.is_empty(), "mixed audio is empty");
+        let peak = mixed.iter().map(|s| s.abs()).fold(0.0_f32, f32::max);
+        assert!(peak > 0.001, "mixed audio peak too low: {}", peak);
     }
 }
 

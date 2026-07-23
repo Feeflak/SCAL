@@ -67,9 +67,26 @@ pub enum AnimOP {
         Option<SourceLoc>,
     ),
     CodeHighlight(Uuid, CodeHighlightAction, Option<SourceLoc>),
-    TerminalTypeInput(Uuid, String, Option<String>, String, String, Time, Ease, Option<CodeAnimationStyle>, Option<SourceLoc>),
+    TerminalTypeInput(
+        Uuid,
+        String,
+        Option<String>,
+        String,
+        String,
+        Time,
+        Ease,
+        Option<CodeAnimationStyle>,
+        Option<SourceLoc>,
+    ),
     //                  uuid, command, display_override, captured_output, captured_prompt, dur, ease, style, loc
-    TerminalOutput(Uuid, TerminalOutputAction, Time, Ease, Option<CodeAnimationStyle>, Option<SourceLoc>),
+    TerminalOutput(
+        Uuid,
+        TerminalOutputAction,
+        Time,
+        Ease,
+        Option<CodeAnimationStyle>,
+        Option<SourceLoc>,
+    ),
     //               uuid, action, dur, ease, style, loc
     ObjectColor(Uuid, Color, Time, Ease, Option<SourceLoc>),
     ScrollOffset(Uuid, ScrollOffsetTarget, Time, Ease, Option<SourceLoc>),

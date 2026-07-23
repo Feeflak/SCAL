@@ -648,7 +648,9 @@ fn start_file_watcher(
                         match event.kind {
                             EventKind::Create(_) | EventKind::Modify(_) | EventKind::Remove(_) => {
                                 for path in &event.paths {
-                                    if path.components().any(|c| c.as_os_str() == "target" || c.as_os_str() == ".git") {
+                                    if path.components().any(|c| {
+                                        c.as_os_str() == "target" || c.as_os_str() == ".git"
+                                    }) {
                                         continue;
                                     }
                                     if path.extension().map_or(false, |ext| ext == "rs") {
@@ -787,7 +789,9 @@ fn op_kind(op: &AnimOperation) -> OpKind {
         | AnimOperation::CodeModifyLine(..)
         | AnimOperation::CodeRemoveLines(..)
         | AnimOperation::CodeHighlight(..) => OpKind::Code,
-        AnimOperation::TerminalTypeInput(..) | AnimOperation::TerminalOutput(..) => OpKind::Terminal,
+        AnimOperation::TerminalTypeInput(..) | AnimOperation::TerminalOutput(..) => {
+            OpKind::Terminal
+        }
         AnimOperation::ObjectColor(..) => OpKind::Transform,
         AnimOperation::ScrollOffset(..) => OpKind::Scroll,
         AnimOperation::All(..) | AnimOperation::Sequence(..) => OpKind::Composite,
@@ -2331,7 +2335,8 @@ impl PreviewRenderer {
         // the preview until the next frame advance that happens to upload.
         self.animator.text_manager.atlas.dirty = true;
         if let Some(glyph_data) = self.animator.text_manager.atlas.get_glyph_update_data() {
-            self.text_renderer.update_glyphs_if_needed(glyph_data, &self.queue);
+            self.text_renderer
+                .update_glyphs_if_needed(glyph_data, &self.queue);
         }
 
         if let Some(ref player) = self.audio_player {

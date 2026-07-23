@@ -26,7 +26,10 @@ pub enum PipelineKind {
 impl Animator {
     pub fn add_anim_object(&mut self, mut anim_data: DynAnimObj) -> Result<()> {
         let id = anim_data.uuid();
-        debug!("add_anim_object uuid={id} objects_len={}", self.objects.len());
+        debug!(
+            "add_anim_object uuid={id} objects_len={}",
+            self.objects.len()
+        );
 
         if let Some(container) = anim_data.as_any().downcast_ref::<LayoutContainer>() {
             self.layout_containers
@@ -180,15 +183,15 @@ impl Animator {
                 let max_h = sizes.iter().map(|s| s.y).fold(0.0f32, f32::max);
                 let new_w = (content_w + container.padding_left + container.padding_right + gaps)
                     .max(container.min_width);
-                let new_h =
-                    (max_h + container.padding_top + container.padding_bottom).max(container.min_height);
+                let new_h = (max_h + container.padding_top + container.padding_bottom)
+                    .max(container.min_height);
                 (new_w, new_h)
             }
             LayoutDir::Column => {
                 let max_w = sizes.iter().map(|s| s.x).fold(0.0f32, f32::max);
                 let content_h: f32 = sizes.iter().map(|s| s.y).sum();
-                let new_w =
-                    (max_w + container.padding_left + container.padding_right).max(container.min_width);
+                let new_w = (max_w + container.padding_left + container.padding_right)
+                    .max(container.min_width);
                 let new_h = (content_h + container.padding_top + container.padding_bottom + gaps)
                     .max(container.min_height);
                 (new_w, new_h)
@@ -256,12 +259,14 @@ impl Animator {
             let is_stretched = obj.anim_data.as_any().downcast_ref::<Rectangle>().is_some();
             match container.direction {
                 LayoutDir::Column => {
-                    obj.anim_data.transform_mut().position.x = if is_stretched { 0.0 } else { child_x };
+                    obj.anim_data.transform_mut().position.x =
+                        if is_stretched { 0.0 } else { child_x };
                     obj.anim_data.transform_mut().position.y = child_y;
                 }
                 LayoutDir::Row => {
                     obj.anim_data.transform_mut().position.x = child_x;
-                    obj.anim_data.transform_mut().position.y = if is_stretched { 0.0 } else { child_y };
+                    obj.anim_data.transform_mut().position.y =
+                        if is_stretched { 0.0 } else { child_y };
                 }
             }
 

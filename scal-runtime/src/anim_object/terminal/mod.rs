@@ -129,7 +129,13 @@ impl TerminalTextBuffer {
         }
     }
 
-    pub fn add_entry(&mut self, command: String, display_override: Option<String>, output: String, prompt: String) {
+    pub fn add_entry(
+        &mut self,
+        command: String,
+        display_override: Option<String>,
+        output: String,
+        prompt: String,
+    ) {
         self.entries.push(TerminalEntry {
             command,
             display_override,
@@ -161,10 +167,7 @@ impl TerminalTextBuffer {
         let cmd_color1 = self.base16[10]; // base0A
 
         for entry in &self.entries {
-            let display_cmd = entry
-                .display_override
-                .as_deref()
-                .unwrap_or(&entry.command);
+            let display_cmd = entry.display_override.as_deref().unwrap_or(&entry.command);
             let reveal_len = entry.input_reveal.min(display_cmd.len());
             let visible_cmd = &display_cmd[..reveal_len];
 
@@ -173,7 +176,8 @@ impl TerminalTextBuffer {
             } else {
                 entry.prompt.clone()
             };
-            let prompt_spans = ansi::parse_ansi(&prompt_text, self.default_color, &self.ansi_colors);
+            let prompt_spans =
+                ansi::parse_ansi(&prompt_text, self.default_color, &self.ansi_colors);
             let mut cmd_line = ColoredLine {
                 spans: prompt_spans
                     .into_iter()
@@ -184,12 +188,14 @@ impl TerminalTextBuffer {
                     .collect(),
             };
             if !visible_cmd.is_empty() {
-                cmd_line.spans.extend(colorize_cmd(visible_cmd, cmd_color0, cmd_color1).into_iter().map(|s| {
-                    ColoredSpan {
-                        color: apply_alpha(s.color, entry.entry_alpha),
-                        text: s.text,
-                    }
-                }));
+                cmd_line.spans.extend(
+                    colorize_cmd(visible_cmd, cmd_color0, cmd_color1)
+                        .into_iter()
+                        .map(|s| ColoredSpan {
+                            color: apply_alpha(s.color, entry.entry_alpha),
+                            text: s.text,
+                        }),
+                );
             }
             if reveal_len < display_cmd.len() {
                 cmd_line.spans.push(ColoredSpan {
@@ -361,7 +367,11 @@ impl TerminalTextBuffer {
 /// original text, return spans covering only that range. Spans that fall
 /// entirely outside the range are omitted; partial spans are sliced at their
 /// byte boundaries (on the assumption the slice positions are ASCII-safe).
-fn slice_spans_by_byte_range(spans: &[ansi::AnsiSpan], skip: usize, reveal: usize) -> Vec<ansi::AnsiSpan> {
+fn slice_spans_by_byte_range(
+    spans: &[ansi::AnsiSpan],
+    skip: usize,
+    reveal: usize,
+) -> Vec<ansi::AnsiSpan> {
     if reveal == 0 {
         return Vec::new();
     }

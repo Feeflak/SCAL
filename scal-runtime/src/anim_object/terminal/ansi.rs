@@ -1,4 +1,4 @@
-use scal_core::{Color, Base16};
+use scal_core::{Base16, Color};
 
 #[derive(Clone, Debug)]
 pub struct AnsiSpan {
@@ -15,10 +15,7 @@ pub struct AnsiSpan {
 ///   0=base00, 1=base08, 2=base0B, 3=base0A, 4=base0D, 5=base0E, 6=base0C, 7=base05
 ///   8=base03, 9=base09, 10=base0B, 11=base0A, 12=base0D, 13=base0E, 14=base0C, 15=base07
 pub fn ansi_table_from_base16(base: &Base16) -> [Color; 16] {
-    let ix: [usize; 16] = [
-        0, 8, 11, 10, 13, 14, 12, 5,
-        3, 9, 11, 10, 13, 14, 12, 7,
-    ];
+    let ix: [usize; 16] = [0, 8, 11, 10, 13, 14, 12, 5, 3, 9, 11, 10, 13, 14, 12, 7];
     let mut table = [Color::BLACK; 16];
     for (i, &idx) in ix.iter().enumerate() {
         table[i] = base.colors[idx];
@@ -101,7 +98,8 @@ fn ansi_256_color(index: usize, ansi_colors: &[Color; 16]) -> Color {
         let r = (n / 36) as u8;
         let g = ((n % 36) / 6) as u8;
         let b = (n % 6) as u8;
-        let cube = |v: u8| -> f32 { [0.0, 95.0, 135.0, 175.0, 215.0, 255.0][v.min(5) as usize] / 255.0 };
+        let cube =
+            |v: u8| -> f32 { [0.0, 95.0, 135.0, 175.0, 215.0, 255.0][v.min(5) as usize] / 255.0 };
         return Color::new(cube(r), cube(g), cube(b), 1.0);
     }
     let gray = (index - 232) as u8;
@@ -111,7 +109,12 @@ fn ansi_256_color(index: usize, ansi_colors: &[Color; 16]) -> Color {
 
 /// Parse SGR parameters. Returns `Some(color)` when the color changes
 /// (reset to default_color or truecolor), `None` otherwise.
-fn parse_sgr(params: &str, default_color: Color, current_color: Color, ansi_colors: &[Color; 16]) -> Option<Color> {
+fn parse_sgr(
+    params: &str,
+    default_color: Color,
+    current_color: Color,
+    ansi_colors: &[Color; 16],
+) -> Option<Color> {
     if params.is_empty() {
         return Some(default_color);
     }
@@ -208,47 +211,74 @@ mod tests {
 
     #[test]
     fn test_parse_sgr_empty() {
-        assert_eq!(parse_sgr("", default(), default(), &test_ansi()), Some(default()));
+        assert_eq!(
+            parse_sgr("", default(), default(), &test_ansi()),
+            Some(default())
+        );
     }
 
     #[test]
     fn test_parse_sgr_reset() {
-        assert_eq!(parse_sgr("0", default(), red(), &test_ansi()), Some(default()));
+        assert_eq!(
+            parse_sgr("0", default(), red(), &test_ansi()),
+            Some(default())
+        );
     }
 
     #[test]
     fn test_parse_sgr_red() {
-        assert_eq!(parse_sgr("31", default(), default(), &test_ansi()), Some(red()));
+        assert_eq!(
+            parse_sgr("31", default(), default(), &test_ansi()),
+            Some(red())
+        );
     }
 
     #[test]
     fn test_parse_sgr_green() {
-        assert_eq!(parse_sgr("32", default(), default(), &test_ansi()), Some(green()));
+        assert_eq!(
+            parse_sgr("32", default(), default(), &test_ansi()),
+            Some(green())
+        );
     }
 
     #[test]
     fn test_parse_sgr_combined_reset_then_green() {
-        assert_eq!(parse_sgr("0;32", default(), default(), &test_ansi()), Some(green()));
+        assert_eq!(
+            parse_sgr("0;32", default(), default(), &test_ansi()),
+            Some(green())
+        );
     }
 
     #[test]
     fn test_parse_sgr_combined_reset_bold_green() {
-        assert_eq!(parse_sgr("0;1;32", default(), default(), &test_ansi()), Some(green()));
+        assert_eq!(
+            parse_sgr("0;1;32", default(), default(), &test_ansi()),
+            Some(green())
+        );
     }
 
     #[test]
     fn test_parse_sgr_combined_reset_bold_red() {
-        assert_eq!(parse_sgr("0;1;31", default(), default(), &test_ansi()), Some(red()));
+        assert_eq!(
+            parse_sgr("0;1;31", default(), default(), &test_ansi()),
+            Some(red())
+        );
     }
 
     #[test]
     fn test_parse_sgr_bold_blue() {
-        assert_eq!(parse_sgr("01;34", default(), default(), &test_ansi()), Some(blue()));
+        assert_eq!(
+            parse_sgr("01;34", default(), default(), &test_ansi()),
+            Some(blue())
+        );
     }
 
     #[test]
     fn test_parse_sgr_partial_override() {
-        assert_eq!(parse_sgr("0;31", default(), green(), &test_ansi()), Some(red()));
+        assert_eq!(
+            parse_sgr("0;31", default(), green(), &test_ansi()),
+            Some(red())
+        );
     }
 
     #[test]

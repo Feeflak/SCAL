@@ -1,10 +1,7 @@
 use scal_core::{CodeAnimationStyle, Ease, TerminalOutputAction};
 use uuid::Uuid;
 
-use crate::{
-    anim_object::terminal::TerminalTextBuffer,
-    anim_op::Animation,
-};
+use crate::{anim_object::terminal::TerminalTextBuffer, anim_op::Animation};
 
 /// Animate typing a command into the terminal.
 /// Adds a new entry to the terminal and animates char-by-char reveal.
@@ -19,18 +16,15 @@ pub fn type_input(
     style: Option<CodeAnimationStyle>,
 ) -> Animation {
     let is_reveal = style.map_or(true, |s| s == CodeAnimationStyle::Reveal);
-    let total_chars = display_override
-        .as_deref()
-        .unwrap_or(&command)
-        .len();
+    let total_chars = display_override.as_deref().unwrap_or(&command).len();
 
     let anim_curve = if is_reveal { Ease::Linear } else { curve };
 
     Animation::new(
         duration,
         anim_curve,
-                Box::new(move |animator, storage| {
-                    let obj = animator.get_object_mut(&uuid)?;
+        Box::new(move |animator, storage| {
+            let obj = animator.get_object_mut(&uuid)?;
             let buffer = obj
                 .anim_data
                 .as_any_mut()
@@ -39,7 +33,12 @@ pub fn type_input(
                     anyhow::anyhow!("TerminalTypeInput: object {uuid} is not a TerminalTextBuffer")
                 })?;
 
-            buffer.add_entry(command.clone(), display_override.clone(), captured_output.clone(), captured_prompt.clone());
+            buffer.add_entry(
+                command.clone(),
+                display_override.clone(),
+                captured_output.clone(),
+                captured_prompt.clone(),
+            );
             storage.push(total_chars as f32);
             if is_reveal {
                 if let Some(entry) = buffer.current_entry_mut() {
@@ -84,25 +83,23 @@ pub fn output(
     style: Option<CodeAnimationStyle>,
 ) -> Animation {
     match action {
-        TerminalOutputAction::Skip(bytes) => {
-            Animation::instant(Box::new(move |animator, _| {
-                let obj = animator.get_object_mut(&uuid)?;
-                let buffer = obj
-                    .anim_data
-                    .as_any_mut()
-                    .downcast_mut::<TerminalTextBuffer>()
-                    .ok_or_else(|| {
-                        anyhow::anyhow!("TerminalOutput: object {uuid} is not a TerminalTextBuffer")
-                    })?;
+        TerminalOutputAction::Skip(bytes) => Animation::instant(Box::new(move |animator, _| {
+            let obj = animator.get_object_mut(&uuid)?;
+            let buffer = obj
+                .anim_data
+                .as_any_mut()
+                .downcast_mut::<TerminalTextBuffer>()
+                .ok_or_else(|| {
+                    anyhow::anyhow!("TerminalOutput: object {uuid} is not a TerminalTextBuffer")
+                })?;
 
-                if let Some(entry) = buffer.current_entry_mut() {
-                    entry.output_skip = (entry.output_skip + bytes).min(entry.output.len());
-                }
-                buffer.dirty = true;
-                animator.regenerate_object_mesh(&uuid)?;
-                Ok(())
-            }))
-        }
+            if let Some(entry) = buffer.current_entry_mut() {
+                entry.output_skip = (entry.output_skip + bytes).min(entry.output.len());
+            }
+            buffer.dirty = true;
+            animator.regenerate_object_mesh(&uuid)?;
+            Ok(())
+        })),
         TerminalOutputAction::Pull(bytes) => {
             let is_reveal = style.map_or(true, |s| s == CodeAnimationStyle::Reveal);
             let anim_curve = if is_reveal { Ease::Linear } else { curve };
@@ -134,7 +131,9 @@ pub fn output(
                         let remaining = buffer.current_entry().map_or(0, |e| {
                             let pushed = e.pushed_text.as_deref().unwrap_or("");
                             let total_text = format!("{}{}", e.output, pushed);
-                            total_text.len().saturating_sub(e.output_skip + e.output_reveal)
+                            total_text
+                                .len()
+                                .saturating_sub(e.output_skip + e.output_reveal)
                         });
                         storage.push(current as f32);
                         storage.push(remaining as f32);
@@ -170,28 +169,27 @@ pub fn output(
                 })),
             )
         }
-        TerminalOutputAction::Push(text) => {
-            Animation::instant(Box::new(move |animator, _| {
-                let obj = animator.get_object_mut(&uuid)?;
-                let buffer = obj
-                    .anim_data
-                    .as_any_mut()
-                    .downcast_mut::<TerminalTextBuffer>()
-                    .ok_or_else(|| {
-                        anyhow::anyhow!("TerminalOutput: object {uuid} is not a TerminalTextBuffer")
-                    })?;
+        TerminalOutputAction::Push(text) => Animation::instant(Box::new(move |animator, _| {
+            let obj = animator.get_object_mut(&uuid)?;
+            let buffer = obj
+                .anim_data
+                .as_any_mut()
+                .downcast_mut::<TerminalTextBuffer>()
+                .ok_or_else(|| {
+                    anyhow::anyhow!("TerminalOutput: object {uuid} is not a TerminalTextBuffer")
+                })?;
 
-                if let Some(entry) = buffer.current_entry_mut() {
-                    let existing = entry.pushed_text.take().unwrap_or_default();
-                    entry.pushed_text = Some(existing + &text);
-                    let total_len = entry.output.len() + entry.pushed_text.as_ref().map_or(0, |s| s.len());
-                    entry.output_reveal = total_len.saturating_sub(entry.output_skip);
-                }
-                buffer.dirty = true;
-                animator.regenerate_object_mesh(&uuid)?;
-                Ok(())
-            }))
-        }
+            if let Some(entry) = buffer.current_entry_mut() {
+                let existing = entry.pushed_text.take().unwrap_or_default();
+                entry.pushed_text = Some(existing + &text);
+                let total_len =
+                    entry.output.len() + entry.pushed_text.as_ref().map_or(0, |s| s.len());
+                entry.output_reveal = total_len.saturating_sub(entry.output_skip);
+            }
+            buffer.dirty = true;
+            animator.regenerate_object_mesh(&uuid)?;
+            Ok(())
+        })),
         TerminalOutputAction::PullAll => {
             let is_reveal = style.map_or(true, |s| s == CodeAnimationStyle::Reveal);
             let anim_curve = if is_reveal { Ease::Linear } else { curve };
@@ -261,62 +259,56 @@ pub fn output(
                 })),
             )
         }
-        TerminalOutputAction::PullLine => {
-            Animation::new(
-                duration,
-                curve,
-                Box::new(move |animator, storage| {
-                    let obj = animator.get_object_mut(&uuid)?;
-                    let buffer = obj
-                        .anim_data
-                        .as_any_mut()
-                        .downcast_mut::<TerminalTextBuffer>()
-                        .ok_or_else(|| {
-                            anyhow::anyhow!(
-                                "TerminalOutput: object {uuid} is not a TerminalTextBuffer"
-                            )
-                        })?;
+        TerminalOutputAction::PullLine => Animation::new(
+            duration,
+            curve,
+            Box::new(move |animator, storage| {
+                let obj = animator.get_object_mut(&uuid)?;
+                let buffer = obj
+                    .anim_data
+                    .as_any_mut()
+                    .downcast_mut::<TerminalTextBuffer>()
+                    .ok_or_else(|| {
+                        anyhow::anyhow!("TerminalOutput: object {uuid} is not a TerminalTextBuffer")
+                    })?;
 
-                    if let Some(entry) = buffer.current_entry() {
-                        let pos = entry.output_skip + entry.output_reveal;
-                        let pushed = entry.pushed_text.as_deref().unwrap_or("");
-                        let full_text = format!("{}{}", entry.output, pushed);
-                        let next_newline = full_text[pos..].find('\n');
-                        let bytes = next_newline
-                            .map(|i| i + 1)
-                            .unwrap_or_else(|| full_text.len() - pos);
-                        storage.push(entry.output_reveal as f32);
-                        storage.push(bytes as f32);
-                    } else {
-                        storage.push(0.0);
-                        storage.push(0.0);
-                    }
-                    buffer.dirty = true;
-                    animator.regenerate_object_mesh(&uuid)?;
-                    Ok(())
-                }),
-                Some(Box::new(move |animator, t, storage| {
-                    let obj = animator.get_object_mut(&uuid)?;
-                    let buffer = obj
-                        .anim_data
-                        .as_any_mut()
-                        .downcast_mut::<TerminalTextBuffer>()
-                        .ok_or_else(|| {
-                            anyhow::anyhow!(
-                                "TerminalOutput: object {uuid} is not a TerminalTextBuffer"
-                            )
-                        })?;
+                if let Some(entry) = buffer.current_entry() {
+                    let pos = entry.output_skip + entry.output_reveal;
+                    let pushed = entry.pushed_text.as_deref().unwrap_or("");
+                    let full_text = format!("{}{}", entry.output, pushed);
+                    let next_newline = full_text[pos..].find('\n');
+                    let bytes = next_newline
+                        .map(|i| i + 1)
+                        .unwrap_or_else(|| full_text.len() - pos);
+                    storage.push(entry.output_reveal as f32);
+                    storage.push(bytes as f32);
+                } else {
+                    storage.push(0.0);
+                    storage.push(0.0);
+                }
+                buffer.dirty = true;
+                animator.regenerate_object_mesh(&uuid)?;
+                Ok(())
+            }),
+            Some(Box::new(move |animator, t, storage| {
+                let obj = animator.get_object_mut(&uuid)?;
+                let buffer = obj
+                    .anim_data
+                    .as_any_mut()
+                    .downcast_mut::<TerminalTextBuffer>()
+                    .ok_or_else(|| {
+                        anyhow::anyhow!("TerminalOutput: object {uuid} is not a TerminalTextBuffer")
+                    })?;
 
-                    if let Some(entry) = buffer.current_entry_mut() {
-                        let start = storage[0] as usize;
-                        let remaining = storage[1] as usize;
-                        entry.output_reveal = start + (t * remaining as f32) as usize;
-                    }
-                    buffer.dirty = true;
-                    animator.regenerate_object_mesh(&uuid)?;
-                    Ok(())
-                })),
-            )
-        }
+                if let Some(entry) = buffer.current_entry_mut() {
+                    let start = storage[0] as usize;
+                    let remaining = storage[1] as usize;
+                    entry.output_reveal = start + (t * remaining as f32) as usize;
+                }
+                buffer.dirty = true;
+                animator.regenerate_object_mesh(&uuid)?;
+                Ok(())
+            })),
+        ),
     }
 }

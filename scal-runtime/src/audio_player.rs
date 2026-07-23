@@ -46,65 +46,67 @@ impl AudioPlayer {
         let anchor_clone = Arc::clone(&anchor);
         let latency_frames_clone = Arc::clone(&latency_frames);
 
-        let stream = device.build_output_stream(
-            &config,
-            move |output: &mut [f32], info: &cpal::OutputCallbackInfo| {
-                let paused = paused_clone.load(Ordering::Relaxed);
-                if paused {
-                    output.fill(0.0);
-                    return;
-                }
-
-                let mut pos = position_clone.load(Ordering::Relaxed);
-
-                // First unpaused callback: measure output‑buffer latency and
-                // pre‑roll the write cursor so audio hits the speaker at the
-                // correct wall‑clock time from the very first frame.
-                if latency_frames_clone.load(Ordering::Relaxed) == 0 {
-                    let cb = info.timestamp().callback;
-                    let pb = info.timestamp().playback;
-                    if let Some(lat) = pb.duration_since(&cb) {
-                        let lat_f = (lat.as_secs_f64() * sample_rate as f64) as u64;
-                        latency_frames_clone.store(lat_f, Ordering::Release);
-                        let skip = (lat_f as usize) * 2;
-                        pos = pos.saturating_add(skip);
-                        position_clone.store(pos, Ordering::Relaxed);
+        let stream = device
+            .build_output_stream(
+                &config,
+                move |output: &mut [f32], info: &cpal::OutputCallbackInfo| {
+                    let paused = paused_clone.load(Ordering::Relaxed);
+                    if paused {
+                        output.fill(0.0);
+                        return;
                     }
-                }
 
-                let to_copy = output.len().min(buffer_clone.len().saturating_sub(pos));
-                if to_copy > 0 {
-                    output[..to_copy]
-                        .copy_from_slice(&buffer_clone[pos..pos + to_copy]);
-                    if to_copy < output.len() {
-                        output[to_copy..].fill(0.0);
-                    }
-                    position_clone.store(pos + to_copy, Ordering::Relaxed);
-                } else {
-                    output.fill(0.0);
-                }
+                    let mut pos = position_clone.load(Ordering::Relaxed);
 
-                // Track hardware playback position via cpal timestamps.
-                let ts = info.timestamp().playback;
-                let mut anchor = anchor_clone.lock().unwrap();
-                match anchor.as_ref() {
-                    None => {
-                        *anchor = Some(PlaybackAnchor { ts, pos });
-                        play_frames_clone.store(pos as u64 / 2, Ordering::Release);
-                    }
-                    Some(anchor_data) => {
-                        if let Some(delta) = ts.duration_since(&anchor_data.ts) {
-                            let played = (delta.as_secs_f64() * sample_rate as f64) as u64;
-                            play_frames_clone
-                                .store((anchor_data.pos / 2) as u64 + played, Ordering::Release);
+                    // First unpaused callback: measure output‑buffer latency and
+                    // pre‑roll the write cursor so audio hits the speaker at the
+                    // correct wall‑clock time from the very first frame.
+                    if latency_frames_clone.load(Ordering::Relaxed) == 0 {
+                        let cb = info.timestamp().callback;
+                        let pb = info.timestamp().playback;
+                        if let Some(lat) = pb.duration_since(&cb) {
+                            let lat_f = (lat.as_secs_f64() * sample_rate as f64) as u64;
+                            latency_frames_clone.store(lat_f, Ordering::Release);
+                            let skip = (lat_f as usize) * 2;
+                            pos = pos.saturating_add(skip);
+                            position_clone.store(pos, Ordering::Relaxed);
                         }
                     }
-                }
-            },
-            move |err| log::error!("audio playback error: {err}"),
-            None,
-        )
-        .context("failed to build audio output stream")?;
+
+                    let to_copy = output.len().min(buffer_clone.len().saturating_sub(pos));
+                    if to_copy > 0 {
+                        output[..to_copy].copy_from_slice(&buffer_clone[pos..pos + to_copy]);
+                        if to_copy < output.len() {
+                            output[to_copy..].fill(0.0);
+                        }
+                        position_clone.store(pos + to_copy, Ordering::Relaxed);
+                    } else {
+                        output.fill(0.0);
+                    }
+
+                    // Track hardware playback position via cpal timestamps.
+                    let ts = info.timestamp().playback;
+                    let mut anchor = anchor_clone.lock().unwrap();
+                    match anchor.as_ref() {
+                        None => {
+                            *anchor = Some(PlaybackAnchor { ts, pos });
+                            play_frames_clone.store(pos as u64 / 2, Ordering::Release);
+                        }
+                        Some(anchor_data) => {
+                            if let Some(delta) = ts.duration_since(&anchor_data.ts) {
+                                let played = (delta.as_secs_f64() * sample_rate as f64) as u64;
+                                play_frames_clone.store(
+                                    (anchor_data.pos / 2) as u64 + played,
+                                    Ordering::Release,
+                                );
+                            }
+                        }
+                    }
+                },
+                move |err| log::error!("audio playback error: {err}"),
+                None,
+            )
+            .context("failed to build audio output stream")?;
 
         stream.play().context("failed to start audio stream")?;
         paused.store(true, Ordering::Relaxed);
@@ -144,8 +146,10 @@ impl AudioPlayer {
         self.position
             .store(sample.min(self.buffer.len()), Ordering::Relaxed);
         *self.anchor.lock().unwrap() = None;
-        self.play_frames
-            .store((adjusted * self.sample_rate as f32) as u64, Ordering::Release);
+        self.play_frames.store(
+            (adjusted * self.sample_rate as f32) as u64,
+            Ordering::Release,
+        );
     }
 
     /// Returns the hardware playback position in seconds, using the `playback`
