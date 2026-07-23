@@ -107,6 +107,104 @@ impl Color {
     }
 }
 
+/// Convenience function to create a [`Color`] from RGBA float components (0.0–1.0).
+/// ```ignore
+/// let c = color(1.0, 0.0, 0.0, 1.0);
+/// ```
+#[must_use]
+pub const fn color(r: f32, g: f32, b: f32, a: f32) -> Color {
+    Color::new(r, g, b, a)
+}
+
+/// Parse a hex color string (`#RGB`, `#RGBA`, `#RRGGBB`, `#RRGGBBAA`) into a [`Color`].
+/// ```ignore
+/// let c = hex("#ff0000");
+/// let c = hex("#ff0000ff");
+/// ```
+#[must_use]
+pub fn hex(value: &str) -> Color {
+    let bytes = value.as_bytes();
+    let (r, g, b, a) = match bytes.len() {
+        4 if bytes[0] == b'#' => {
+            let r = hex_digit(bytes[1]) * 17;
+            let g = hex_digit(bytes[2]) * 17;
+            let b = hex_digit(bytes[3]) * 17;
+            (r, g, b, 255)
+        }
+        5 if bytes[0] == b'#' => {
+            let r = hex_digit(bytes[1]) * 17;
+            let g = hex_digit(bytes[2]) * 17;
+            let b = hex_digit(bytes[3]) * 17;
+            let a = hex_digit(bytes[4]) * 17;
+            (r, g, b, a)
+        }
+        7 if bytes[0] == b'#' => {
+            let r = hex_byte(&value[1..3]);
+            let g = hex_byte(&value[3..5]);
+            let b = hex_byte(&value[5..7]);
+            (r, g, b, 255)
+        }
+        9 if bytes[0] == b'#' => {
+            let r = hex_byte(&value[1..3]);
+            let g = hex_byte(&value[3..5]);
+            let b = hex_byte(&value[5..7]);
+            let a = hex_byte(&value[7..9]);
+            (r, g, b, a)
+        }
+        _ => panic!("invalid hex color: {value}"),
+    };
+    Color::new(
+        f32::from(r) / 255.0,
+        f32::from(g) / 255.0,
+        f32::from(b) / 255.0,
+        f32::from(a) / 255.0,
+    )
+}
+
+fn hex_byte(s: &str) -> u8 {
+    u8::from_str_radix(s, 16).unwrap_or_else(|_| panic!("invalid hex byte: {s}"))
+}
+
+/// Create a [`Color`] from HSV components.
+/// - `h`: hue in degrees (0–360)
+/// - `s`: saturation (0.0–1.0)
+/// - `v`: value/brightness (0.0–1.0)
+/// ```ignore
+/// let c = hsv(120.0, 1.0, 1.0); // green
+/// ```
+#[must_use]
+pub fn hsv(h: f32, s: f32, v: f32) -> Color {
+    let h = h.rem_euclid(360.0);
+    let c = v * s;
+    let x = c * (1.0 - ((h / 60.0) % 2.0 - 1.0).abs());
+    let m = v - c;
+
+    let (r, g, b) = if h < 60.0 {
+        (c, x, 0.0)
+    } else if h < 120.0 {
+        (x, c, 0.0)
+    } else if h < 180.0 {
+        (0.0, c, x)
+    } else if h < 240.0 {
+        (0.0, x, c)
+    } else if h < 300.0 {
+        (x, 0.0, c)
+    } else {
+        (c, 0.0, x)
+    };
+
+    Color::new(r + m, g + m, b + m, 1.0)
+}
+
+fn hex_digit(c: u8) -> u8 {
+    match c {
+        b'0'..=b'9' => c - b'0',
+        b'a'..=b'f' => c - b'a' + 10,
+        b'A'..=b'F' => c - b'A' + 10,
+        _ => panic!("invalid hex digit: {c}"),
+    }
+}
+
 impl From<u32> for Color {
     fn from(value: u32) -> Self {
         let r = ((value >> 16) & 0xFF) as u8;

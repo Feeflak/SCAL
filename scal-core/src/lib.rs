@@ -545,7 +545,7 @@ pub use anim_op::{
     TerminalOutputAction,
 };
 pub use camera::Camera;
-pub use color::Color;
+pub use color::{Color, color, hex, hsv};
 pub use ease::Ease;
 pub use project::{Project, SceneSettings};
 pub use scal_ipc_macros::timeline;
@@ -568,7 +568,7 @@ pub mod prelude {
         TerminalOutputAction,
     };
     pub use crate::camera::Camera;
-    pub use crate::color::Color;
+    pub use crate::color::{Color, color, hex, hsv};
     pub use crate::ease::Ease;
     pub use crate::object_builders::*;
     pub use crate::project::{Project, SceneSettings};
