@@ -352,6 +352,11 @@ impl IntoAnimOp for ScrollBuilder {
 }
 
 /// Builder for an animation of playing a sound effect.
+///
+/// Sounds are non-blocking: they start at the current timeline cursor (plus any
+/// `after`/`delay`) and the timeline continues immediately. Put them in a
+/// `parallel![]` block to play them alongside other animations.
+///
 /// ```ignore
 ///                sfx()
 ///                    .path("./click.mp3")

@@ -4,8 +4,12 @@ use crate::anim_builders::PlaySoundBuilder;
 use crate::seconds::Time;
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
-/// A reusable sound-effect that can be played during an animation
-/// Sfx don't need to be instantiated.
+/// A reusable sound-effect that can be played during an animation.
+///
+/// Sfx don't need to be instantiated and do not block the timeline. Use them
+/// inside `parallel![]` to play them alongside other animations, or put them in
+/// a sequence where they will start at the current cursor but let the next
+/// animation begin immediately.
 pub struct Sfx {
     /// File path to the audio file
     pub path: String,

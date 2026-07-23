@@ -8,6 +8,10 @@ pub const fn wait(duration: Time) -> AnimOP {
 }
 
 /// Execute Animations at once.
+///
+/// Sound effects (`sfx().play()`) are non-blocking, so they work naturally
+/// inside a parallel block to play audio alongside other animations.
+///
 ///```ignore
 ///            parallel![
 ///                cw.add_lines()
