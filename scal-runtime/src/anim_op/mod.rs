@@ -357,16 +357,18 @@ pub fn get_all_animation(ops: Vec<AnimOperation>) -> Result<Animation> {
                     let anim: Animation = resolve_op(op.to_owned()).with_context(|| {
                         format!("failed to convert child[{child_idx}] op {op_debug}")
                     })?;
+                    let to_read = store[store_index] as usize;
+                    // +1 to skip the to_read;
+                    let mut temp_store =
+                        store[store_index + 1..store_index + 1 + to_read].to_vec();
                     if let Some(update) = anim.update {
-                        let to_read = store[store_index] as usize;
-                        // +1 to skip the to_read;
-                        let mut temp_store =
-                            store[store_index + 1..store_index + 1 + to_read].to_vec();
-                        let _ = (*update)(animator, t, &mut temp_store);
-                        store_index += to_read + 1;
-                        updated_store.push(temp_store.len() as f32);
-                        updated_store.append(&mut temp_store);
+                        (*update)(animator, t, &mut temp_store).with_context(|| {
+                            format!("child[{child_idx}] update failed for op {op_debug}")
+                        })?;
                     }
+                    store_index += to_read + 1;
+                    updated_store.push(temp_store.len() as f32);
+                    updated_store.append(&mut temp_store);
                 }
                 *store = updated_store;
                 Ok(())
