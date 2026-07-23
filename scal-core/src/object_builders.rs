@@ -1187,3 +1187,173 @@ impl PaddingBuilder {
 }
 
 impl_transform_methods!(PaddingBuilder);
+
+/// Create a new scrollable layout container builder.
+/// ```ignore
+/// scrol_layout()
+///     .direction(LayoutDir::Column)
+///     .viewport(400.0, 600.0)
+///     .padding(20.0)
+///     .gap(10.0)
+///     .background_color(Color::new(0.1, 0.1, 0.2, 1.0))
+///     .item(text1)
+///     .item(text2)
+///     .show_scrollbar(true)
+///     .build(),
+/// ```
+pub fn scrol_layout() -> ScrollLayoutBuilder {
+    ScrollLayoutBuilder::default()
+}
+
+#[must_use]
+pub struct ScrollLayoutBuilder {
+    children: Vec<AnimObj>,
+    direction: LayoutDir,
+    align: Alignment,
+    justify: Alignment,
+    gap: f32,
+    padding_top: f32,
+    padding_bottom: f32,
+    padding_left: f32,
+    padding_right: f32,
+    viewport_width: f32,
+    viewport_height: f32,
+    show_scrollbar: bool,
+    scroll_offset: f32,
+    background_color: Color,
+    corner_radius: f32,
+    transform: Transform,
+}
+
+impl Default for ScrollLayoutBuilder {
+    fn default() -> Self {
+        Self {
+            children: Vec::new(),
+            direction: LayoutDir::Column,
+            align: Alignment::Center,
+            justify: Alignment::Start,
+            gap: 0.0,
+            padding_top: 0.0,
+            padding_bottom: 0.0,
+            padding_left: 0.0,
+            padding_right: 0.0,
+            viewport_width: 300.0,
+            viewport_height: 300.0,
+            show_scrollbar: false,
+            scroll_offset: 0.0,
+            background_color: Color::new(0.0, 0.0, 0.0, 0.0),
+            corner_radius: 0.0,
+            transform: Transform::new(Vec3::ZERO),
+        }
+    }
+}
+
+#[allow(clippy::return_self_not_must_use)]
+impl ScrollLayoutBuilder {
+    /// Add an item to the scroll layout
+    pub fn item(mut self, obj: AnimObj) -> Self {
+        self.children.push(obj);
+        self
+    }
+    /// Set the layout direction (column or row)
+    pub const fn direction(mut self, dir: LayoutDir) -> Self {
+        self.direction = dir;
+        self
+    }
+    /// Set the cross-axis alignment for items (CSS align-items)
+    pub const fn align(mut self, a: Alignment) -> Self {
+        self.align = a;
+        self
+    }
+    /// Set the main-axis alignment for items (CSS justify-content)
+    pub const fn justify(mut self, a: Alignment) -> Self {
+        self.justify = a;
+        self
+    }
+    /// Set the gap between items
+    pub const fn gap(mut self, gap: f32) -> Self {
+        self.gap = gap;
+        self
+    }
+    /// Set uniform padding on all sides
+    pub const fn padding(mut self, pad: f32) -> Self {
+        self.padding_top = pad;
+        self.padding_bottom = pad;
+        self.padding_left = pad;
+        self.padding_right = pad;
+        self
+    }
+    /// Set the viewport size (visible area)
+    pub const fn viewport(mut self, w: f32, h: f32) -> Self {
+        self.viewport_width = w;
+        self.viewport_height = h;
+        self
+    }
+    /// Show or hide the scrollbar
+    pub const fn show_scrollbar(mut self, show: bool) -> Self {
+        self.show_scrollbar = show;
+        self
+    }
+    /// Set initial scroll offset in pixels
+    pub const fn scroll_offset(mut self, offset: f32) -> Self {
+        self.scroll_offset = offset;
+        self
+    }
+    /// Set background color of the scroll viewport
+    pub const fn background_color(mut self, color: Color) -> Self {
+        self.background_color = color;
+        self
+    }
+    /// Set corner radius of the viewport background
+    pub const fn corner_radius(mut self, radius: f32) -> Self {
+        self.corner_radius = radius;
+        self
+    }
+    /// Set top padding
+    pub const fn padding_top(mut self, pad: f32) -> Self {
+        self.padding_top = pad;
+        self
+    }
+    /// Set bottom padding
+    pub const fn padding_bottom(mut self, pad: f32) -> Self {
+        self.padding_bottom = pad;
+        self
+    }
+    /// Set left padding
+    pub const fn padding_left(mut self, pad: f32) -> Self {
+        self.padding_left = pad;
+        self
+    }
+    /// Set right padding
+    pub const fn padding_right(mut self, pad: f32) -> Self {
+        self.padding_right = pad;
+        self
+    }
+    #[must_use]
+    pub fn build(self) -> AnimObj {
+        let id = self.transform.uuid;
+        AnimObj {
+            id,
+            transform: self.transform,
+            kind: AnimObjKind::ScrollLayout {
+                children: self.children,
+                direction: self.direction,
+                align: self.align,
+                justify: self.justify,
+                gap: self.gap,
+                padding_top: self.padding_top,
+                padding_bottom: self.padding_bottom,
+                padding_left: self.padding_left,
+                padding_right: self.padding_right,
+                viewport_width: self.viewport_width,
+                viewport_height: self.viewport_height,
+                show_scrollbar: self.show_scrollbar,
+                scroll_offset: self.scroll_offset,
+                background_color: self.background_color,
+                corner_radius: self.corner_radius,
+            },
+        }
+    }
+}
+
+impl_transform_methods!(ScrollLayoutBuilder);

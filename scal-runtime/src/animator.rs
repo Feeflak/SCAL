@@ -305,6 +305,7 @@ mod tests {
                     scale: Vec2::ONE,
                     layout_container: None,
                     world_uniform: None,
+                    clip_rect: None,
                 },
             })),
             render_data: ObjectRenderData {

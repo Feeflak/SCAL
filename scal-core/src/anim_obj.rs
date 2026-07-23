@@ -162,6 +162,23 @@ pub enum AnimObjKind {
         background_color: Color,
         corner_radius: f32,
     },
+    ScrollLayout {
+        children: Vec<AnimObj>,
+        direction: LayoutDir,
+        align: Alignment,
+        justify: Alignment,
+        gap: f32,
+        padding_top: f32,
+        padding_bottom: f32,
+        padding_left: f32,
+        padding_right: f32,
+        viewport_width: f32,
+        viewport_height: f32,
+        show_scrollbar: bool,
+        scroll_offset: f32,
+        background_color: Color,
+        corner_radius: f32,
+    },
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Hash, Eq)]

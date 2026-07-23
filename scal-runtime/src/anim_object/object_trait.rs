@@ -97,6 +97,7 @@ mod tests {
                 scale: Vec2::ONE,
                 layout_container: None,
                 world_uniform: None,
+                clip_rect: None,
             },
         };
         let rect2 = Rectangle {
@@ -111,6 +112,7 @@ mod tests {
                 scale: Vec2::ONE,
                 layout_container: None,
                 world_uniform: None,
+                clip_rect: None,
             },
         };
         let rect3 = Rectangle {
@@ -125,6 +127,7 @@ mod tests {
                 scale: Vec2::ONE,
                 layout_container: None,
                 world_uniform: None,
+                clip_rect: None,
             },
         };
         let obj1 = DynAnimObj(Box::new(rect1));

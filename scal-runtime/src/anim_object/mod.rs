@@ -17,6 +17,7 @@ pub mod object_trait;
 pub mod padding;
 pub mod primitive_shapes;
 pub mod render;
+pub mod scroll;
 pub mod svg;
 pub mod terminal;
 pub mod text;
@@ -177,6 +178,7 @@ pub struct Transform {
     pub(crate) rotation: f32,
     pub layout_container: Option<Uuid>,
     pub(crate) world_uniform: Option<TransformUniform>,
+    pub(crate) clip_rect: Option<[f32; 4]>,
 }
 #[derive(Clone, Debug, Copy)]
 pub struct TransformUniform {
@@ -224,6 +226,7 @@ impl Transform {
             scale,
             layout_container: None,
             world_uniform: None,
+            clip_rect: None,
         }
     }
     pub fn with_uuid(uuid: Uuid, position: Vec3) -> Self {
@@ -235,6 +238,7 @@ impl Transform {
             scale: Vec2::ONE,
             layout_container: None,
             world_uniform: None,
+            clip_rect: None,
         }
     }
 }

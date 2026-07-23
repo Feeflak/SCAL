@@ -144,6 +144,7 @@ impl LayoutContainer {
                 scale: Vec2::ONE,
                 layout_container: None,
                 world_uniform: None,
+                clip_rect: None,
             },
             background_uuid,
             child_uuids,
