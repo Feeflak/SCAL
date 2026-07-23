@@ -1,5 +1,5 @@
 ### Easy animation system focused on code.   
- 
+![SCAL logo](./SCAL_logo.svg) 
 # Read [Rust Docs](https://docs.rs/scal-core/latest/scal_core/)
 
 # After Implementing Any New Features
