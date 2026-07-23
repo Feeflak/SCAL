@@ -47,6 +47,28 @@ pub(crate) struct Vertex {
     pub uv: Vec2,
 }
 
+/// Uniform data sent to the GPU for each object transform.
+/// Includes the world matrix and an optional axis-aligned clip rectangle in
+/// the object's local space. When the clip bounds are very large, clipping is
+/// effectively disabled.
+#[repr(C)]
+#[derive(Copy, Clone, Debug, bytemuck::Pod, bytemuck::Zeroable)]
+pub struct ObjectTransformUniform {
+    pub matrix: [[f32; 4]; 4],
+    pub clip_rect: [f32; 4],
+    pub _padding: [f32; 4],
+}
+
+impl Default for ObjectTransformUniform {
+    fn default() -> Self {
+        Self {
+            matrix: Mat4::IDENTITY.to_cols_array_2d(),
+            clip_rect: [-1e9, -1e9, 1e9, 1e9],
+            _padding: [0.0; 4],
+        }
+    }
+}
+
 pub struct ObjectTransformData {
     pub bind_group: BindGroup,
     pub buffer: Buffer,
@@ -156,11 +178,17 @@ impl Renderer {
                     ObjectTransformData { bind_group, buffer }
                 });
 
-            queue.write_buffer(
-                &transform_data.buffer,
-                0,
-                bytemuck::bytes_of(&obj.render_data.world_matrix_cache),
-            );
+            let clip_rect = obj
+                .anim_data
+                .transform()
+                .clip_rect
+                .unwrap_or([-1e9, -1e9, 1e9, 1e9]);
+            let uniform = ObjectTransformUniform {
+                matrix: obj.render_data.world_matrix_cache.to_cols_array_2d(),
+                clip_rect,
+                _padding: [0.0; 4],
+            };
+            queue.write_buffer(&transform_data.buffer, 0, bytemuck::bytes_of(&uniform));
         }
 
         if scene.camera.dirty {
@@ -268,17 +296,20 @@ pub(crate) fn transform_bind_group_layout(device: &wgpu::Device) -> BindGroupLay
             ty: wgpu::BindingType::Buffer {
                 ty: wgpu::BufferBindingType::Uniform,
                 has_dynamic_offset: false,
-                min_binding_size: wgpu::BufferSize::new(std::mem::size_of::<[[f32; 4]; 4]>() as _),
+                min_binding_size: wgpu::BufferSize::new(
+                    std::mem::size_of::<ObjectTransformUniform>() as _,
+                ),
             },
             count: None,
         }],
     })
 }
 fn create_transform_bind_group_and_buffer(device: &wgpu::Device) -> (BindGroup, Buffer) {
-    let bind_group_layout = camera_bind_group_layout(device);
+    let bind_group_layout = transform_bind_group_layout(device);
+    let initial = ObjectTransformUniform::default();
     let buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
         label: Some("Transform Buffer"),
-        contents: bytemuck::bytes_of(&Mat4::ZERO),
+        contents: bytemuck::bytes_of(&initial),
 
         usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
     });

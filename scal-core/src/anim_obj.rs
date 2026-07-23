@@ -178,6 +178,7 @@ pub enum AnimObjKind {
         scroll_offset: f32,
         background_color: Color,
         corner_radius: f32,
+        mask_children: bool,
     },
 }
 

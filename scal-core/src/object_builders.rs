@@ -1313,6 +1313,7 @@ impl_transform_methods!(PaddingBuilder);
 ///     .item(text1)
 ///     .item(text2)
 ///     .show_scrollbar(true)
+///     .mask_children(true)
 ///     .build(),
 /// ```
 pub fn scrol_layout() -> ScrollLayoutBuilder {
@@ -1336,6 +1337,7 @@ pub struct ScrollLayoutBuilder {
     scroll_offset: f32,
     background_color: Color,
     corner_radius: f32,
+    mask_children: bool,
     transform: Transform,
 }
 
@@ -1357,6 +1359,7 @@ impl Default for ScrollLayoutBuilder {
             scroll_offset: 0.0,
             background_color: Color::new(0.0, 0.0, 0.0, 0.0),
             corner_radius: 0.0,
+            mask_children: true,
             transform: Transform::new(Vec3::ZERO),
         }
     }
@@ -1406,6 +1409,12 @@ impl ScrollLayoutBuilder {
     /// Show or hide the scrollbar
     pub const fn show_scrollbar(mut self, show: bool) -> Self {
         self.show_scrollbar = show;
+        self
+    }
+    /// Enable or disable masking of children outside the viewport.
+    /// When enabled (default), child objects are clipped to the viewport bounds.
+    pub const fn mask_children(mut self, mask: bool) -> Self {
+        self.mask_children = mask;
         self
     }
     /// Set initial scroll offset in pixels
@@ -1465,6 +1474,7 @@ impl ScrollLayoutBuilder {
                 scroll_offset: self.scroll_offset,
                 background_color: self.background_color,
                 corner_radius: self.corner_radius,
+                mask_children: self.mask_children,
             },
         })
     }

@@ -29,6 +29,7 @@ pub struct ScrollLayout {
     pub padding_left: f32,
     pub padding_right: f32,
     pub content_total: f32,
+    pub mask_children: bool,
 }
 
 impl ScrollLayout {

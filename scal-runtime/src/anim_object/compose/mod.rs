@@ -219,6 +219,19 @@ impl LayoutResult {
         ops.extend(self.nested_ops.iter().cloned());
         AnimOperation::All(ops, None)
     }
+
+    /// Apply a world-space clip rectangle to this layout and all of its
+    /// descendants (container, items, nested layouts).
+    pub fn apply_clip_rect(&mut self, clip_rect: [f32; 4]) {
+        self.background.transform_mut().clip_rect = Some(clip_rect);
+        self.container.transform_mut().clip_rect = Some(clip_rect);
+        for item in &mut self.items {
+            item.transform_mut().clip_rect = Some(clip_rect);
+        }
+        for nested in &mut self.nested {
+            nested.apply_clip_rect(clip_rect);
+        }
+    }
 }
 
 fn compute_bg_center(position: Vec3, w: f32, h: f32, pin: PinPoint) -> Vec3 {

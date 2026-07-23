@@ -408,6 +408,7 @@ fn build_scroll_layout_op(
         scroll_offset,
         background_color,
         corner_radius,
+        mask_children,
     } = obj.kind
     {
         let layout_dir = match direction {
@@ -430,6 +431,19 @@ fn build_scroll_layout_op(
             size: glam::Vec2,
         }
 
+        // World-space viewport bounds used for masking. The background is
+        // positioned at the scroll layout's world position with no parent.
+        let world_clip_rect = if mask_children {
+            Some([
+                transform.position.x - viewport_width / 2.0,
+                transform.position.y - viewport_height / 2.0,
+                transform.position.x + viewport_width / 2.0,
+                transform.position.y + viewport_height / 2.0,
+            ])
+        } else {
+            None
+        };
+
         // Convert children first so we can measure their actual runtime sizes.
         // Nested Layouts are flattened: their background becomes a scroll child and
         // their container/items/nested layouts are instantiated separately.
@@ -443,7 +457,10 @@ fn build_scroll_layout_op(
                         obj,
                     });
                 }
-                LayoutItem::Layout(lr) => {
+                LayoutItem::Layout(mut lr) => {
+                    if let Some(clip) = world_clip_rect {
+                        lr.apply_clip_rect(clip);
+                    }
                     let size = lr.background.size();
                     nested_ops.push(lr.instantiate_children());
                     scroll_children.push(ScrollChild {
@@ -569,12 +586,9 @@ fn build_scroll_layout_op(
 
             child_obj.transform_mut().parent = Some(bg_uuid);
             child_obj.transform_mut().position = glam::vec3(cx, cy, 0.0);
-            child_obj.transform_mut().clip_rect = Some([
-                -viewport_width / 2.0,
-                -viewport_height / 2.0,
-                viewport_width / 2.0,
-                viewport_height / 2.0,
-            ]);
+            if let Some(clip) = world_clip_rect {
+                child_obj.transform_mut().clip_rect = Some(clip);
+            }
             child_uuids.push(child_obj.uuid());
             ops.push(child_obj.instantiate());
         }
@@ -611,6 +625,7 @@ fn build_scroll_layout_op(
             padding_left,
             padding_right,
             content_total,
+            mask_children,
         };
         ops.push(crate::anim_object::object_trait::DynAnimObj(Box::new(bg)).instantiate());
         ops.push(crate::anim_object::object_trait::DynAnimObj(Box::new(sl)).instantiate());

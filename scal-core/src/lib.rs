@@ -1,6 +1,9 @@
 #![warn(missing_docs)]
 #![warn(clippy::pedantic)]
 #![warn(clippy::nursery)]
+#![doc(
+    html_logo_url = "https://raw.githubusercontent.com/Feeflak/SCAL/refs/heads/main/SCAL_logo.svg"
+)]
 //! ### Easy animation system focused on code.   
 //!
 //! # Example
