@@ -103,6 +103,12 @@ impl GlyphAtlas {
         let height = image.placement.height as u32;
         let is_color = image.content == Content::Color || image.content == Content::SubpixelMask;
 
+        if self.cursor_x + width >= self.width {
+            self.cursor_x = 0;
+            self.cursor_y += self.row_height + 1;
+            self.row_height = 0;
+        }
+
         let x = self.cursor_x;
         let y = self.cursor_y;
 
@@ -128,12 +134,6 @@ impl GlyphAtlas {
         }
         self.cursor_x += width + 1;
         self.row_height = self.row_height.max(height);
-
-        if self.cursor_x + width >= self.width {
-            self.cursor_x = 0;
-            self.cursor_y += self.row_height + 1;
-            self.row_height = 0;
-        }
 
         GlyphInfo {
             uv_min: vec2(x as f32 / self.width as f32, y as f32 / self.height as f32),

@@ -25,4 +25,5 @@ members = [
         "./examples/svg",
         "./examples/terminal",
         "./examples/text",
+        "./examples/scroll",
 ]

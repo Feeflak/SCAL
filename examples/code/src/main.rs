@@ -77,10 +77,7 @@ fn main() -> Project {
                 .over(5.s())
                 .ease(Ease::InOutCubic),
             wait(500.ms()),
-            code.highlight()
-                .reset()
-                .lines(0..3)
-                .over(1.s()),
+            code.highlight().reset().lines(0..3).over(1.s()),
             wait(500.ms()),
             code.add_lines()
                 .from_line(5)
