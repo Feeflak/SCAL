@@ -196,6 +196,82 @@ pub fn hsv(h: f32, s: f32, v: f32) -> Color {
     Color::new(r + m, g + m, b + m, 1.0)
 }
 
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn color_function_creates_color() {
+        let c = color(0.1, 0.2, 0.3, 0.4);
+        assert_eq!(c.r, 0.1);
+        assert_eq!(c.g, 0.2);
+        assert_eq!(c.b, 0.3);
+        assert_eq!(c.a, 0.4);
+    }
+
+    #[test]
+    fn hex_parses_six_digit() {
+        let c = hex("#ff0000");
+        assert!((c.r - 1.0).abs() < f32::EPSILON);
+        assert!((c.g - 0.0).abs() < f32::EPSILON);
+        assert!((c.b - 0.0).abs() < f32::EPSILON);
+        assert!((c.a - 1.0).abs() < f32::EPSILON);
+    }
+
+    #[test]
+    fn hex_parses_eight_digit() {
+        let c = hex("#00ff0080");
+        assert!((c.r - 0.0).abs() < f32::EPSILON);
+        assert!((c.g - 1.0).abs() < f32::EPSILON);
+        assert!((c.b - 0.0).abs() < f32::EPSILON);
+        assert!((c.a - 0.50196).abs() < 0.001);
+    }
+
+    #[test]
+    fn hex_parses_shorthand() {
+        let c = hex("#f0f");
+        assert!((c.r - 1.0).abs() < f32::EPSILON);
+        assert!((c.g - 0.0).abs() < f32::EPSILON);
+        assert!((c.b - 1.0).abs() < f32::EPSILON);
+        assert!((c.a - 1.0).abs() < f32::EPSILON);
+    }
+
+    #[test]
+    fn hsv_red() {
+        let c = hsv(0.0, 1.0, 1.0);
+        assert!((c.r - 1.0).abs() < 0.001);
+        assert!((c.g - 0.0).abs() < 0.001);
+        assert!((c.b - 0.0).abs() < 0.001);
+        assert!((c.a - 1.0).abs() < 0.001);
+    }
+
+    #[test]
+    fn hsv_green() {
+        let c = hsv(120.0, 1.0, 1.0);
+        assert!((c.r - 0.0).abs() < 0.001);
+        assert!((c.g - 1.0).abs() < 0.001);
+        assert!((c.b - 0.0).abs() < 0.001);
+        assert!((c.a - 1.0).abs() < 0.001);
+    }
+
+    #[test]
+    fn hsv_blue() {
+        let c = hsv(240.0, 1.0, 1.0);
+        assert!((c.r - 0.0).abs() < 0.001);
+        assert!((c.g - 0.0).abs() < 0.001);
+        assert!((c.b - 1.0).abs() < 0.001);
+        assert!((c.a - 1.0).abs() < 0.001);
+    }
+
+    #[test]
+    fn hsv_wraps_hue() {
+        let c = hsv(360.0, 1.0, 1.0);
+        assert!((c.r - 1.0).abs() < 0.001);
+        assert!((c.g - 0.0).abs() < 0.001);
+        assert!((c.b - 0.0).abs() < 0.001);
+    }
+}
+
 fn hex_digit(c: u8) -> u8 {
     match c {
         b'0'..=b'9' => c - b'0',
