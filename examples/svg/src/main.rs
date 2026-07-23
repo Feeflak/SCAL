@@ -17,7 +17,7 @@ fn main() -> Project {
 
     Project {
         scene_settings: SceneSettings {
-            background_color: Color::new(0.8, 0.8, 0.8, 0.),
+            background_color: color(0.8, 0.8, 0.8, 0.),
             camera: Camera::new(Vec2::new(1920., 1080.), Vec2::ZERO, 1.),
             default_theme: Theme::default(),
         },

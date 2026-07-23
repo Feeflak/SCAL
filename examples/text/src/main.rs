@@ -7,7 +7,7 @@ fn main() -> Project {
     let panel = rectangle()
         .size(vec2(1400.0, 720.0))
         .corner_radius(48.0)
-        .color(Color::new(0.08, 0.10, 0.14, 1.0))
+        .color(color(0.08, 0.10, 0.14, 1.0))
         .pos(vec2(960.0, 540.0))
         .scale(vec2(0.0, 0.0))
         .build();
@@ -16,13 +16,13 @@ fn main() -> Project {
     let label_tmpl = text_template()
         .font_family("sans-serif")
         .font_size(52.0)
-        .color(Color::new(0.72, 0.76, 0.84, 1.0))
+        .color(color(0.72, 0.76, 0.84, 1.0))
         .align(Alignment::Center)
         .modifier(
             text_modifier()
                 .thickness(1.0)
                 .softness(8.0)
-                .color(Color::new(0.0, 0.0, 0.0, 0.35))
+                .color(color(0.0, 0.0, 0.0, 0.35))
                 .pos(vec2(4.0, 4.0))
                 .build(),
         )
@@ -35,21 +35,21 @@ fn main() -> Project {
         .scale(vec2(0.0, 0.0))
         .font_size(260.0)
         .font_family("sans-serif")
-        .color(Color::new(0.95, 0.97, 1.0, 1.0))
+        .color(color(0.95, 0.97, 1.0, 1.0))
         .align(Alignment::Center)
         // Soft blue glow.
         .modifier(
             text_modifier()
                 .thickness(0.0)
                 .softness(40.0)
-                .color(Color::new(0.25, 0.55, 0.95, 0.4))
+                .color(color(0.25, 0.55, 0.95, 0.4))
                 .build(),
         )
         // Hard blue outline.
         .modifier(
             text_modifier()
                 .thickness(7.0)
-                .color(Color::new(0.2, 0.5, 0.9, 1.0))
+                .color(color(0.2, 0.5, 0.9, 1.0))
                 .build(),
         )
         // Drop shadow.
@@ -57,7 +57,7 @@ fn main() -> Project {
             text_modifier()
                 .thickness(2.0)
                 .softness(14.0)
-                .color(Color::new(0.0, 0.0, 0.0, 0.55))
+                .color(color(0.0, 0.0, 0.0, 0.55))
                 .pos(vec2(14.0, 14.0))
                 .build(),
         )
@@ -69,7 +69,7 @@ fn main() -> Project {
         .text()
         .value("Smooth Code Animation Library")
         .pos(vec2(960.0, 740.0))
-        .color(Color::new(0.72, 0.76, 0.84, 0.0))
+        .color(color(0.72, 0.76, 0.84, 0.0))
         .build();
     let subtitle_handle = TextHandle(subtitle.id);
 
@@ -80,7 +80,7 @@ fn main() -> Project {
         .pos(vec2(960.0, 840.0))
         .scale(vec2(0.5, 0.5))
         .rot(-10.0)
-        .color(Color::new(0.42, 0.82, 0.62, 1.0))
+        .color(color(0.42, 0.82, 0.62, 1.0))
         .build();
     let feature_handle = TextHandle(feature.id);
 
@@ -88,13 +88,13 @@ fn main() -> Project {
     let badge = rectangle()
         .size(vec2(220.0, 52.0))
         .corner_radius(26.0)
-        .color(Color::new(0.2, 0.5, 0.9, 1.0))
+        .color(color(0.2, 0.5, 0.9, 1.0))
         .pos(vec2(960.0, 305.0))
         .scale(vec2(0.0, 0.0))
         .build();
     Project {
         scene_settings: SceneSettings {
-            background_color: Color::new(0.03, 0.03, 0.04, 1.0),
+            background_color: color(0.03, 0.03, 0.04, 1.0),
             camera: Camera::new(Vec2::new(1920., 1080.), Vec2::ZERO, 1.),
             default_theme: Theme::default(),
         },
@@ -142,7 +142,7 @@ fn main() -> Project {
                     .ease(Ease::OutCubic),
                 subtitle_handle
                     .color()
-                    .to(Color::new(0.72, 0.76, 0.84, 1.0))
+                    .to(color(0.72, 0.76, 0.84, 1.0))
                     .over(0.6.s())
                     .ease(Ease::OutCubic),
             ],
@@ -165,7 +165,7 @@ fn main() -> Project {
             parallel![
                 title_handle
                     .color()
-                    .to(Color::new(0.55, 0.8, 1.0, 1.0))
+                    .to(color(0.55, 0.8, 1.0, 1.0))
                     .over(0.35.s())
                     .ease(Ease::InOutCubic),
                 title_handle
@@ -177,7 +177,7 @@ fn main() -> Project {
             parallel![
                 title_handle
                     .color()
-                    .to(Color::new(0.95, 0.97, 1.0, 1.0))
+                    .to(color(0.95, 0.97, 1.0, 1.0))
                     .over(0.35.s())
                     .ease(Ease::InOutCubic),
                 title_handle

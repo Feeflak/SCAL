@@ -16,15 +16,15 @@ fn main() -> Project {
         .font_size(22.)
         .width(TERM_WIDTH)
         .height(TERM_HEIGHT)
-        .background_color(Color::new(0.08, 0.08, 0.08, 1.0))
-        .text_color(Color::new(0.8, 0.8, 0.8, 1.0))
+        .background_color(color(0.08, 0.08, 0.08, 1.0))
+        .text_color(color(0.8, 0.8, 0.8, 1.0))
         .source_dir(concat!(env!("CARGO_MANIFEST_DIR"), "/fixtures"))
         .pos(WINDOW / 2.)
         .build();
 
     Project {
         scene_settings: SceneSettings {
-            background_color: Color::new(0.1, 0.1, 0.1, 1.0),
+            background_color: color(0.1, 0.1, 0.1, 1.0),
             camera: Camera::new(Vec2::new(1920., 1080.), Vec2::ZERO, 1.),
             default_theme: Theme::default(),
         },

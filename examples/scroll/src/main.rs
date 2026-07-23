@@ -7,25 +7,25 @@ fn main() -> Project {
     // let ref1 = rectangle()
     //     .size(Vec2::new(300., 100.))
     //     .corner_radius(10.)
-    //     .color(Color::new(0.2, 0.4, 0.8, 1.0))
+    //     .color(color(0.2, 0.4, 0.8, 1.0))
     //     .pos(vec2(300., 200.))
     //     .build();
 
     let item = rectangle()
         .size(Vec2::new(300., 500.))
         .corner_radius(10.)
-        .color(Color::new(0.8, 0.2, 0.2, 1.0))
+        .color(color(0.8, 0.2, 0.2, 1.0))
         .build();
     let item2 = rectangle()
         .size(Vec2::new(300., 500.))
         .corner_radius(10.)
-        .color(Color::new(0.2, 0.8, 0.2, 1.0))
+        .color(color(0.2, 0.8, 0.2, 1.0))
         .build();
 
     let item3 = rectangle()
         .size(Vec2::new(300., 500.))
         .corner_radius(10.)
-        .color(Color::new(0.2, 0.2, 0.8, 1.0))
+        .color(color(0.2, 0.2, 0.8, 1.0))
         .build();
 
     let scroll = scrol_layout()
@@ -34,14 +34,14 @@ fn main() -> Project {
         .direction(LayoutDir::Column)
         .gap(20.)
         .padding(20.)
-        .background_color(Color::new(0.1, 0.1, 0.1, 1.0))
+        .background_color(color(0.1, 0.1, 0.1, 1.0))
         .show_scrollbar(true)
         .corner_radius(20.)
         .item(item)
         .item(item2)
         .item(
             layout()
-                .background_color(Color::new(1., 1., 1., 0.1))
+                .background_color(color(1., 1., 1., 0.1))
                 .item(item3)
                 .item(text().value("Some Layout Test O:").font_size(50.).build())
                 .build(),
@@ -58,7 +58,7 @@ fn main() -> Project {
 
     Project {
         scene_settings: SceneSettings {
-            background_color: Color::new(0.8, 0.8, 0.8, 1.0),
+            background_color: color(0.8, 0.8, 0.8, 1.0),
             camera: Camera::new(Vec2::new(1920., 1080.), Vec2::ZERO, 1.),
             default_theme: Theme::default(),
         },
