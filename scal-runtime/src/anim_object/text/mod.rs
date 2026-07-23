@@ -72,7 +72,8 @@ impl AnimObjectTrait for Text {
         }
         let line_count = self.value.lines().count().max(1);
         let height = line_count as f32 * self.font_size * 1.2;
-        let width = self.value.len() as f32 * self.font_size * 0.5;
+        let max_line_len = self.value.lines().map(|l| l.len()).max().unwrap_or(0).max(1);
+        let width = max_line_len as f32 * self.font_size * 0.5;
         glam::vec2(width, height)
     }
     fn generate_mesh(&mut self, mgr: &mut TextManager) -> MeshResult {
