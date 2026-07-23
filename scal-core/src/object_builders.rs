@@ -2,8 +2,8 @@ use glam::{Vec2, Vec3};
 use uuid::Uuid;
 
 use crate::anim_obj::{
-    Alignment, AnimObj, AnimObjKind, CodeHandle, CodeWindowHandle, LayoutDir, StretchMode, Syntax,
-    TerminalHandle, TextModifier,
+    Alignment, AnimObj, AnimObjKind, CodeHandle, CodeWindowHandle, LayoutDir, ScrollLayoutHandle,
+    StretchMode, Syntax, TerminalHandle, TextModifier,
 };
 use crate::color::Color;
 use crate::theme::Theme;
@@ -575,6 +575,120 @@ impl TextBuilder {
 }
 
 impl_transform_methods!(TextBuilder);
+
+/// Create a new text template builder.
+///
+/// A text template stores default text styling that can be reused to create
+/// multiple text objects. Each object created from the template can selectively
+/// override any property.
+///
+/// ```ignore
+/// let templ = text_template()
+///     .font_size(50.0)
+///     .font_family("sans-serif")
+///     .color(Color::WHITE)
+///     .modifier(text_modifier().color(Color::BLACK).thickness(2.0).build())
+///     .build();
+///
+/// let text = templ
+///     .text()
+///     .value("Hello")
+///     .pos(Vec2::new(100.0, 100.0))
+///     .font_size(75.0) // overrides template default
+///     .build();
+/// ```
+pub fn text_template() -> TextTemplateBuilder {
+    TextTemplateBuilder::default()
+}
+
+/// Default text styling that can be reused across multiple text objects.
+#[derive(Clone, Debug)]
+pub struct TextTemplate {
+    font_family: String,
+    align: Alignment,
+    color: Color,
+    font_size: f32,
+    modifications: Vec<TextModifier>,
+}
+
+impl TextTemplate {
+    /// Create a new [`TextBuilder`] pre-filled with this template's defaults.
+    /// Any property can still be overridden before calling [`TextBuilder::build`].
+    #[must_use]
+    pub fn text(&self) -> TextBuilder {
+        TextBuilder {
+            value: String::new(),
+            font_family: self.font_family.clone(),
+            align: self.align.clone(),
+            color: self.color,
+            font_size: self.font_size,
+            transform: Transform::new(Vec3::ZERO),
+            modifications: self.modifications.clone(),
+        }
+    }
+}
+
+/// Builder for constructing a [`TextTemplate`].
+#[must_use]
+#[derive(Clone, Debug)]
+pub struct TextTemplateBuilder {
+    font_family: String,
+    align: Alignment,
+    color: Color,
+    font_size: f32,
+    modifications: Vec<TextModifier>,
+}
+
+impl Default for TextTemplateBuilder {
+    fn default() -> Self {
+        Self {
+            font_family: "sans-serif".to_string(),
+            align: Alignment::Center,
+            color: Color::WHITE,
+            font_size: 24.0,
+            modifications: Vec::new(),
+        }
+    }
+}
+
+impl TextTemplateBuilder {
+    /// Set the default font family.
+    pub fn font_family(mut self, family: impl Into<String>) -> Self {
+        self.font_family = family.into();
+        self
+    }
+    /// Set the default alignment.
+    pub const fn align(mut self, a: Alignment) -> Self {
+        self.align = a;
+        self
+    }
+    /// Set the default color.
+    pub const fn color(mut self, color: Color) -> Self {
+        self.color = color;
+        self
+    }
+    /// Set the default font size.
+    pub const fn font_size(mut self, size: f32) -> Self {
+        self.font_size = size;
+        self
+    }
+    /// Add a default text modifier.
+    pub fn modifier(mut self, modifier: TextModifier) -> Self {
+        self.modifications.push(modifier);
+        self
+    }
+    /// Build the template.
+    #[must_use]
+    pub fn build(self) -> TextTemplate {
+        TextTemplate {
+            font_family: self.font_family,
+            align: self.align,
+            color: self.color,
+            font_size: self.font_size,
+            modifications: self.modifications,
+        }
+    }
+}
 
 /// Create a new text modifier builder for a shadow, outline, or glow effect.
 /// ```ignore
