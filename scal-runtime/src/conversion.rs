@@ -623,7 +623,7 @@ fn build_layout_result_from_core(
             CoreAlignment::End => RuntimeAlignment::End,
         };
 
-        Ok(crate::anim_object::compose::layout(
+        Ok(crate::anim_object::compose::layout_with_ids(
             obj.transform.position,
             PinPoint::C,
             items,
@@ -641,6 +641,8 @@ fn build_layout_result_from_core(
             padding_right,
             min_width,
             min_height,
+            Some(obj.id),
+            None,
         ))
     } else {
         bail!("build_layout_result_from_core called on non-Layout kind")
