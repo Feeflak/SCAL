@@ -130,10 +130,10 @@ impl PositionBuilder {
     }
 
     #[must_use]
-    /// Set the easing function and return the animation
-    pub fn ease(mut self, ease: Ease) -> AnimOP {
+    /// Set the easing function and return the builder
+    pub fn ease(mut self, ease: Ease) -> Self {
         self.ease = ease;
-        self.into()
+        self
     }
 }
 
@@ -186,10 +186,10 @@ impl ScaleBuilder {
     }
 
     #[must_use]
-    /// Set the easing function and return the animation
-    pub fn ease(mut self, ease: Ease) -> AnimOP {
+    /// Set the easing function and return the builder
+    pub fn ease(mut self, ease: Ease) -> Self {
         self.ease = ease;
-        self.into()
+        self
     }
 }
 
@@ -236,10 +236,10 @@ impl RotateBuilder {
     }
 
     #[must_use]
-    /// Set the easing function and return the animation
-    pub fn ease(mut self, ease: Ease) -> AnimOP {
+    /// Set the easing function and return the builder
+    pub fn ease(mut self, ease: Ease) -> Self {
         self.ease = ease;
-        self.into()
+        self
     }
 }
 
@@ -277,10 +277,10 @@ impl ColorBuilder {
         self
     }
 
-    /// Set the easing function and return the animation
-    pub fn ease(mut self, ease: Ease) -> AnimOP {
+    /// Set the easing function and return the builder
+    pub fn ease(mut self, ease: Ease) -> Self {
         self.ease = ease;
-        self.into()
+        self
     }
 }
 
