@@ -2,7 +2,7 @@
 [workspace.package]
 version = "1.0.1"
 edition = "2024"
-license = "MIT"
+license = "GPL-3.0"
 keywords = ["graphics"]
 repository = "https://github.com/Feeflak/SCAL"
 authors = ["feeflak"]
@@ -26,4 +26,5 @@ members = [
         "./examples/terminal",
         "./examples/text",
         "./examples/scroll",
+        "./ign_projects/ign"
 ]
