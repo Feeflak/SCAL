@@ -243,7 +243,7 @@
 //!   };
 //! }
 //! ```
-//! ## Compiling From Source
+//! # Compiling From Source
 //! SCAL uses Cargo to manage all Rust dependencies automatically. Only a few native libraries must be installed manually.
 //!
 //! ## 1. Install Rust
@@ -262,10 +262,11 @@
 //! ```
 //!
 //! ---
+//! ## 2. Install Dependencies
 //!
-//! ## Linux
+//! ### Linux
 //!
-//! ### Arch Linux
+//! #### Arch Linux
 //!
 //! Install the required packages:
 //!
@@ -289,7 +290,7 @@
 //!
 //! ---
 //!
-//! ### Fedora
+//! #### Fedora
 //!
 //! Install the required packages:
 //!
@@ -313,7 +314,7 @@
 //!
 //! ---
 //!
-//! ## Debian / Ubuntu
+//! #### Debian / Ubuntu
 //!
 //! Install the required packages:
 //!
@@ -339,7 +340,7 @@
 //!
 //! ---
 //!
-//! ## NixOS
+//! #### NixOS
 //!
 //! The repository already contains a development shell.
 //!
@@ -359,7 +360,7 @@
 //!
 //! ---
 //!
-//! # macOS
+//! #### macOS
 //!
 //! Install Homebrew if necessary.
 //!
@@ -376,7 +377,7 @@
 //!
 //! ---
 //!
-//! # Windows
+//! #### Windows
 //!
 //! Install:
 //!
@@ -399,7 +400,7 @@
 //!
 //! ---
 //!
-//! # Building SCAL
+//! ## 3. Building && Installing Using Cargo
 //!
 //! ```bash
 //! cargo install scal-runtime
