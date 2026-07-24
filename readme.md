@@ -2,14 +2,15 @@
 ![SCAL logo](./SCAL_logo.svg) 
 # Read [Rust Docs](https://docs.rs/scal-core/latest/scal_core/)
 
-# After Implementing Any New Features
-Just use:
+# Testing
+After Implementing Any New Features Just use:
 `cargo test --workspace`
+After any bigger changes, visual inspection of all examples might be needed to prevent regression. 
 
 # Package Update Procedure 
-0. visually inspect all examples if they look right. 
+0. cargo test + visually inspect all examples if they look right. 
 1. update workspace version
 2. update scal_core version
 3. update flake.nix version
-4. git push to prod 
-5. cargo publish on core runtime and ipc
+4. create a new git version branch
+5. acargo publish on: core, runtime, ipc
