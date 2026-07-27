@@ -9,7 +9,12 @@ pub fn all_specs() -> Vec<(Syntax, HighlightSpec)> {
         (Syntax::JS, js_spec()),
         (Syntax::Zig, zig_spec()),
         (Syntax::Python, python_spec()),
+        (Syntax::Plain, plain_spec()),
     ]
+}
+#[must_use]
+pub fn plain_spec() -> HighlightSpec {
+    HighlightSpec::new(vec![], vec![])
 }
 #[must_use]
 pub fn rust_spec() -> HighlightSpec {

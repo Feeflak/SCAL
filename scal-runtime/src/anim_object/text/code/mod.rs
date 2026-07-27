@@ -26,6 +26,7 @@ pub fn language(syntax: Syntax) -> tree_sitter::Language {
         Syntax::Python => tree_sitter_python::LANGUAGE.into(),
         Syntax::JS => tree_sitter_javascript::LANGUAGE.into(),
         Syntax::Zig => tree_sitter_zig::LANGUAGE.into(),
+        Syntax::Plain => tree_sitter_rust::LANGUAGE.into(),
     }
 }
 fn highlight_config(syntax: &Syntax) -> Result<HighlightConfiguration> {
@@ -71,6 +72,14 @@ fn highlight_config(syntax: &Syntax) -> Result<HighlightConfiguration> {
             "",
         )
         .context("while creating zig highlight_config"),
+        Syntax::Plain => HighlightConfiguration::new(
+            tree_sitter_rust::LANGUAGE.into(),
+            "plain",
+            "",
+            "",
+            "",
+        )
+        .context("while creating plain highlight_config"),
     }
 }
 

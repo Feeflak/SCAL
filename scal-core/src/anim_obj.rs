@@ -190,6 +190,7 @@ pub enum Syntax {
     Python,
     JS,
     Zig,
+    Plain,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]

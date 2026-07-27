@@ -17,6 +17,14 @@ impl CodeHighlighter {
         syntax: &Syntax,
     ) -> Result<Vec<TextSpan>> {
         let syntax_theme = &theme.syntax_specific[syntax];
+
+        if matches!(syntax, Syntax::Plain) {
+            return Ok(vec![TextSpan {
+                color: syntax_theme.default_color.into(),
+                value: source_code.clone(),
+            }]);
+        }
+
         let mut config = highlight_config(&syntax)?;
         config.configure(&syntax_theme.highlight_names);
 
