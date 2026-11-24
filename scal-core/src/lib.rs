@@ -538,7 +538,7 @@ pub mod theme;
 pub mod transform;
 
 pub use anim_obj::{
-    Alignment, AnimObj, CircleHandle, CodeHandle, CodeWindowHandle, LayoutDir, MathHandle,
+    Alignment, AnimObj, CircleHandle, CodeHandle, CodeWindowHandle, LayoutDir, MathHandle, MathPartHandle,
     RectangleHandle, ScrollLayoutHandle, StretchMode, Syntax, TerminalHandle, TextHandle,
     TextModifier, TextSpan,
 };
@@ -562,7 +562,7 @@ pub mod prelude {
     pub use crate::anim::*;
     pub use crate::anim_builders::*;
     pub use crate::anim_obj::{
-        Alignment, AnimObj, CircleHandle, CodeHandle, CodeWindowHandle, LayoutDir, MathHandle,
+        Alignment, AnimObj, CircleHandle, CodeHandle, CodeWindowHandle, LayoutDir, MathHandle, MathPartHandle,
         RectangleHandle, ScrollLayoutHandle, StretchMode, Syntax, TerminalHandle, TextHandle,
         TextModifier, TextSpan,
     };

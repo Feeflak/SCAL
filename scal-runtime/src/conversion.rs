@@ -99,6 +99,12 @@ fn convert_anim_op(
         scal_core::AnimOP::ObjectColor(u, c, d, e, loc) => {
             AnimOperation::ObjectColor(u, c, d, e, loc)
         }
+        scal_core::AnimOP::MathPartColor(u, part, c, d, e, loc) => {
+            AnimOperation::MathPartColor(u, part, c, d, e, loc)
+        }
+        scal_core::AnimOP::MathHighlight(u, parts, c, dim, d, e, loc) => {
+            AnimOperation::MathHighlight(u, parts, c, dim, d, e, loc)
+        }
         scal_core::AnimOP::ScrollOffset(u, target, d, e, loc) => {
             AnimOperation::ScrollOffset(u, target, d, e, loc)
         }

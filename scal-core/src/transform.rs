@@ -301,3 +301,102 @@ impl IntoAnimOp for ColorBuilder {
         self.into()
     }
 }
+
+/// Builder for an animation that changes the color of a named part of a math object
+pub struct MathPartColorBuilder {
+    pub(crate) uuid: Uuid,
+    pub(crate) part: String,
+    pub(crate) target: Option<Color>,
+    pub(crate) duration: Time,
+    pub(crate) ease: Ease,
+}
+
+#[allow(clippy::return_self_not_must_use)]
+impl MathPartColorBuilder {
+    /// Set the target color
+    pub const fn to(mut self, target: Color) -> Self {
+        self.target = Some(target);
+        self
+    }
+
+    /// Set the duration of the color animation
+    pub const fn over(mut self, duration: Time) -> Self {
+        self.duration = duration;
+        self
+    }
+
+    /// Set the easing function
+    pub fn ease(mut self, ease: Ease) -> Self {
+        self.ease = ease;
+        self
+    }
+}
+
+impl From<MathPartColorBuilder> for AnimOP {
+    fn from(b: MathPartColorBuilder) -> Self {
+        Self::MathPartColor(
+            b.uuid,
+            b.part,
+            b.target.unwrap_or(Color::WHITE),
+            b.duration,
+            b.ease,
+            None,
+        )
+    }
+}
+
+impl IntoAnimOp for MathPartColorBuilder {
+    fn into_anim_op(self) -> AnimOP {
+        self.into()
+    }
+}
+
+/// Builder for an animation that highlights parts of a math object and dims everything else.
+/// The highlight stays until another highlight or a reset replaces it.
+pub struct MathHighlightBuilder {
+    pub(crate) uuid: Uuid,
+    pub(crate) parts: Vec<String>,
+    pub(crate) color: Color,
+    pub(crate) dim: f32,
+    pub(crate) duration: Time,
+    pub(crate) ease: Ease,
+}
+
+#[allow(clippy::return_self_not_must_use)]
+impl MathHighlightBuilder {
+    /// Color the highlighted parts are tinted to (default: yellow)
+    pub const fn color(mut self, color: Color) -> Self {
+        self.color = color;
+        self
+    }
+
+    /// Alpha everything that is not highlighted fades to (default 0.25, 1.0 = no dimming)
+    pub const fn dim(mut self, alpha: f32) -> Self {
+        self.dim = alpha;
+        self
+    }
+
+    /// Set the duration of the transition
+    pub const fn over(mut self, duration: Time) -> Self {
+        self.duration = duration;
+        self
+    }
+
+    /// Set the easing function
+    pub fn ease(mut self, ease: Ease) -> Self {
+        self.ease = ease;
+        self
+    }
+}
+
+impl From<MathHighlightBuilder> for AnimOP {
+    fn from(b: MathHighlightBuilder) -> Self {
+        Self::MathHighlight(b.uuid, b.parts, b.color, b.dim, b.duration, b.ease, None)
+    }
+}
+
+impl IntoAnimOp for MathHighlightBuilder {
+    fn into_anim_op(self) -> AnimOP {
+        self.into()
+    }
+}

@@ -6,6 +6,7 @@ fn main() -> Project {
     let red = color(1.0, 0.42, 0.42, 1.0);
     let blue = color(0.30, 0.67, 0.97, 1.0);
     let green = color(0.41, 0.86, 0.49, 1.0);
+    let marker = color(1.0, 0.90, 0.25, 1.0);
 
     let title = text()
         .spans([
@@ -17,7 +18,7 @@ fn main() -> Project {
         .pos(vec2(960.0, 130.0))
         .build();
 
-    // Named colors from the palette: `\textcolor{a}{..}` picks `.var_color("a", ..)`.
+    // Named colors: `\textcolor{a}{..}` picks `.var_color("a", ..)`. Named parts can be animated.
     let quadratic = math(r"\textcolor{a}{a}x^2 + \textcolor{b}{b}x + \textcolor{c}{c} = 0")
         .var_color("a", red)
         .var_color("b", blue)
@@ -25,9 +26,8 @@ fn main() -> Project {
         .font_size(110.0)
         .pos(vec2(960.0, 320.0))
         .build();
-    let quadratic_handle = MathHandle(quadratic.id);
 
-    // Whole sub-expressions can be colored; uncolored parts follow the object color.
+    // Every occurrence of a part is animated together.
     let solution = math(
         r"x = \frac{-\textcolor{b}{b} \pm \sqrt{\textcolor{b}{b}^2 - 4\,\textcolor{a}{a}\,\textcolor{c}{c}}}{2\,\textcolor{a}{a}}",
     )
@@ -37,9 +37,8 @@ fn main() -> Project {
     .font_size(100.0)
     .pos(vec2(960.0, 600.0))
     .build();
-    let solution_handle = MathHandle(solution.id);
 
-    // Plain LaTeX colors also work, and `latex_color` formats a `Color` for `format!`.
+    // Plain LaTeX colors also work (they are fixed), and `latex_color` formats a `Color`.
     let euler = math(format!(
         r"e^{{i\pi}} + 1 = 0 \quad \textcolor{{{}}}{{\int_0^1 x^2\,dx = \frac{{1}}{{3}}}}",
         latex_color(color(1.0, 0.85, 0.3, 1.0))
@@ -47,7 +46,6 @@ fn main() -> Project {
     .font_size(64.0)
     .pos(vec2(960.0, 900.0))
     .build();
-    let euler_handle = MathHandle(euler.id);
 
     Project {
         scene_settings: SceneSettings {
@@ -61,35 +59,56 @@ fn main() -> Project {
             solution.instantiate(),
             euler.instantiate(),
             wait(1.0.s()),
-            // Only the uncolored parts (x, ^2, +, =, 0, ...) change; a, b, c keep their colors.
+            // Highlighting tints the parts and dims everything else. It stays until you
+            // highlight something else (a crossfade) or reset it. Every `a` is hit together.
             parallel![
-                quadratic_handle
+                quadratic.highlight(["a"]).color(marker).dim(0.2).over(0.6.s()),
+                solution.highlight(["a"]).color(marker).dim(0.2).over(0.6.s()),
+            ],
+            wait(1.0.s()),
+            parallel![
+                quadratic.highlight(["b"]).color(marker).dim(0.2).over(0.6.s()),
+                solution.highlight(["b"]).color(marker).dim(0.2).over(0.6.s()),
+            ],
+            wait(1.0.s()),
+            // Several parts at once.
+            parallel![
+                quadratic.highlight(["a", "c"]).color(marker).dim(0.2).over(0.6.s()),
+                solution.highlight(["a", "c"]).color(marker).dim(0.2).over(0.6.s()),
+            ],
+            wait(1.0.s()),
+            parallel![
+                quadratic.reset_highlight().over(0.6.s()),
+                solution.reset_highlight().over(0.6.s()),
+            ],
+            wait(0.5.s()),
+            // A plain recolor of one part stays until you change it back.
+            quadratic.part("a").color().to(marker).over(0.5.s()),
+            wait(0.5.s()),
+            // Only the uncolored parts follow the object color; the named parts keep theirs.
+            parallel![
+                quadratic
                     .color()
                     .to(color(0.75, 0.55, 1.0, 1.0))
                     .over(1.0.s())
                     .ease(Ease::InOutCubic),
-                solution_handle
+                solution
                     .color()
                     .to(color(0.75, 0.55, 1.0, 1.0))
                     .over(1.0.s())
                     .ease(Ease::InOutCubic),
-                euler_handle
+                euler
+                    .transform
                     .scale()
                     .to(vec2(1.15, 1.15))
                     .over(1.0.s())
                     .ease(Ease::InOutCubic),
             ],
-            wait(1.0.s()),
-            // Fades affect the whole equation, colored symbols included.
+            wait(0.5.s()),
+            // Fading affects the whole equation, parts included.
             parallel![
-                quadratic_handle
-                    .color()
-                    .to(color(0.75, 0.55, 1.0, 0.0))
-                    .over(1.0.s()),
-                solution_handle
-                    .color()
-                    .to(color(0.75, 0.55, 1.0, 0.0))
-                    .over(1.0.s()),
+                quadratic.color().to(color(0.75, 0.55, 1.0, 0.0)).over(1.0.s()),
+                solution.color().to(color(0.75, 0.55, 1.0, 0.0)).over(1.0.s()),
             ],
             wait(0.5.s()),
         ],

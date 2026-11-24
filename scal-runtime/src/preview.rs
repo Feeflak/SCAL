@@ -772,7 +772,8 @@ fn op_label(op: &AnimOperation) -> &'static str {
         AnimOperation::Wait(..) => "Wait",
         AnimOperation::TerminalTypeInput(..) => "Type Input",
         AnimOperation::TerminalOutput(..) => "Output",
-        AnimOperation::ObjectColor(..) => "Color",
+        AnimOperation::ObjectColor(..) | AnimOperation::MathPartColor(..) => "Color",
+        AnimOperation::MathHighlight(..) => "Highlight",
         AnimOperation::ScrollOffset(..) => "Scroll",
         AnimOperation::PlaySound(..) => "Sound",
     }
@@ -792,7 +793,9 @@ fn op_kind(op: &AnimOperation) -> OpKind {
         AnimOperation::TerminalTypeInput(..) | AnimOperation::TerminalOutput(..) => {
             OpKind::Terminal
         }
-        AnimOperation::ObjectColor(..) => OpKind::Transform,
+        AnimOperation::ObjectColor(..)
+        | AnimOperation::MathPartColor(..)
+        | AnimOperation::MathHighlight(..) => OpKind::Transform,
         AnimOperation::ScrollOffset(..) => OpKind::Scroll,
         AnimOperation::All(..) | AnimOperation::Sequence(..) => OpKind::Composite,
         AnimOperation::Wait(..) => OpKind::Wait,
@@ -827,6 +830,8 @@ fn op_source_loc(op: &AnimOperation) -> Option<scal_core::SourceLoc> {
         | AnimOperation::TerminalTypeInput(_, _, _, _, _, _, _, _, loc)
         | AnimOperation::TerminalOutput(_, _, _, _, _, loc)
         | AnimOperation::ObjectColor(_, _, _, _, loc)
+        | AnimOperation::MathPartColor(_, _, _, _, _, loc)
+        | AnimOperation::MathHighlight(_, _, _, _, _, _, loc)
         | AnimOperation::ScrollOffset(_, _, _, _, loc)
         | AnimOperation::All(_, loc)
         | AnimOperation::Sequence(_, loc)
@@ -868,6 +873,8 @@ pub fn flatten_ops(ops: &[AnimOperation]) -> (Vec<TimelineOp>, f32) {
                 AnimOperation::TerminalTypeInput(_, _, _, _, _, d, _, _, _)
                 | AnimOperation::TerminalOutput(_, _, d, _, _, _) => time += d,
                 AnimOperation::ObjectColor(_, _, d, _, _) => time += d,
+                AnimOperation::MathPartColor(_, _, _, d, _, _) => time += d,
+                AnimOperation::MathHighlight(_, _, _, _, d, _, _) => time += d,
                 AnimOperation::ScrollOffset(_, _, d, _, _) => time += d,
                 AnimOperation::PlaySound(_, _, _) => {}
                 AnimOperation::Instantiate(..) => {}

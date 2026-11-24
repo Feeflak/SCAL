@@ -824,13 +824,10 @@ pub struct CircleHandle(pub Uuid);
 pub struct TextHandle(pub Uuid);
 /// Handle to a Rectangle sub-object of a code window, for use in animation builders.
 pub struct RectangleHandle(pub Uuid);
-/// Handle to a Math object, for use in animation builders.
-pub struct MathHandle(pub Uuid);
 
 impl_handle!(CircleHandle);
 impl_handle!(TextHandle);
 impl_handle!(RectangleHandle);
-impl_handle!(MathHandle);
 
 /// Wrapper around the ``AnimObj`` struct that allows for clean animation construction
 /// for scrollable layouts.
@@ -898,4 +895,133 @@ pub struct TextSpan {
     pub color: Option<Color>,
     /// Whether this section is drawn bold.
     pub bold: bool,
+}
+
+/// Wrapper around the ``AnimObj`` struct for math equations. Derefs to ``AnimObj``, so
+/// ``instantiate()`` and ``transform`` work like on every other object.
+pub struct MathHandle(pub AnimObj);
+
+impl std::ops::Deref for MathHandle {
+    type Target = AnimObj;
+    fn deref(&self) -> &AnimObj {
+        &self.0
+    }
+}
+
+impl MathHandle {
+    /// Returns a builder for an animation that changes the color of the equation's
+    /// uncolored symbols (colored parts keep their colors; alpha fades everything).
+    /// ```ignore
+    ///                eq.color()
+    ///                    .to(Color::RED)
+    ///                    .over(1.s())
+    ///                    .ease(Ease::InOutCubic),
+    /// ```
+    #[must_use]
+    pub const fn color(&self) -> crate::transform::ColorBuilder {
+        crate::transform::ColorBuilder {
+            uuid: self.0.id,
+            target: None,
+            duration: 1.0,
+            ease: Ease::Linear,
+        }
+    }
+
+    /// Returns a handle to a named part of the equation, defined with
+    /// ``MathBuilder::var_color``. Every `\textcolor{name}{..}` occurrence is animated together.
+    ///
+    /// # Panics
+    /// If `name` was not defined with `var_color`.
+    /// ```ignore
+    ///                eq.part("a").color().to(Color::RED).over(1.s()),
+    /// ```
+    #[must_use]
+    pub fn part(&self, name: &str) -> MathPartHandle {
+        self.check_parts([name]);
+        MathPartHandle {
+            uuid: self.0.id,
+            name: name.to_string(),
+        }
+    }
+
+    /// Returns a builder for an animation that highlights the given parts and dims everything
+    /// else. The highlight stays until another `highlight` replaces it (animated as a crossfade)
+    /// or `reset_highlight` clears it.
+    ///
+    /// # Panics
+    /// If a name was not defined with `var_color`.
+    /// ```ignore
+    ///                eq.highlight(["a", "b"]).color(Color::YELLOW).dim(0.2).over(0.5.s()),
+    /// ```
+    #[must_use]
+    pub fn highlight<I>(&self, parts: I) -> crate::transform::MathHighlightBuilder
+    where
+        I: IntoIterator,
+        I::Item: AsRef<str>,
+    {
+        let parts: Vec<String> = parts.into_iter().map(|p| p.as_ref().to_string()).collect();
+        self.check_parts(&parts);
+        crate::transform::MathHighlightBuilder {
+            uuid: self.0.id,
+            parts,
+            color: Color::new(1.0, 0.9, 0.25, 1.0),
+            dim: 0.25,
+            duration: 0.5,
+            ease: Ease::InOutCubic,
+        }
+    }
+
+    /// Returns a builder for an animation that removes the highlight and undims everything.
+    /// Only `over` and `ease` apply.
+    /// ```ignore
+    ///                eq.reset_highlight().over(0.5.s()),
+    /// ```
+    #[must_use]
+    pub fn reset_highlight(&self) -> crate::transform::MathHighlightBuilder {
+        crate::transform::MathHighlightBuilder {
+            uuid: self.0.id,
+            parts: Vec::new(),
+            color: Color::WHITE,
+            dim: 1.0,
+            duration: 0.5,
+            ease: Ease::InOutCubic,
+        }
+    }
+
+    fn check_parts<S: AsRef<str>>(&self, names: impl IntoIterator<Item = S>) {
+        let AnimObjKind::Math { palette, .. } = &self.0.kind else {
+            unreachable!("MathHandle always wraps a Math object")
+        };
+        for name in names {
+            let name = name.as_ref();
+            assert!(
+                palette.iter().any(|(n, _)| n == name),
+                "math part {name:?} is not defined; use var_color. Known parts: {:?}",
+                palette.iter().map(|(n, _)| n.as_str()).collect::<Vec<_>>()
+            );
+        }
+    }
+}
+
+/// A named part of a math equation, for use in animation builders.
+pub struct MathPartHandle {
+    uuid: Uuid,
+    name: String,
+}
+
+impl MathPartHandle {
+    /// Returns a builder for an animation that changes this part's color.
+    /// ```ignore
+    ///                eq.part("a").color().to(Color::RED).over(1.s()),
+    /// ```
+    #[must_use]
+    pub fn color(&self) -> crate::transform::MathPartColorBuilder {
+        crate::transform::MathPartColorBuilder {
+            uuid: self.uuid,
+            part: self.name.clone(),
+            target: None,
+            duration: 1.0,
+            ease: Ease::Linear,
+        }
+    }
 }

@@ -2,7 +2,7 @@ use glam::{Vec2, Vec3};
 use uuid::Uuid;
 
 use crate::anim_obj::{
-    Alignment, AnimObj, AnimObjKind, CodeHandle, CodeWindowHandle, LayoutDir, ScrollLayoutHandle,
+    Alignment, AnimObj, AnimObjKind, CodeHandle, CodeWindowHandle, LayoutDir, MathHandle, ScrollLayoutHandle,
     StretchMode, Syntax, TerminalHandle, TextModifier, TextSpan,
 };
 use crate::color::Color;
@@ -706,9 +706,9 @@ impl MathBuilder {
         self
     }
     #[must_use]
-    pub fn build(self) -> AnimObj {
+    pub fn build(self) -> MathHandle {
         let id = self.transform.uuid;
-        AnimObj {
+        MathHandle(AnimObj {
             id,
             transform: self.transform,
             kind: AnimObjKind::Math {
@@ -718,7 +718,7 @@ impl MathBuilder {
                 font_size: self.font_size,
                 display: self.display,
             },
-        }
+        })
     }
 }
 

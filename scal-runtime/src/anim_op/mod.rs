@@ -1,4 +1,5 @@
 pub mod code;
+mod math;
 mod scroll;
 pub mod terminal;
 mod transform;
@@ -75,6 +76,8 @@ pub enum AnimOperation {
         Option<SourceLoc>,
     ),
     ObjectColor(Uuid, Color, Time, Ease, Option<SourceLoc>),
+    MathPartColor(Uuid, String, Color, Time, Ease, Option<SourceLoc>),
+    MathHighlight(Uuid, Vec<String>, Color, f32, Time, Ease, Option<SourceLoc>),
     ScrollOffset(Uuid, ScrollOffsetTarget, Time, Ease, Option<SourceLoc>),
     All(Vec<Self>, Option<SourceLoc>),
     Sequence(Vec<Self>, Option<SourceLoc>),
@@ -97,6 +100,8 @@ impl AnimOperation {
             | AnimOperation::TerminalTypeInput(_, _, _, _, _, _, _, _, l)
             | AnimOperation::TerminalOutput(_, _, _, _, _, l)
             | AnimOperation::ObjectColor(_, _, _, _, l)
+            | AnimOperation::MathPartColor(_, _, _, _, _, l)
+            | AnimOperation::MathHighlight(_, _, _, _, _, _, l)
             | AnimOperation::ScrollOffset(_, _, _, _, l)
             | AnimOperation::All(_, l)
             | AnimOperation::Sequence(_, l)
@@ -174,6 +179,16 @@ pub fn resolve_op(op: AnimOperation) -> Result<Animation> {
             debug!("ObjectColor uuid={uuid}");
             ensure_duration(duration, "ObjectColor")?;
             color_to(uuid, target, duration, curve)
+        }
+        AnimOperation::MathPartColor(uuid, part, target, duration, curve, _loc) => {
+            debug!("MathPartColor uuid={uuid} part={part}");
+            ensure_duration(duration, "MathPartColor")?;
+            math::part_color_to(uuid, part, target, duration, curve)
+        }
+        AnimOperation::MathHighlight(uuid, parts, color, dim, duration, curve, _loc) => {
+            debug!("MathHighlight uuid={uuid} parts={parts:?}");
+            ensure_duration(duration, "MathHighlight")?;
+            math::highlight_to(uuid, parts, color, dim, duration, curve)
         }
         AnimOperation::ScrollOffset(uuid, target, duration, curve, _loc) => {
             debug!("ScrollOffset uuid={uuid} target={target:?}");

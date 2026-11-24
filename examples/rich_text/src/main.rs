@@ -31,7 +31,6 @@ fn main() -> Project {
         .font_size(96.0)
         .pos(vec2(960.0, 690.0))
         .build();
-    let eq_handle = MathHandle(equation.id);
 
     let euler = math(r"e^{i\pi} + 1 = 0 \qquad \sqrt{a^2 + b^2} = \sum_{k=1}^{n} k")
         .font_size(56.0)
@@ -51,7 +50,7 @@ fn main() -> Project {
             equation.instantiate(),
             euler.instantiate(),
             wait(0.5.s()),
-            eq_handle
+            equation
                 .color()
                 .to(color(0.4, 0.8, 1.0, 1.0))
                 .over(1.0.s())

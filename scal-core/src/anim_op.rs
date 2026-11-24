@@ -89,6 +89,11 @@ pub enum AnimOP {
     ),
     //               uuid, action, dur, ease, style, loc
     ObjectColor(Uuid, Color, Time, Ease, Option<SourceLoc>),
+    /// Change the color of a named part of a math object: uuid, part, target, dur, ease, loc.
+    MathPartColor(Uuid, String, Color, Time, Ease, Option<SourceLoc>),
+    /// Highlight named parts of a math object and dim the rest. An empty list resets the
+    /// highlight. uuid, parts, color, dim alpha, dur, ease, loc.
+    MathHighlight(Uuid, Vec<String>, Color, f32, Time, Ease, Option<SourceLoc>),
     ScrollOffset(Uuid, ScrollOffsetTarget, Time, Ease, Option<SourceLoc>),
     All(Vec<Self>, Option<SourceLoc>),
     Sequence(Vec<Self>, Option<SourceLoc>),
@@ -112,6 +117,8 @@ impl AnimOP {
             | Self::TerminalTypeInput(_, _, _, _, _, _, _, _, l)
             | Self::TerminalOutput(_, _, _, _, _, l)
             | Self::ObjectColor(_, _, _, _, l)
+            | Self::MathPartColor(_, _, _, _, _, l)
+            | Self::MathHighlight(_, _, _, _, _, _, l)
             | Self::ScrollOffset(_, _, _, _, l)
             | Self::All(_, l)
             | Self::Sequence(_, l)
@@ -219,6 +226,8 @@ impl AnimOP {
             | Self::TerminalTypeInput(_, _, _, _, _, _, _, _, l)
             | Self::TerminalOutput(_, _, _, _, _, l)
             | Self::ObjectColor(_, _, _, _, l)
+            | Self::MathPartColor(_, _, _, _, _, l)
+            | Self::MathHighlight(_, _, _, _, _, _, l)
             | Self::ScrollOffset(_, _, _, _, l)
             | Self::All(_, l)
             | Self::Sequence(_, l)
