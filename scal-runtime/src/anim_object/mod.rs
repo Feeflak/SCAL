@@ -13,6 +13,7 @@ use uuid::Uuid;
 pub mod code_window;
 pub mod compose;
 pub mod image;
+pub mod math;
 pub mod object_trait;
 pub mod padding;
 pub mod primitive_shapes;
@@ -94,6 +95,7 @@ pub fn text(
         transform,
         cached_size: None,
         modifications,
+        spans: Vec::new(),
     }))
 }
 

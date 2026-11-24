@@ -69,6 +69,16 @@ pub enum AnimObjKind {
         color: Color,
         font_size: f32,
         modifications: Vec<TextModifier>,
+        /// Styled sections. When non-empty these are rendered instead of `value`.
+        spans: Vec<TextSpan>,
+    },
+    Math {
+        latex: String,
+        color: Color,
+        font_size: f32,
+        display: bool,
+        /// Named colors usable as `\textcolor{name}{..}` in `latex`.
+        palette: Vec<(String, Color)>,
     },
     Code {
         source_code: String,
@@ -814,10 +824,13 @@ pub struct CircleHandle(pub Uuid);
 pub struct TextHandle(pub Uuid);
 /// Handle to a Rectangle sub-object of a code window, for use in animation builders.
 pub struct RectangleHandle(pub Uuid);
+/// Handle to a Math object, for use in animation builders.
+pub struct MathHandle(pub Uuid);
 
 impl_handle!(CircleHandle);
 impl_handle!(TextHandle);
 impl_handle!(RectangleHandle);
+impl_handle!(MathHandle);
 
 /// Wrapper around the ``AnimObj`` struct that allows for clean animation construction
 /// for scrollable layouts.
@@ -874,4 +887,15 @@ pub struct TextModifier {
     pub rotation: f32,
     /// Scale factor
     pub scale: Vec2,
+}
+
+/// A styled section of a rich text object.
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct TextSpan {
+    /// The text of this section.
+    pub text: String,
+    /// Color of this section. `None` uses the text object's color.
+    pub color: Option<Color>,
+    /// Whether this section is drawn bold.
+    pub bold: bool,
 }

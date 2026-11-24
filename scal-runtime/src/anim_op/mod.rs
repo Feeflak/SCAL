@@ -432,6 +432,8 @@ fn set_object_color(obj: &mut dyn Any, color: Color) {
         text.color = color;
     } else if let Some(image) = obj.downcast_mut::<crate::anim_object::image::Image>() {
         image.color = color;
+    } else if let Some(math) = obj.downcast_mut::<crate::anim_object::math::Math>() {
+        math.color = color;
     }
 }
 
@@ -554,6 +556,8 @@ fn get_object_color(obj: &dyn Any) -> Option<Color> {
         Some(text.color)
     } else if let Some(image) = obj.downcast_ref::<crate::anim_object::image::Image>() {
         Some(image.color)
+    } else if let Some(math) = obj.downcast_ref::<crate::anim_object::math::Math>() {
+        Some(math.color)
     } else {
         None
     }
@@ -583,6 +587,8 @@ fn color_to(uuid: Uuid, target: Color, duration: Seconds, curve: Ease) -> Animat
             let a = storage[3] + t * (target.a - storage[3]);
             let obj = animator.get_object_mut(&uuid)?;
             set_object_color(obj.anim_data.as_any_mut(), Color::new(r, g, b, a));
+            // Vertex colors are baked into the mesh, so it has to be rebuilt to show the change.
+            animator.regenerate_object_mesh(&uuid)?;
             Ok(())
         })),
     )

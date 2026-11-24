@@ -299,3 +299,11 @@ impl From<u32> for Color {
         }
     }
 }
+
+/// Formats a color as `#rrggbb` for use inside LaTeX color commands, e.g.
+/// `format!(r"\textcolor{{{}}}{{x}}", latex_color(Color::RED))`. Alpha is ignored.
+#[must_use]
+pub fn latex_color(c: Color) -> String {
+    let q = |v: f32| (v.clamp(0.0, 1.0) * 255.0).round() as u8;
+    format!("#{:02x}{:02x}{:02x}", q(c.r), q(c.g), q(c.b))
+}

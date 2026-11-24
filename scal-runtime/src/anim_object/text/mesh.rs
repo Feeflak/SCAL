@@ -18,6 +18,8 @@ struct GlyphQuad {
     uv_min: Vec2,
     uv_max: Vec2,
     is_color: bool,
+    /// Per-span color; `None` means use the text object's color.
+    color: Option<Color>,
 }
 
 const SOFTNESS_LAYERS: usize = 5;
@@ -72,6 +74,14 @@ pub fn generate_text_mesh(
                 uv_min: glyph_info.uv_min,
                 uv_max: glyph_info.uv_max,
                 is_color: glyph_info.is_color,
+                color: glyph.color_opt.map(|c| {
+                    Color::new(
+                        c.r() as f32 / 255.0,
+                        c.g() as f32 / 255.0,
+                        c.b() as f32 / 255.0,
+                        c.a() as f32 / 255.0,
+                    )
+                }),
             });
         }
     }
@@ -159,7 +169,11 @@ fn emit_base_quads(
     indices: &mut Vec<u32>,
 ) {
     for q in quads {
-        let color = if q.is_color { Color::WHITE } else { text_color };
+        let color = if q.is_color {
+            Color::WHITE
+        } else {
+            q.color.unwrap_or(text_color)
+        };
         emit_quad(
             q.x - center.x,
             q.y - center.y,

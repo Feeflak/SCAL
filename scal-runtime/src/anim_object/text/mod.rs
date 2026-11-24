@@ -16,24 +16,47 @@ use crate::{
     types::into_cosmic,
 };
 use anyhow::{Context, Result};
-use cosmic_text::{Attrs, Buffer, Family, FontSystem, Metrics, Shaping};
+use cosmic_text::{Attrs, Buffer, Family, FontSystem, Metrics, Shaping, Weight};
 use glam::Vec2;
-use scal_core::{Color, TextModifier};
+use scal_core::{Color, TextModifier, TextSpan};
 use tree_sitter_highlight::Highlighter;
 use uuid::Uuid;
 /// RGBA
 
-fn measure_text_width(value: &str, font_family: &str, font_size: f32) -> f32 {
+/// Fills `buffer` with the text content, using per-span attributes when the text has spans.
+fn set_content(
+    buffer: &mut Buffer,
+    text: &Text,
+    align: Option<cosmic_text::Align>,
+) {
+    let default_attrs = Attrs::new().family(Family::Name(&text.font_family));
+    if text.spans.is_empty() {
+        buffer.set_text(&text.value, &default_attrs, Shaping::Advanced, align);
+        return;
+    }
+    let spans = text.spans.iter().map(|span| {
+        let mut attrs = default_attrs.clone();
+        if let Some(color) = span.color {
+            attrs = attrs.color(into_cosmic(color));
+        }
+        if span.bold {
+            attrs = attrs.weight(Weight::BOLD);
+        }
+        (span.text.as_str(), attrs)
+    });
+    buffer.set_rich_text(spans, &default_attrs, Shaping::Advanced, align);
+}
+
+fn measure_text_width(text: &Text) -> f32 {
     static FONT_SYSTEM: OnceLock<Mutex<FontSystem>> = OnceLock::new();
     let mut font_system = FONT_SYSTEM
         .get_or_init(|| Mutex::new(FontSystem::new()))
         .lock()
         .expect("font system lock poisoned");
 
-    let metrics = Metrics::new(font_size, font_size * 1.2);
+    let metrics = Metrics::new(text.font_size, text.font_size * 1.2);
     let mut buffer = Buffer::new(&mut *font_system, metrics);
-    let attrs = Attrs::new().family(Family::Name(font_family));
-    buffer.set_text(value, &attrs, Shaping::Advanced, None);
+    set_content(&mut buffer, text, None);
     buffer.shape_until_scroll(&mut *font_system, false);
 
     buffer
@@ -67,6 +90,7 @@ pub struct Text {
     pub transform: Transform,
     pub cached_size: Option<Vec2>,
     pub modifications: Vec<TextModifier>,
+    pub spans: Vec<TextSpan>,
 }
 
 impl AnimObjectTrait for Text {
@@ -85,7 +109,7 @@ impl AnimObjectTrait for Text {
         let width = if self.value.is_empty() {
             1.0
         } else {
-            measure_text_width(&self.value, &self.font_family, self.font_size)
+            measure_text_width(self)
         };
         glam::vec2(width, height)
     }
@@ -194,9 +218,8 @@ impl TextManager {
         let metrics = Metrics::new(text.font_size, text.font_size * 1.2);
 
         let mut buffer = Buffer::new(&mut self.font_system, metrics);
-        let attrs = Attrs::new().family(cosmic_text::Family::Name(&text.font_family));
 
-        buffer.set_text(&text.value, &attrs, Shaping::Advanced, None);
+        set_content(&mut buffer, text, None);
         buffer.shape_until_scroll(&mut self.font_system, false);
 
         let max_width = buffer
@@ -206,10 +229,9 @@ impl TextManager {
 
         buffer.set_size(Some(max_width), None);
 
-        buffer.set_text(
-            &text.value,
-            &attrs,
-            Shaping::Advanced,
+        set_content(
+            &mut buffer,
+            text,
             Some(cosmic_text::Align::from(text.align)),
         );
         buffer.shape_until_scroll(&mut self.font_system, false);

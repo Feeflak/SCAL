@@ -282,6 +282,7 @@ fn convert_core_anim_obj(
             color,
             font_size,
             modifications,
+            spans,
         } => {
             let align_val = match align {
                 scal_core::anim_obj::Alignment::Center => RuntimeAlignment::Center,
@@ -298,8 +299,18 @@ fn convert_core_anim_obj(
                 transform,
                 cached_size: None,
                 modifications,
+                spans,
             })))
         }
+        scal_core::anim_obj::AnimObjKind::Math {
+            latex,
+            color,
+            font_size,
+            display,
+            palette,
+        } => Ok(RenderObj(Box::new(crate::anim_object::math::Math::new(
+            latex, color, font_size, display, &palette, transform,
+        )?))),
         scal_core::anim_obj::AnimObjKind::Svg {
             path,
             size,

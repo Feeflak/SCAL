@@ -3,7 +3,7 @@ use uuid::Uuid;
 
 use crate::anim_obj::{
     Alignment, AnimObj, AnimObjKind, CodeHandle, CodeWindowHandle, LayoutDir, ScrollLayoutHandle,
-    StretchMode, Syntax, TerminalHandle, TextModifier,
+    StretchMode, Syntax, TerminalHandle, TextModifier, TextSpan,
 };
 use crate::color::Color;
 use crate::theme::Theme;
@@ -509,6 +509,7 @@ pub struct TextBuilder {
     font_size: f32,
     transform: Transform,
     modifications: Vec<TextModifier>,
+    spans: Vec<TextSpan>,
 }
 
 impl Default for TextBuilder {
@@ -521,6 +522,7 @@ impl Default for TextBuilder {
             font_size: 24.0,
             transform: Transform::new(Vec3::ZERO),
             modifications: Vec::new(),
+            spans: Vec::new(),
         }
     }
 }
@@ -529,6 +531,22 @@ impl TextBuilder {
     /// Set the text content
     pub fn value(mut self, value: impl Into<String>) -> Self {
         self.value = value.into();
+        self
+    }
+    /// Set the text as a list of styled sections (color, bold). Replaces `value`.
+    /// ```ignore
+    /// text().spans([
+    ///     span("Hello "),
+    ///     span("world").color(Color::RED).bold(),
+    /// ])
+    /// ```
+    pub fn spans<I>(mut self, spans: I) -> Self
+    where
+        I: IntoIterator,
+        I::Item: Into<TextSpan>,
+    {
+        self.spans = spans.into_iter().map(Into::into).collect();
+        self.value = self.spans.iter().map(|s| s.text.as_str()).collect();
         self
     }
     /// Set the font family of the text
@@ -569,12 +587,142 @@ impl TextBuilder {
                 color: self.color,
                 font_size: self.font_size,
                 modifications: self.modifications,
+                spans: self.spans,
             },
         }
     }
 }
 
 impl_transform_methods!(TextBuilder);
+
+/// Create a styled text section for [`TextBuilder::spans`].
+pub fn span(text: impl Into<String>) -> SpanBuilder {
+    SpanBuilder(TextSpan {
+        text: text.into(),
+        color: None,
+        bold: false,
+    })
+}
+
+/// Builder for a [`TextSpan`].
+#[must_use]
+pub struct SpanBuilder(TextSpan);
+
+#[allow(clippy::return_self_not_must_use)]
+impl SpanBuilder {
+    /// Set the color of this section.
+    pub const fn color(mut self, color: Color) -> Self {
+        self.0.color = Some(color);
+        self
+    }
+    /// Draw this section bold.
+    pub const fn bold(mut self) -> Self {
+        self.0.bold = true;
+        self
+    }
+}
+
+impl From<SpanBuilder> for TextSpan {
+    fn from(b: SpanBuilder) -> Self {
+        b.0
+    }
+}
+
+impl From<&str> for TextSpan {
+    fn from(s: &str) -> Self {
+        Self {
+            text: s.to_string(),
+            color: None,
+            bold: false,
+        }
+    }
+}
+
+impl From<String> for TextSpan {
+    fn from(s: String) -> Self {
+        Self {
+            text: s,
+            color: None,
+            bold: false,
+        }
+    }
+}
+
+/// Create a new math equation object builder. Takes LaTeX math syntax.
+/// ```ignore
+/// math(r"\int_0^1 x^2\,dx = \frac{1}{3}")
+///     .font_size(48.0)
+///     .color(Color::WHITE)
+///     .build(),
+/// ```
+pub fn math(latex: impl Into<String>) -> MathBuilder {
+    MathBuilder {
+        latex: latex.into(),
+        color: Color::WHITE,
+        font_size: 32.0,
+        display: true,
+        palette: Vec::new(),
+        transform: Transform::new(Vec3::ZERO),
+    }
+}
+
+/// Builder for a math equation object.
+#[must_use]
+pub struct MathBuilder {
+    latex: String,
+    color: Color,
+    font_size: f32,
+    display: bool,
+    palette: Vec<(String, Color)>,
+    transform: Transform,
+}
+
+#[allow(clippy::return_self_not_must_use)]
+impl MathBuilder {
+    /// Set the color of the equation
+    pub const fn color(mut self, color: Color) -> Self {
+        self.color = color;
+        self
+    }
+    /// Set the font size (em size in pixels) of the equation
+    pub const fn font_size(mut self, size: f32) -> Self {
+        self.font_size = size;
+        self
+    }
+    /// Use display style (default) or the more compact text style
+    pub const fn display(mut self, display: bool) -> Self {
+        self.display = display;
+        self
+    }
+    /// Define a named color for use in the equation: `\textcolor{name}{...}` or `\color{name}`.
+    /// Symbols colored this way keep their color; the rest follow the object's color.
+    /// ```ignore
+    /// math(r"\textcolor{a}{a}x^2 + \textcolor{b}{b}x + c")
+    ///     .var_color("a", Color::RED)
+    ///     .var_color("b", Color::BLUE)
+    /// ```
+    pub fn var_color(mut self, name: impl Into<String>, color: Color) -> Self {
+        self.palette.push((name.into(), color));
+        self
+    }
+    #[must_use]
+    pub fn build(self) -> AnimObj {
+        let id = self.transform.uuid;
+        AnimObj {
+            id,
+            transform: self.transform,
+            kind: AnimObjKind::Math {
+                palette: self.palette,
+                latex: self.latex,
+                color: self.color,
+                font_size: self.font_size,
+                display: self.display,
+            },
+        }
+    }
+}
+
+impl_transform_methods!(MathBuilder);
 
 /// Create a new text template builder.
 ///
@@ -624,6 +772,7 @@ impl TextTemplate {
             font_size: self.font_size,
             transform: Transform::new(Vec3::ZERO),
             modifications: self.modifications.clone(),
+            spans: Vec::new(),
         }
     }
 }

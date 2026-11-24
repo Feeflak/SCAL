@@ -16,6 +16,7 @@ members = [
         "scal-ipc",
         "scal-ipc-macros",
         "scal-runtime",
+        "./ign_projects/ign/",
         "./examples/audio",
         "./examples/code",
         "./examples/code_window",
@@ -25,5 +26,7 @@ members = [
         "./examples/svg",
         "./examples/terminal",
         "./examples/text",
+        "./examples/rich_text",
+        "./examples/math",
         "./examples/scroll",
 ]

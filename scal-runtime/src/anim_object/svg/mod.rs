@@ -141,10 +141,28 @@ pub fn load_svg_bind_group(
         &mut pixmap.as_mut(),
     );
 
-    let pixels = pixmap.take();
+    Ok(upload_rgba_bind_group(
+        device,
+        queue,
+        &format!("svg_{}", svg.path),
+        &pixmap.take(),
+        render_w,
+        render_h,
+    ))
+}
 
+/// Uploads straight-RGBA8 pixels as a texture and returns the texture + sampler bind group
+/// used by the image pipeline.
+pub fn upload_rgba_bind_group(
+    device: &wgpu::Device,
+    queue: &wgpu::Queue,
+    label: &str,
+    pixels: &[u8],
+    render_w: u32,
+    render_h: u32,
+) -> wgpu::BindGroup {
     let texture = device.create_texture(&wgpu::TextureDescriptor {
-        label: Some(&format!("svg_tex_{}", svg.path)),
+        label: Some(&format!("{label}_tex")),
         size: wgpu::Extent3d {
             width: render_w,
             height: render_h,
@@ -165,7 +183,7 @@ pub fn load_svg_bind_group(
             origin: wgpu::Origin3d::ZERO,
             aspect: wgpu::TextureAspect::All,
         },
-        &pixels,
+        pixels,
         wgpu::TexelCopyBufferLayout {
             offset: 0,
             bytes_per_row: Some(render_w * 4),
@@ -214,7 +232,7 @@ pub fn load_svg_bind_group(
     });
 
     let bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
-        label: Some(&format!("svg_bg_{}", svg.path)),
+        label: Some(&format!("{label}_bg")),
         layout: &bgl,
         entries: &[
             wgpu::BindGroupEntry {
@@ -228,5 +246,5 @@ pub fn load_svg_bind_group(
         ],
     });
 
-    Ok(bind_group)
+    bind_group
 }

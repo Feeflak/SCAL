@@ -1,0 +1,11 @@
+[animation]
+binary = "cargo run -p math"
+
+[rendering]
+width = 1920
+height = 1080
+fps = 30
+
+[encoding]
+output_path = "test.mov"
+codec_type = "PRORES"

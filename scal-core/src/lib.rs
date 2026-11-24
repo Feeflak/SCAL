@@ -538,15 +538,16 @@ pub mod theme;
 pub mod transform;
 
 pub use anim_obj::{
-    Alignment, AnimObj, CircleHandle, CodeHandle, CodeWindowHandle, LayoutDir, RectangleHandle,
-    ScrollLayoutHandle, StretchMode, Syntax, TerminalHandle, TextHandle, TextModifier,
+    Alignment, AnimObj, CircleHandle, CodeHandle, CodeWindowHandle, LayoutDir, MathHandle,
+    RectangleHandle, ScrollLayoutHandle, StretchMode, Syntax, TerminalHandle, TextHandle,
+    TextModifier, TextSpan,
 };
 pub use anim_op::{
     AnimOP, CodeAnimationStyle, CodeHighlightAction, IntoAnimOp, ScrollOffsetTarget, SourceLoc,
     TerminalOutputAction,
 };
 pub use camera::Camera;
-pub use color::{Color, color, hex, hsv};
+pub use color::{Color, color, hex, hsv, latex_color};
 pub use ease::Ease;
 pub use project::{Project, SceneSettings};
 pub use scal_ipc_macros::timeline;
@@ -561,15 +562,16 @@ pub mod prelude {
     pub use crate::anim::*;
     pub use crate::anim_builders::*;
     pub use crate::anim_obj::{
-        Alignment, AnimObj, CircleHandle, CodeHandle, CodeWindowHandle, LayoutDir, RectangleHandle,
-        ScrollLayoutHandle, StretchMode, Syntax, TerminalHandle, TextHandle, TextModifier,
+        Alignment, AnimObj, CircleHandle, CodeHandle, CodeWindowHandle, LayoutDir, MathHandle,
+        RectangleHandle, ScrollLayoutHandle, StretchMode, Syntax, TerminalHandle, TextHandle,
+        TextModifier, TextSpan,
     };
     pub use crate::anim_op::{
         AnimOP, CodeAnimationStyle, CodeHighlightAction, IntoAnimOp, ScrollOffsetTarget,
         TerminalOutputAction,
     };
     pub use crate::camera::Camera;
-    pub use crate::color::{Color, color, hex, hsv};
+    pub use crate::color::{Color, color, hex, hsv, latex_color};
     pub use crate::ease::Ease;
     pub use crate::object_builders::*;
     pub use crate::project::{Project, SceneSettings};
