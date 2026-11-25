@@ -10,6 +10,7 @@
 # Usage: scripts/release.sh <new-version> [options]
 #   --macros <ver>   also bump scal-ipc-macros to <ver> and publish it first
 #   --skip-tests     skip step 0
+#   --no-nix         don't wrap cargo in `nix develop` (use your current env)
 #   --no-publish     stop after step 4
 #   --dry-run        only print what would change (no edits, no commit/publish)
 #   -y, --yes        don't ask for confirmation before commit/push/publish
@@ -25,11 +26,13 @@ SKIP_TESTS=0
 NO_PUBLISH=0
 DRY=0
 YES=0
+USE_NIX=1
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --macros) MACROS="${2:?--macros needs a version}"; shift 2 ;;
     --skip-tests) SKIP_TESTS=1; shift ;;
+    --no-nix) USE_NIX=0; shift ;;
     --no-publish) NO_PUBLISH=1; shift ;;
     --dry-run) DRY=1; shift ;;
     -y|--yes) YES=1; shift ;;
@@ -45,6 +48,15 @@ SEMVER='^[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?$'
 [[ "$NEW" =~ $SEMVER ]] || { echo "not a valid version: $NEW" >&2; exit 1; }
 if [[ -n "$MACROS" ]]; then
   [[ "$MACROS" =~ $SEMVER ]] || { echo "not a valid version: $MACROS" >&2; exit 1; }
+fi
+
+# cargo needs the system libs (alsa, ffmpeg, libclang...) from the flake's dev
+# shell, both for tests and for the build `cargo publish` does to verify.
+# Skipped when already inside a nix shell or when nix is unavailable.
+if [[ $USE_NIX -eq 1 && -z "${IN_NIX_SHELL:-}" ]] && command -v nix >/dev/null; then
+  CARGO=(nix develop --command cargo)
+else
+  CARGO=(cargo)
 fi
 
 run() { echo "+ $*"; if [[ $DRY -eq 0 ]]; then "$@"; fi; }
@@ -66,7 +78,7 @@ fi
 
 # 0. tests
 if [[ $SKIP_TESTS -eq 0 ]]; then
-  run cargo test --workspace
+  run "${CARGO[@]}" test --workspace
 fi
 
 # 1. workspace version
@@ -84,7 +96,7 @@ fi
 run sed -i '/pname = "scal-runtime";/,/version/s/version = "[^"]*";/version = "'"$NEW"'";/' flake.nix
 
 # keep Cargo.lock in sync with the new versions (flake uses it)
-run cargo update --workspace
+run "${CARGO[@]}" update --workspace
 
 if [[ $DRY -eq 0 ]]; then
   echo
@@ -108,12 +120,12 @@ if [[ $NO_PUBLISH -eq 1 ]]; then
 fi
 confirm "cargo publish core, runtime, ipc?"
 if [[ -n "$MACROS" ]]; then
-  run cargo publish -p scal-ipc-macros
+  run "${CARGO[@]}" publish -p scal-ipc-macros
   [[ $DRY -eq 0 ]] && sleep 15   # let the crates.io index catch up
 fi
-run cargo publish -p scal-core
+run "${CARGO[@]}" publish -p scal-core
 [[ $DRY -eq 0 ]] && sleep 15
-run cargo publish -p scal-runtime
-run cargo publish -p scal-ipc
+run "${CARGO[@]}" publish -p scal-runtime
+run "${CARGO[@]}" publish -p scal-ipc
 
 echo "released $NEW"
