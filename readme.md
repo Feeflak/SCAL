@@ -12,5 +12,5 @@ After any bigger changes, visual inspection of all examples might be needed to p
 1. update workspace version
 2. update scal_core version
 3. update flake.nix version
-4. create a new git version branch
+4. git commit and push
 5. acargo publish on: core, runtime, ipc

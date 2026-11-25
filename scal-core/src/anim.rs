@@ -33,8 +33,8 @@ pub const fn wait(duration: Time) -> AnimOP {
 ///```
 #[macro_export]
 macro_rules! parallel {
-    ( $( $op:expr ),* $(,)? ) => {
-        $crate::AnimOP::All($crate::timeline![ $( $op ),* ], None)
+    ( $( $tt:tt )* ) => {
+        $crate::AnimOP::All($crate::timeline![ $( $tt )* ], None)
     };
 }
 
@@ -50,7 +50,7 @@ macro_rules! parallel {
 ///```
 #[macro_export]
 macro_rules! sequence {
-    ( $( $op:expr ),* $(,)? ) => {
-        $crate::AnimOP::Sequence($crate::timeline![ $( $op ),* ], None)
+    ( $( $tt:tt )* ) => {
+        $crate::AnimOP::Sequence($crate::timeline![ $( $tt )* ], None)
     };
 }
