@@ -34,6 +34,16 @@ macro_rules! impl_transform_methods {
                 self.transform.rotation = rotation;
                 self
             }
+            /// Set the point this object rotates around, as an offset in pixels from its center
+            /// (y points down). The default is the center. This does not move the object.
+            /// ```ignore
+            /// // rotate a 400px wide wing around its quarter chord
+            /// svg().path("wing.svg").size(vec2(400.0, 80.0)).pivot(vec2(-100.0, 0.0))
+            /// ```
+            pub const fn pivot(mut self, pivot: Vec2) -> Self {
+                self.transform.pivot = pivot;
+                self
+            }
         }
     };
 }
@@ -510,6 +520,7 @@ pub struct TextBuilder {
     transform: Transform,
     modifications: Vec<TextModifier>,
     spans: Vec<TextSpan>,
+    number: f32,
 }
 
 impl Default for TextBuilder {
@@ -523,6 +534,7 @@ impl Default for TextBuilder {
             transform: Transform::new(Vec3::ZERO),
             modifications: Vec::new(),
             spans: Vec::new(),
+            number: 0.0,
         }
     }
 }
@@ -569,6 +581,15 @@ impl TextBuilder {
         self.font_size = size;
         self
     }
+    /// Set the number shown by `{:spec}` placeholders in the text, e.g. `{:.1}` (default 0).
+    /// Animate it with [`AnimObj::number`]. See [`crate::number_format`].
+    /// ```ignore
+    /// text().value("AoA: {:.1}°").number(5.0).build()
+    /// ```
+    pub const fn number(mut self, number: f32) -> Self {
+        self.number = number;
+        self
+    }
     /// Add a text modifier (shadow, outline, infill effect)
     pub fn modifier(mut self, modifier: TextModifier) -> Self {
         self.modifications.push(modifier);
@@ -588,6 +609,7 @@ impl TextBuilder {
                 font_size: self.font_size,
                 modifications: self.modifications,
                 spans: self.spans,
+                number: self.number,
             },
         }
     }
@@ -662,6 +684,7 @@ pub fn math(latex: impl Into<String>) -> MathBuilder {
         font_size: 32.0,
         display: true,
         palette: Vec::new(),
+        number: 0.0,
         transform: Transform::new(Vec3::ZERO),
     }
 }
@@ -674,6 +697,7 @@ pub struct MathBuilder {
     font_size: f32,
     display: bool,
     palette: Vec<(String, Color)>,
+    number: f32,
     transform: Transform,
 }
 
@@ -705,6 +729,15 @@ impl MathBuilder {
         self.palette.push((name.into(), color));
         self
     }
+    /// Set the number shown by `{:spec}` placeholders in the latex, e.g. `{:.1}` (default 0).
+    /// Animate it with [`AnimObj::number`]. See [`crate::number_format`].
+    /// ```ignore
+    /// math(r"\alpha = {:.1}^\circ").number(5.0).build()
+    /// ```
+    pub const fn number(mut self, number: f32) -> Self {
+        self.number = number;
+        self
+    }
     #[must_use]
     pub fn build(self) -> MathHandle {
         let id = self.transform.uuid;
@@ -717,6 +750,7 @@ impl MathBuilder {
                 color: self.color,
                 font_size: self.font_size,
                 display: self.display,
+                number: self.number,
             },
         })
     }
@@ -773,6 +807,7 @@ impl TextTemplate {
             transform: Transform::new(Vec3::ZERO),
             modifications: self.modifications.clone(),
             spans: Vec::new(),
+            number: 0.0,
         }
     }
 }

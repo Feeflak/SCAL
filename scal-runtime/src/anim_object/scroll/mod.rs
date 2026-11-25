@@ -136,6 +136,7 @@ impl AnimObjectTrait for ScrollLayout {
                 layout_container: None,
                 world_uniform: None,
                 clip_rect: None,
+                pivot: glam::Vec2::ZERO,
             },
         };
         let thumb_rect = Rectangle {
@@ -151,6 +152,7 @@ impl AnimObjectTrait for ScrollLayout {
                 layout_container: None,
                 world_uniform: None,
                 clip_rect: None,
+                pivot: glam::Vec2::ZERO,
             },
         };
 

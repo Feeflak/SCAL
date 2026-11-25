@@ -108,6 +108,9 @@ fn convert_anim_op(
         scal_core::AnimOP::ScrollOffset(u, target, d, e, loc) => {
             AnimOperation::ScrollOffset(u, target, d, e, loc)
         }
+        scal_core::AnimOP::NumberTo(u, from, to, d, e, loc) => {
+            AnimOperation::NumberTo(u, from, to, d, e, loc)
+        }
     })
 }
 
@@ -289,6 +292,7 @@ fn convert_core_anim_obj(
             font_size,
             modifications,
             spans,
+            number,
         } => {
             let align_val = match align {
                 scal_core::anim_obj::Alignment::Center => RuntimeAlignment::Center,
@@ -306,7 +310,10 @@ fn convert_core_anim_obj(
                 cached_size: None,
                 modifications,
                 spans,
-            })))
+                number: 0.0,
+                template: None,
+            }
+            .with_number(number))))
         }
         scal_core::anim_obj::AnimObjKind::Math {
             latex,
@@ -314,9 +321,12 @@ fn convert_core_anim_obj(
             font_size,
             display,
             palette,
-        } => Ok(RenderObj(Box::new(crate::anim_object::math::Math::new(
-            latex, color, font_size, display, &palette, transform,
-        )?))),
+            number,
+        } => Ok(RenderObj(Box::new(
+            crate::anim_object::math::Math::new_with_number(
+                latex, color, font_size, display, &palette, transform, number,
+            )?,
+        ))),
         scal_core::anim_obj::AnimObjKind::Svg {
             path,
             size,
@@ -551,6 +561,7 @@ fn build_scroll_layout_op(
                 layout_container: None,
                 world_uniform: None,
                 clip_rect: None,
+                pivot: glam::Vec2::ZERO,
             },
         };
         let bg_uuid = bg.transform.uuid;
@@ -637,6 +648,7 @@ fn build_scroll_layout_op(
                 layout_container: None,
                 world_uniform: None,
                 clip_rect: None,
+                pivot: glam::Vec2::ZERO,
             },
             child_uuids,
             child_base_positions,
@@ -774,5 +786,6 @@ const fn make_transform(obj: &scal_core::AnimObj) -> crate::anim_object::Transfo
         layout_container: None,
         world_uniform: None,
         clip_rect: None,
+        pivot: obj.transform.pivot,
     }
 }

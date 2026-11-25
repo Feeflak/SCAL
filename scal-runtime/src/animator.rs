@@ -342,6 +342,7 @@ mod tests {
                     layout_container: None,
                     world_uniform: None,
                     clip_rect: None,
+                    pivot: glam::Vec2::ZERO,
                 },
             })),
             render_data: ObjectRenderData {

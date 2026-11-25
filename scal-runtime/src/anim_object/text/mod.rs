@@ -91,9 +91,72 @@ pub struct Text {
     pub cached_size: Option<Vec2>,
     pub modifications: Vec<TextModifier>,
     pub spans: Vec<TextSpan>,
+    /// The number the `{:spec}` placeholders of `template` currently show.
+    pub number: f32,
+    /// Text with `{:spec}` placeholders; `value` and `spans` hold it rendered with `number`.
+    /// `None` when the text has no placeholder.
+    pub template: Option<NumberTemplate>,
+}
+
+/// The unrendered content of a `Text` that shows an animated number.
+#[derive(Clone, Debug)]
+pub struct NumberTemplate {
+    pub value: String,
+    pub spans: Vec<String>,
+}
+
+impl Text {
+    /// Remembers the current content as a template if it has `{:spec}` placeholders and renders
+    /// it with `number`.
+    pub fn with_number(mut self, number: f32) -> Self {
+        use scal_core::number_format::has_placeholder;
+        let has_any = has_placeholder(&self.value)
+            || self.spans.iter().any(|s| has_placeholder(&s.text));
+        if has_any {
+            self.template = Some(NumberTemplate {
+                value: self.value.clone(),
+                spans: self.spans.iter().map(|s| s.text.clone()).collect(),
+            });
+            self.number = number;
+            self.render_template();
+        }
+        self
+    }
+
+    /// Re-renders `value`/`spans` from the template. Returns `true` if the text changed.
+    fn render_template(&mut self) -> bool {
+        use scal_core::number_format::format_template;
+        let Some(template) = &self.template else {
+            return false;
+        };
+        let value = format_template(&template.value, self.number);
+        let mut changed = value != self.value;
+        for (span, source) in self.spans.iter_mut().zip(&template.spans) {
+            let text = format_template(source, self.number);
+            changed |= text != span.text;
+            span.text = text;
+        }
+        if changed {
+            self.value = value;
+            self.cached_size = None;
+        }
+        changed
+    }
 }
 
 impl AnimObjectTrait for Text {
+    fn number(&self) -> Option<f32> {
+        self.template.as_ref().map(|_| self.number)
+    }
+    fn set_number(&mut self, number: f32) -> Result<bool> {
+        anyhow::ensure!(
+            self.template.is_some(),
+            "text {:?} has no {{:spec}} placeholder to show a number in",
+            self.value
+        );
+        self.number = number;
+        Ok(self.render_template())
+    }
     fn transform(&self) -> &Transform {
         &self.transform
     }

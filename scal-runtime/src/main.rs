@@ -246,6 +246,7 @@ async fn run_loop(
             AnimOperation::MathPartColor(_, _, _, dur, _, _) => start_time + dur,
             AnimOperation::MathHighlight(_, _, _, _, dur, _, _) => start_time + dur,
             AnimOperation::ScrollOffset(_, _, dur, _, _) => start_time + dur,
+            AnimOperation::NumberTo(_, _, _, dur, _, _) => start_time + dur,
             AnimOperation::CodeHighlight(_, action, _) => {
                 start_time + action.duration_and_curve().0
             }

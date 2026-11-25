@@ -145,6 +145,7 @@ impl LayoutContainer {
                 layout_container: None,
                 world_uniform: None,
                 clip_rect: None,
+                pivot: glam::Vec2::ZERO,
             },
             background_uuid,
             child_uuids,

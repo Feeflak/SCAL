@@ -20,6 +20,10 @@ pub struct Transform {
     pub rotation: f32,
     /// Uniform or nonuniform scale of the object
     pub scale: Vec2,
+    /// Point the object rotates around, as an offset in pixels from the object's center
+    /// (y points down). `Vec2::ZERO` rotates around the center. Setting a pivot never moves
+    /// the object, it only changes what `rotation` turns it around.
+    pub pivot: Vec2,
 }
 
 impl Transform {
@@ -33,6 +37,7 @@ impl Transform {
             position,
             rotation: 0.0,
             scale: Vec2::ONE,
+            pivot: Vec2::ZERO,
         }
     }
 
@@ -396,6 +401,68 @@ impl From<MathHighlightBuilder> for AnimOP {
 }
 
 impl IntoAnimOp for MathHighlightBuilder {
+    fn into_anim_op(self) -> AnimOP {
+        self.into()
+    }
+}
+
+/// Builder for an animation that counts the number shown by a text or math object from one
+/// value to another. The object's `{:spec}` placeholders (see [`crate::number_format`]) are
+/// re-rendered every frame.
+pub struct NumberBuilder {
+    pub(crate) uuid: Uuid,
+    pub(crate) from: Option<f32>,
+    pub(crate) target: Option<f32>,
+    pub(crate) duration: Time,
+    pub(crate) ease: Ease,
+}
+
+#[allow(clippy::return_self_not_must_use)]
+impl NumberBuilder {
+    #[must_use]
+    /// Set the number the animation starts from. By default it starts from whatever number the
+    /// object is showing when the animation begins.
+    pub const fn from(mut self, start: f32) -> Self {
+        self.from = Some(start);
+        self
+    }
+
+    #[must_use]
+    /// Set the number the animation ends on
+    pub const fn to(mut self, target: f32) -> Self {
+        self.target = Some(target);
+        self
+    }
+
+    #[must_use]
+    /// Set the duration of the animation
+    pub const fn over(mut self, duration: Time) -> Self {
+        self.duration = duration;
+        self
+    }
+
+    #[must_use]
+    /// Set the easing function and return the builder
+    pub fn ease(mut self, ease: Ease) -> Self {
+        self.ease = ease;
+        self
+    }
+}
+
+impl From<NumberBuilder> for AnimOP {
+    fn from(b: NumberBuilder) -> Self {
+        Self::NumberTo(
+            b.uuid,
+            b.from,
+            b.target.or(b.from).unwrap_or(0.0),
+            b.duration,
+            b.ease,
+            None,
+        )
+    }
+}
+
+impl IntoAnimOp for NumberBuilder {
     fn into_anim_op(self) -> AnimOP {
         self.into()
     }

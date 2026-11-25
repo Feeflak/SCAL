@@ -524,6 +524,8 @@ pub mod color;
 /// Simple way to make your animations smooth. <https://easings.net/>
 pub mod ease;
 pub mod highlight_specs;
+/// `{:.1}` style number placeholders for animated text and math
+pub mod number_format;
 #[allow(missing_docs)]
 pub mod object_builders;
 /// Settings

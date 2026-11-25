@@ -47,7 +47,12 @@ fn marker_color(index: usize) -> RatexColor {
 /// stacked quads, so recoloring a part only changes vertex colors.
 #[derive(Clone, Debug)]
 pub struct Math {
+    /// The LaTeX currently shown: `template` with its placeholders replaced by `number`.
     pub latex: String,
+    /// The LaTeX as written, with `{:spec}` placeholders (see `scal_core::number_format`).
+    pub template: String,
+    /// The number the placeholders of `template` currently show.
+    pub number: f32,
     pub color: Color,
     pub font_size: f32,
     pub display: bool,
@@ -58,6 +63,8 @@ pub struct Math {
     pub highlight: MathHighlight,
     layers: std::sync::Arc<Layers>,
     size: Vec2,
+    /// Hash of `latex`; tells the renderer when the cached texture is stale.
+    version: u64,
 }
 
 /// Animated highlight state. Parts with weight 1 are tinted to `color`; while `active` is 1,
@@ -96,12 +103,27 @@ impl Math {
         palette: &[(String, Color)],
         transform: Transform,
     ) -> Result<Self> {
+        Self::new_with_number(latex, color, font_size, display, palette, transform, 0.0)
+    }
+
+    /// Like `new`, with `number` shown by the `{:spec}` placeholders in `latex`.
+    pub fn new_with_number(
+        template: String,
+        color: Color,
+        font_size: f32,
+        display: bool,
+        palette: &[(String, Color)],
+        transform: Transform,
+        number: f32,
+    ) -> Result<Self> {
         anyhow::ensure!(palette.len() < 255, "at most 254 named math parts are supported");
-        let source = apply_palette(&latex, palette);
-        let names: Vec<&str> = palette.iter().map(|(n, _)| n.as_str()).collect();
-        let (layers, size) = typeset(&source, &names, font_size, display)?;
+        let latex = scal_core::number_format::format_template(&template, number);
+        let (layers, size) = typeset_cached(&latex, palette, font_size, display)?;
         Ok(Self {
+            version: hash_str(&latex),
             latex,
+            template,
+            number,
             color,
             font_size,
             display,
@@ -113,10 +135,69 @@ impl Math {
                 color: Color::WHITE,
                 weights: vec![0.0; palette.len()],
             },
-            layers: std::sync::Arc::new(layers),
+            layers,
             size,
         })
     }
+
+    /// Re-typesets with the placeholders showing `number`. Returns `true` if the equation
+    /// changed.
+    fn render_number(&mut self, number: f32) -> Result<bool> {
+        self.number = number;
+        let latex = scal_core::number_format::format_template(&self.template, number);
+        if latex == self.latex {
+            return Ok(false);
+        }
+        let (layers, size) =
+            typeset_cached(&latex, &self.part_colors, self.font_size, self.display)?;
+        self.layers = layers;
+        self.size = size;
+        self.version = hash_str(&latex);
+        self.latex = latex;
+        Ok(true)
+    }
+}
+
+fn hash_str(s: &str) -> u64 {
+    use std::hash::{Hash, Hasher};
+    let mut h = std::collections::hash_map::DefaultHasher::new();
+    s.hash(&mut h);
+    h.finish()
+}
+
+type CacheKey = (String, Vec<String>, u32, bool);
+
+/// Typesetting is the expensive part of an animated number, and the same few strings come back
+/// (the same value at the same precision, scrubbing the preview, re-rendering). Keep results
+/// around, keyed by everything that influences them.
+fn typeset_cached(
+    latex: &str,
+    palette: &[(String, Color)],
+    font_size: f32,
+    display: bool,
+) -> Result<(std::sync::Arc<Layers>, Vec2)> {
+    use std::collections::HashMap;
+    use std::sync::{Arc, Mutex, OnceLock};
+    /// Entries kept before the cache is emptied.
+    const MAX_ENTRIES: usize = 1024;
+    static CACHE: OnceLock<Mutex<HashMap<CacheKey, (Arc<Layers>, Vec2)>>> = OnceLock::new();
+
+    let names: Vec<String> = palette.iter().map(|(n, _)| n.clone()).collect();
+    let key = (latex.to_string(), names, font_size.to_bits(), display);
+    let cache = CACHE.get_or_init(|| Mutex::new(HashMap::new()));
+    if let Some((layers, size)) = cache.lock().expect("math cache poisoned").get(&key) {
+        return Ok((layers.clone(), *size));
+    }
+    let source = apply_palette(latex, palette);
+    let names: Vec<&str> = palette.iter().map(|(n, _)| n.as_str()).collect();
+    let (layers, size) = typeset(&source, &names, font_size, display)?;
+    let layers = Arc::new(layers);
+    let mut cache = cache.lock().expect("math cache poisoned");
+    if cache.len() >= MAX_ENTRIES {
+        cache.clear();
+    }
+    cache.insert(key, (layers.clone(), size));
+    Ok((layers, size))
 }
 
 /// Replaces `\textcolor{name}` and `\color{name}` with the part's marker color.
@@ -280,6 +361,20 @@ fn rasterize(layers: &Layers, size: Vec2) -> Result<(Vec<u8>, u32, u32)> {
 }
 
 impl AnimObjectTrait for Math {
+    fn number(&self) -> Option<f32> {
+        scal_core::number_format::has_placeholder(&self.template).then_some(self.number)
+    }
+    fn set_number(&mut self, number: f32) -> Result<bool> {
+        anyhow::ensure!(
+            scal_core::number_format::has_placeholder(&self.template),
+            "equation {:?} has no {{:spec}} placeholder to show a number in",
+            self.template
+        );
+        self.render_number(number)
+    }
+    fn content_version(&self) -> u64 {
+        self.version
+    }
     fn transform(&self) -> &Transform {
         &self.transform
     }

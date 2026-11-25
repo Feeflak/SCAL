@@ -75,7 +75,8 @@ pub struct ObjectTransformData {
 }
 pub struct Renderer {
     pub object_transform_data_lookup: HashMap<Uuid, ObjectTransformData>,
-    pub per_object_bind_groups: HashMap<Uuid, Vec<BindGroup>>,
+    /// Bind groups per object, with the `content_version` they were built for.
+    pub per_object_bind_groups: HashMap<Uuid, (u64, Vec<BindGroup>)>,
     pub camera_bind_group: BindGroup,
     pub camera_buffer: wgpu::Buffer,
 
@@ -201,12 +202,17 @@ impl Renderer {
 
         for obj in scene.objects_sorted_by_z {
             let uuid = *obj.uuid();
-            if self.per_object_bind_groups.contains_key(&uuid) {
+            let version = obj.anim_data.content_version();
+            if self
+                .per_object_bind_groups
+                .get(&uuid)
+                .is_some_and(|(built_for, _)| *built_for == version)
+            {
                 continue;
             }
             if let Some(loader) = obj.anim_data.bind_group_loader() {
                 let groups = loader(device, queue);
-                self.per_object_bind_groups.insert(uuid, groups);
+                self.per_object_bind_groups.insert(uuid, (version, groups));
             }
         }
 
@@ -253,7 +259,7 @@ impl Renderer {
             let object_bind_groups = self
                 .per_object_bind_groups
                 .get(object.uuid())
-                .map(|v| v.as_slice())
+                .map(|(_, v)| v.as_slice())
                 .unwrap_or(&[]);
             for (i, bg) in object_bind_groups.iter().enumerate() {
                 render_pass.set_bind_group(OTHER_BINDING_OFFSET + i as u32, bg, &[]);

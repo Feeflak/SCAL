@@ -16,6 +16,7 @@ members = [
         "scal-ipc",
         "scal-ipc-macros",
         "scal-runtime",
+        "./examples/aoa",
         "./examples/audio",
         "./examples/code",
         "./examples/code_window",

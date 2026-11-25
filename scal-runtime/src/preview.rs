@@ -775,6 +775,7 @@ fn op_label(op: &AnimOperation) -> &'static str {
         AnimOperation::ObjectColor(..) | AnimOperation::MathPartColor(..) => "Color",
         AnimOperation::MathHighlight(..) => "Highlight",
         AnimOperation::ScrollOffset(..) => "Scroll",
+        AnimOperation::NumberTo(..) => "Number",
         AnimOperation::PlaySound(..) => "Sound",
     }
 }
@@ -795,7 +796,8 @@ fn op_kind(op: &AnimOperation) -> OpKind {
         }
         AnimOperation::ObjectColor(..)
         | AnimOperation::MathPartColor(..)
-        | AnimOperation::MathHighlight(..) => OpKind::Transform,
+        | AnimOperation::MathHighlight(..)
+        | AnimOperation::NumberTo(..) => OpKind::Transform,
         AnimOperation::ScrollOffset(..) => OpKind::Scroll,
         AnimOperation::All(..) | AnimOperation::Sequence(..) => OpKind::Composite,
         AnimOperation::Wait(..) => OpKind::Wait,
@@ -833,6 +835,7 @@ fn op_source_loc(op: &AnimOperation) -> Option<scal_core::SourceLoc> {
         | AnimOperation::MathPartColor(_, _, _, _, _, loc)
         | AnimOperation::MathHighlight(_, _, _, _, _, _, loc)
         | AnimOperation::ScrollOffset(_, _, _, _, loc)
+        | AnimOperation::NumberTo(_, _, _, _, _, loc)
         | AnimOperation::All(_, loc)
         | AnimOperation::Sequence(_, loc)
         | AnimOperation::Wait(_, loc)
@@ -876,6 +879,7 @@ pub fn flatten_ops(ops: &[AnimOperation]) -> (Vec<TimelineOp>, f32) {
                 AnimOperation::MathPartColor(_, _, _, d, _, _) => time += d,
                 AnimOperation::MathHighlight(_, _, _, _, d, _, _) => time += d,
                 AnimOperation::ScrollOffset(_, _, d, _, _) => time += d,
+                AnimOperation::NumberTo(_, _, _, d, _, _) => time += d,
                 AnimOperation::PlaySound(_, _, _) => {}
                 AnimOperation::Instantiate(..) => {}
             }

@@ -96,6 +96,8 @@ pub fn text(
         cached_size: None,
         modifications,
         spans: Vec::new(),
+        number: 0.0,
+        template: None,
     }))
 }
 
@@ -181,6 +183,8 @@ pub struct Transform {
     pub layout_container: Option<Uuid>,
     pub(crate) world_uniform: Option<TransformUniform>,
     pub(crate) clip_rect: Option<[f32; 4]>,
+    /// Point (relative to the object's center, before scaling) that rotation turns around.
+    pub(crate) pivot: Vec2,
 }
 #[derive(Clone, Debug, Copy)]
 pub struct TransformUniform {
@@ -229,6 +233,7 @@ impl Transform {
             layout_container: None,
             world_uniform: None,
             clip_rect: None,
+            pivot: glam::Vec2::ZERO,
         }
     }
     pub fn with_uuid(uuid: Uuid, position: Vec3) -> Self {
@@ -241,6 +246,7 @@ impl Transform {
             layout_container: None,
             world_uniform: None,
             clip_rect: None,
+            pivot: glam::Vec2::ZERO,
         }
     }
 }

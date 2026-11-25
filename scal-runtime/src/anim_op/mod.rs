@@ -1,5 +1,6 @@
 pub mod code;
 mod math;
+mod number;
 mod scroll;
 pub mod terminal;
 mod transform;
@@ -79,6 +80,7 @@ pub enum AnimOperation {
     MathPartColor(Uuid, String, Color, Time, Ease, Option<SourceLoc>),
     MathHighlight(Uuid, Vec<String>, Color, f32, Time, Ease, Option<SourceLoc>),
     ScrollOffset(Uuid, ScrollOffsetTarget, Time, Ease, Option<SourceLoc>),
+    NumberTo(Uuid, Option<f32>, f32, Time, Ease, Option<SourceLoc>),
     All(Vec<Self>, Option<SourceLoc>),
     Sequence(Vec<Self>, Option<SourceLoc>),
     Wait(Time, Option<SourceLoc>),
@@ -103,6 +105,7 @@ impl AnimOperation {
             | AnimOperation::MathPartColor(_, _, _, _, _, l)
             | AnimOperation::MathHighlight(_, _, _, _, _, _, l)
             | AnimOperation::ScrollOffset(_, _, _, _, l)
+            | AnimOperation::NumberTo(_, _, _, _, _, l)
             | AnimOperation::All(_, l)
             | AnimOperation::Sequence(_, l)
             | AnimOperation::Wait(_, l)
@@ -194,6 +197,12 @@ pub fn resolve_op(op: AnimOperation) -> Result<Animation> {
             debug!("ScrollOffset uuid={uuid} target={target:?}");
             ensure_duration(duration, "ScrollOffset")?;
             scroll::scroll_offset_to(uuid, target, duration, curve)
+        }
+
+        AnimOperation::NumberTo(uuid, from, target, duration, curve, _loc) => {
+            debug!("NumberTo uuid={uuid} from={from:?} to={target}");
+            ensure_duration(duration, "NumberTo")?;
+            number::number_to(uuid, from, target, duration, curve)
         }
 
         AnimOperation::CodeAddLines(uuid, text, from_line, duration, curve, style, _loc) => {
@@ -479,6 +488,7 @@ mod tests {
                     layout_container: None,
                     world_uniform: None,
                     clip_rect: None,
+                    pivot: glam::Vec2::ZERO,
                 },
             })),
             render_data: ObjectRenderData {

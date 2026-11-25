@@ -43,6 +43,45 @@ impl AnimObj {
     pub fn instantiate(&self) -> AnimOP {
         AnimOP::Instantiate(Box::new(self.clone()), None)
     }
+
+    /// Returns a builder for an animation that counts the number shown by this text or math
+    /// object. The object has to contain a `{:spec}` placeholder, see [`crate::number_format`].
+    /// Works the same for `text()` and `math()`, so one label can be driven by any animation
+    /// that shares the same `.over()` and `.ease()`.
+    ///
+    /// # Panics
+    /// If the object is not text or math, or its content has no `{:spec}` placeholder.
+    /// ```ignore
+    /// let aoa = math(r"\alpha = {:.1}^\circ").build();
+    /// parallel![
+    ///     wing.transform.rotation().to(-15.0).over(3.s()).ease(Ease::InOutCubic),
+    ///     aoa.number().from(0.0).to(15.0).over(3.s()).ease(Ease::InOutCubic),
+    /// ]
+    /// ```
+    #[must_use]
+    pub fn number(&self) -> crate::transform::NumberBuilder {
+        let has_placeholder = match &self.kind {
+            AnimObjKind::Text { value, spans, .. } => {
+                crate::number_format::has_placeholder(value)
+                    || spans
+                        .iter()
+                        .any(|s| crate::number_format::has_placeholder(&s.text))
+            }
+            AnimObjKind::Math { latex, .. } => crate::number_format::has_placeholder(latex),
+            _ => panic!("number() only works on text and math objects"),
+        };
+        assert!(
+            has_placeholder,
+            "number() needs a placeholder such as {{:.1}} in the object's text or latex"
+        );
+        crate::transform::NumberBuilder {
+            uuid: self.id,
+            from: None,
+            target: None,
+            duration: 1.0,
+            ease: Ease::Linear,
+        }
+    }
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -71,6 +110,9 @@ pub enum AnimObjKind {
         modifications: Vec<TextModifier>,
         /// Styled sections. When non-empty these are rendered instead of `value`.
         spans: Vec<TextSpan>,
+        /// Number shown by the `{:spec}` placeholders in `value`/`spans` (see
+        /// [`crate::number_format`]).
+        number: f32,
     },
     Math {
         latex: String,
@@ -79,6 +121,9 @@ pub enum AnimObjKind {
         display: bool,
         /// Named colors usable as `\textcolor{name}{..}` in `latex`.
         palette: Vec<(String, Color)>,
+        /// Number shown by the `{:spec}` placeholders in `latex` (see
+        /// [`crate::number_format`]).
+        number: f32,
     },
     Code {
         source_code: String,

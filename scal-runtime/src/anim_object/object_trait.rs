@@ -27,6 +27,22 @@ pub trait AnimObjectTrait: Any + std::fmt::Debug + Send + Sync {
     fn size(&self) -> Vec2 {
         Vec2::ZERO
     }
+    /// The number shown by this object's `{:spec}` placeholders, or `None` if the object
+    /// cannot show an animated number. Implementing this and `set_number` is all an object type
+    /// needs to work with the `NumberTo` animation.
+    fn number(&self) -> Option<f32> {
+        None
+    }
+    /// Shows `number`. Returns `true` if what the object displays changed, so the caller knows
+    /// the mesh has to be regenerated.
+    fn set_number(&mut self, _number: f32) -> Result<bool> {
+        anyhow::bail!("this object cannot show an animated number")
+    }
+    /// Identifies the content a bind group was built from. When it changes the renderer drops
+    /// the object's cached bind groups and calls `bind_group_loader` again.
+    fn content_version(&self) -> u64 {
+        0
+    }
     fn layout_parent(&self) -> Option<Uuid> {
         self.transform().layout_container
     }
@@ -98,6 +114,7 @@ mod tests {
                 layout_container: None,
                 world_uniform: None,
                 clip_rect: None,
+                pivot: glam::Vec2::ZERO,
             },
         };
         let rect2 = Rectangle {
@@ -113,6 +130,7 @@ mod tests {
                 layout_container: None,
                 world_uniform: None,
                 clip_rect: None,
+                pivot: glam::Vec2::ZERO,
             },
         };
         let rect3 = Rectangle {
@@ -128,6 +146,7 @@ mod tests {
                 layout_container: None,
                 world_uniform: None,
                 clip_rect: None,
+                pivot: glam::Vec2::ZERO,
             },
         };
         let obj1 = DynAnimObj(Box::new(rect1));
