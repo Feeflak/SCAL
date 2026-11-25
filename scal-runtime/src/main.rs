@@ -69,13 +69,22 @@ struct EncodingConfig {
 
 #[tokio::main]
 async fn main() -> Result<()> {
+    // Handled before logger init so the output is just the version string.
+    if matches!(
+        std::env::args().nth(1).as_deref(),
+        Some("version" | "--version" | "-V")
+    ) {
+        println!("scal-runtime {}", env!("CARGO_PKG_VERSION"));
+        return Ok(());
+    }
+
     let mut builder = colog::default_builder();
     builder.filter_level(log::LevelFilter::Info);
     builder.init();
 
     let args: Vec<String> = std::env::args().collect();
     if args.len() < 2 {
-        bail!("Usage: scal <render|preview>");
+        bail!("Usage: scal <render|preview|version>");
     }
 
     let mode = &args[1];
