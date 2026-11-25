@@ -43,7 +43,7 @@
 
         runtime = pkgs.rustPlatform.buildRustPackage {
           pname = "scal-runtime";
-          version = "1.2.0";
+          version = "1.2.1";
 
           src = ./.;
 
