@@ -98,14 +98,29 @@ mod tests {
         }
     }
 
+    // These run through the animator, which lays out glyphs for text. That needs a system
+    // font, and the Nix build sandbox has none, so they use math (which embeds its own glyphs).
+    fn math_obj(template: &str, number: f32) -> Math {
+        Math::new_with_number(
+            template.into(),
+            Color::WHITE,
+            32.0,
+            true,
+            &[],
+            transform(),
+            number,
+        )
+        .unwrap()
+    }
+
     #[test]
-    fn text_counts_to_the_target() {
-        let t = text("AoA {:.1}", 2.0);
-        assert_eq!(t.value, "AoA 2.0");
-        let id = t.id;
+    fn counts_from_the_shown_number_to_the_target() {
+        let m = math_obj("AoA {:.1}", 2.0);
+        assert_eq!(m.latex, "AoA 2.0");
+        let id = m.uuid();
         let animator = run(
             vec![
-                AnimOperation::Instantiate(DynAnimObj(Box::new(t)), None),
+                AnimOperation::Instantiate(DynAnimObj(Box::new(m)), None),
                 AnimOperation::NumberTo(id, None, 15.0, 0.5, Ease::Linear, None),
             ],
             30,
@@ -114,17 +129,27 @@ mod tests {
     }
 
     #[test]
-    fn explicit_start_is_used_and_ease_hits_both_ends() {
-        let t = text("{:.0}", 99.0);
-        let id = t.id;
+    fn explicit_start_is_used_and_ease_hits_the_end() {
+        let m = math_obj("{:.0}", 99.0);
+        let id = m.uuid();
         let animator = run(
             vec![
-                AnimOperation::Instantiate(DynAnimObj(Box::new(t)), None),
+                AnimOperation::Instantiate(DynAnimObj(Box::new(m)), None),
                 AnimOperation::NumberTo(id, Some(-10.0), 10.0, 0.5, Ease::InOutCubic, None),
             ],
             30,
         );
         assert_eq!(shown(&animator, &id), "10");
+    }
+
+    #[test]
+    fn text_updates_without_needing_a_font() {
+        let mut t = text("AoA {:.1}", 2.0);
+        assert_eq!(t.value, "AoA 2.0");
+        assert_eq!(t.number(), Some(2.0));
+        assert!(t.set_number(15.0).unwrap());
+        assert_eq!(t.value, "AoA 15.0");
+        assert!(!t.set_number(15.01).unwrap(), "same text at this precision");
     }
 
     #[test]
