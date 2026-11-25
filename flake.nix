@@ -43,7 +43,7 @@
 
         runtime = pkgs.rustPlatform.buildRustPackage {
           pname = "scal-runtime";
-          version = "1.2.1";
+          version = "1.2.2";
 
           src = ./.;
 
@@ -64,6 +64,15 @@
             pkgs.alsa-lib.dev
             pkgs.ffmpeg
           ];
+
+          # winit/alsa/etc. dlopen() wayland, xkbcommon, X11 and pulse at runtime,
+          # so Nix doesn't add them to the RPATH automatically. Add them here
+          # instead of relying on LD_LIBRARY_PATH.
+          postFixup = ''
+            patchelf \
+              --add-rpath "${pkgs.lib.makeLibraryPath runtimeDeps}" \
+              $out/bin/scal-runtime
+          '';
 
           # Needed by some crates using bindgen
           BINDGEN_EXTRA_CLANG_ARGS = builtins.concatStringsSep " " [
@@ -102,9 +111,10 @@
             pkgs.ffmpeg
           ];
 
-          shellHook = ''
-            export LD_LIBRARY_PATH="${pkgs.lib.makeLibraryPath runtimeDeps}:$LD_LIBRARY_PATH"
-          '';
+          # Bake the runtime libs into binaries built by cargo (rpath) instead of
+          # exporting LD_LIBRARY_PATH, which leaks into every program started in
+          # the shell and breaks binaries built against a different nixpkgs.
+          RUSTFLAGS = "-C link-arg=-Wl,--disable-new-dtags -C link-arg=-Wl,-rpath,${pkgs.lib.makeLibraryPath runtimeDeps}";
         };
       }
     );
