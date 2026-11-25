@@ -1,6 +1,6 @@
 
 [workspace.package]
-version = "1.1.0"
+version = "1.2.0"
 edition = "2024"
 license = "GPL-3.0"
 keywords = ["graphics"]
@@ -9,7 +9,7 @@ authors = ["feeflak"]
 
 [workspace.dependencies]
 scal-ipc-macros = { path = "scal-ipc-macros", version = "1.0.1"}
-scal-core = { path = "scal-core", version = "1.1.0" }
+scal-core = { path = "scal-core", version = "1.2.0" }
 [workspace]
 members = [
         "scal-core",
