@@ -33,6 +33,17 @@ impl AnimObjectTrait for Svg {
     fn generate_mesh(&mut self, _mgr: &mut crate::anim_object::text::TextManager) -> MeshResult {
         Ok(generate_svg_mesh_data(self))
     }
+    fn bind_group_cache_key(&self) -> Option<String> {
+        Some(format!(
+            "svg|{}|{:?}|{:?}|{:?}|{:?}|{:?}",
+            crate::anim_object::object_trait::file_cache_key(&self.path)?,
+            self.size,
+            self.fill,
+            self.stroke,
+            self.stroke_width,
+            self.stretch,
+        ))
+    }
     fn bind_group_loader(&self) -> Option<BindGroupLoader> {
         let svg = self.clone();
         Some(Box::new(

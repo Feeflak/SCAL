@@ -73,10 +73,25 @@ pub struct ObjectTransformData {
     pub bind_group: BindGroup,
     pub buffer: Buffer,
 }
+struct CachedBindGroups {
+    groups: Vec<BindGroup>,
+    /// `Renderer::generation` when the entry was built or last reused.
+    generation: u64,
+    last_access: u64,
+}
+
 pub struct Renderer {
     pub object_transform_data_lookup: HashMap<Uuid, ObjectTransformData>,
     /// Bind groups per object, with the `content_version` they were built for.
     pub per_object_bind_groups: HashMap<Uuid, (u64, Vec<BindGroup>)>,
+    /// Bind groups shared between objects with the same content (see
+    /// `AnimObjectTrait::bind_group_cache_key`). Unlike the uuid keyed maps this survives a
+    /// reload, so unchanged images, svgs and equations are not rebuilt.
+    content_bind_groups: HashMap<String, CachedBindGroups>,
+    /// Counts reloads; tells which `content_bind_groups` entries are still in use.
+    generation: u64,
+    /// Counts cache accesses to find the least recently used entry.
+    access_counter: u64,
     pub camera_bind_group: BindGroup,
     pub camera_buffer: wgpu::Buffer,
 
@@ -122,7 +137,28 @@ impl Renderer {
             camera_buffer,
             object_transform_data_lookup: HashMap::new(),
             per_object_bind_groups: HashMap::new(),
+            content_bind_groups: HashMap::new(),
+            generation: 0,
+            access_counter: 0,
         }
+    }
+
+    /// Call when the animation is replaced. Object uuids are regenerated on every reload, so
+    /// everything keyed by uuid is unreachable and dropped. Content cached bind groups are kept,
+    /// except the ones the previous animation never used.
+    pub(crate) fn begin_reload(&mut self) {
+        let transforms = self.object_transform_data_lookup.len();
+        self.object_transform_data_lookup.clear();
+        self.per_object_bind_groups.clear();
+        let before = self.content_bind_groups.len();
+        let generation = self.generation;
+        self.content_bind_groups
+            .retain(|_, cached| cached.generation >= generation);
+        self.generation += 1;
+        debug!(
+            "renderer reset for reload: dropped {transforms} object transform buffers, kept {} of {before} cached bind group sets",
+            self.content_bind_groups.len()
+        );
     }
 
     pub(crate) fn update_render_buffers(
@@ -210,13 +246,62 @@ impl Renderer {
             {
                 continue;
             }
+            let cache_key = obj.anim_data.bind_group_cache_key();
+            if let Some(key) = &cache_key {
+                self.access_counter += 1;
+                if let Some(cached) = self.content_bind_groups.get_mut(key) {
+                    cached.last_access = self.access_counter;
+                    cached.generation = self.generation;
+                    let groups = cached.groups.clone();
+                    debug!("bind groups of object {uuid} reused from cache ({key})");
+                    self.per_object_bind_groups.insert(uuid, (version, groups));
+                    continue;
+                }
+            }
             if let Some(loader) = obj.anim_data.bind_group_loader() {
+                let started = std::time::Instant::now();
                 let groups = loader(device, queue);
+                let label = cache_key.as_deref().unwrap_or("uncached");
+                if groups.is_empty() {
+                    log::error!("could not build the bind groups of object {uuid} ({label})");
+                } else {
+                    debug!(
+                        "built bind groups of object {uuid} in {:.1?} ({label})",
+                        started.elapsed()
+                    );
+                }
+                if let Some(key) = cache_key
+                    && !groups.is_empty()
+                {
+                    self.insert_cached_bind_groups(key, groups.clone());
+                }
                 self.per_object_bind_groups.insert(uuid, (version, groups));
             }
         }
 
         Ok(())
+    }
+
+    fn insert_cached_bind_groups(&mut self, key: String, groups: Vec<BindGroup>) {
+        /// Entries kept (each holds a texture) before the least recently used one is dropped.
+        const MAX_CACHED: usize = 256;
+        if self.content_bind_groups.len() >= MAX_CACHED
+            && let Some(oldest) = self
+                .content_bind_groups
+                .iter()
+                .min_by_key(|(_, cached)| cached.last_access)
+                .map(|(key, _)| key.clone())
+        {
+            self.content_bind_groups.remove(&oldest);
+        }
+        self.content_bind_groups.insert(
+            key,
+            CachedBindGroups {
+                groups,
+                generation: self.generation,
+                last_access: self.access_counter,
+            },
+        );
     }
 
     pub(crate) fn draw_objects(
@@ -261,6 +346,13 @@ impl Renderer {
                 .get(object.uuid())
                 .map(|(_, v)| v.as_slice())
                 .unwrap_or(&[]);
+            // A loader ran but produced no bind groups (it failed and logged
+            // an error); drawing would trigger a fatal wgpu validation error.
+            if object_bind_groups.is_empty()
+                && self.per_object_bind_groups.contains_key(object.uuid())
+            {
+                continue;
+            }
             for (i, bg) in object_bind_groups.iter().enumerate() {
                 render_pass.set_bind_group(OTHER_BINDING_OFFSET + i as u32, bg, &[]);
             }

@@ -43,12 +43,30 @@ pub trait AnimObjectTrait: Any + std::fmt::Debug + Send + Sync {
     fn content_version(&self) -> u64 {
         0
     }
+    /// Identifies everything the bind groups from `bind_group_loader` are built from, or `None`
+    /// if they should not be shared. Objects returning the same key get the same bind groups,
+    /// so unchanged images, svgs and equations are not rebuilt (decoded, rasterized,
+    /// uploaded) when the animation reloads and every object gets a new uuid.
+    fn bind_group_cache_key(&self) -> Option<String> {
+        None
+    }
     fn layout_parent(&self) -> Option<Uuid> {
         self.transform().layout_container
     }
     fn set_layout_parent(&mut self, parent: Option<Uuid>) {
         self.transform_mut().layout_container = parent;
     }
+}
+
+/// `path`, with its size and modification time so that an edited file gets a new key.
+pub fn file_cache_key(path: &str) -> Option<String> {
+    let meta = std::fs::metadata(path).ok()?;
+    let modified = meta
+        .modified()
+        .ok()
+        .and_then(|m| m.duration_since(std::time::UNIX_EPOCH).ok())
+        .map_or(0, |d| d.as_nanos());
+    Some(format!("{path}|{}|{modified}", meta.len()))
 }
 
 pub type BindGroupLoader = Box<dyn Fn(&wgpu::Device, &wgpu::Queue) -> Vec<wgpu::BindGroup>>;

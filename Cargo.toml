@@ -30,3 +30,12 @@ members = [
         "./examples/math",
         "./examples/scroll",
 ]
+
+# Animation binaries are rebuilt on every preview reload, so keep that build fast: little
+# debuginfo (panic backtraces keep their line numbers) and none for dependencies.
+[profile.dev]
+debug = "line-tables-only"
+split-debuginfo = "unpacked"
+
+[profile.dev.package."*"]
+debug = false

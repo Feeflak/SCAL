@@ -97,6 +97,7 @@ fn run_event_loop(config: AnimationConfig, reload_rx: watch::Receiver<bool>) -> 
         window_size: (0, 0),
         needs_render: true,
         reload_requested: false,
+        pending_reload: None,
         cursor_pos: (0.0, 0.0),
         mouse_down: false,
         last_seek_time: std::time::Instant::now(),
@@ -122,6 +123,8 @@ struct PreviewState {
     window_size: (u32, u32),
     needs_render: bool,
     reload_requested: bool,
+    /// A reload whose build is running on a background thread.
+    pending_reload: Option<PendingReload>,
     cursor_pos: (f64, f64),
     mouse_down: bool,
     last_seek_time: std::time::Instant,
@@ -232,6 +235,9 @@ impl ApplicationHandler for PreviewState {
         _window_id: WindowId,
         event: WindowEvent,
     ) {
+        if matches!(event, WindowEvent::RedrawRequested) {
+            self.drive_reload();
+        }
         let Some(ref mut preview) = self.preview else {
             return;
         };
@@ -254,19 +260,6 @@ impl ApplicationHandler for PreviewState {
                 self.modifiers = Some(modifiers);
             }
             WindowEvent::RedrawRequested => {
-                // Check for reload
-                if self.reload_requested {
-                    self.reload_requested = false;
-                    if let (Some(binary), Some(theme)) =
-                        (self.binary.as_ref(), self.default_theme.as_ref())
-                    {
-                        let result = reload_animation(binary, theme, preview);
-                        if let Err(e) = result {
-                            log::error!("Reload failed: {e}");
-                        }
-                    }
-                }
-
                 // Clamp advance rate to the configured FPS so animation timing
                 // matches wall clock (and stays in sync with audio).
                 let should_advance = if preview.is_finished() || preview.is_paused() {
@@ -576,16 +569,107 @@ async fn load_animation(binary: &str) -> Result<(scal_core::Project, scal_core::
     Ok((project, theme))
 }
 
-fn reload_animation(
-    binary: &str,
-    default_theme: &scal_core::Theme,
-    preview: &mut PreviewRenderer,
-) -> Result<()> {
-    log::info!("Reloading animation...");
+/// A freshly built animation, ready to replace the one being previewed.
+struct ReloadPayload {
+    background_color: Color,
+    camera: Camera,
+    animations: Vec<AnimOperation>,
+    /// How long building and running the animation binary took.
+    build_time: Duration,
+    /// How long decoding its output and converting it to render operations took.
+    convert_time: Duration,
+}
 
-    let current_time = preview.current_time();
-    let was_paused = preview.is_paused();
+/// What the background thread of a reload sends back; `None` means the reload was skipped
+/// (and the reason already logged), for example because the animation does not compile.
+type ReloadResult = Result<Option<ReloadPayload>>;
 
+struct PendingReload {
+    rx: std::sync::mpsc::Receiver<ReloadResult>,
+    started: std::time::Instant,
+}
+
+impl PreviewState {
+    /// Advances the reload state machine. Building the animation (a cargo build and run) happens
+    /// on a background thread so the preview stays responsive meanwhile; only swapping in the
+    /// result happens here, on the render thread.
+    fn drive_reload(&mut self) {
+        use std::sync::mpsc::TryRecvError;
+
+        if let Some(pending) = self.pending_reload.take() {
+            match pending.rx.try_recv() {
+                Ok(result) => self.finish_reload(result, pending.started),
+                Err(TryRecvError::Empty) => self.pending_reload = Some(pending),
+                Err(TryRecvError::Disconnected) => {
+                    log::error!("Reload failed: the build thread stopped unexpectedly");
+                }
+            }
+        }
+
+        if !self.reload_requested {
+            return;
+        }
+        if self.pending_reload.is_some() {
+            // Edited again while building: reload once more as soon as this build is done.
+            return;
+        }
+        let (Some(binary), Some(theme)) = (self.binary.clone(), self.default_theme.clone()) else {
+            return;
+        };
+        self.reload_requested = false;
+        log::info!("Reloading animation...");
+
+        let (tx, rx) = std::sync::mpsc::channel();
+        let spawned = std::thread::Builder::new()
+            .name("reload-build".into())
+            .spawn(move || {
+                let _ = tx.send(build_reload(&binary, &theme));
+            });
+        match spawned {
+            Ok(_) => {
+                self.pending_reload = Some(PendingReload {
+                    rx,
+                    started: std::time::Instant::now(),
+                })
+            }
+            Err(e) => log::error!("Reload failed: could not start the build thread: {e}"),
+        }
+    }
+
+    fn finish_reload(&mut self, result: ReloadResult, started: std::time::Instant) {
+        let payload = match result {
+            Ok(Some(payload)) => payload,
+            Ok(None) => return,
+            Err(e) => {
+                log::error!("Reload failed: {e:#}");
+                return;
+            }
+        };
+        let Some(preview) = self.preview.as_mut() else {
+            return;
+        };
+
+        let apply_started = std::time::Instant::now();
+        let current_time = preview.current_time();
+        preview.background_color = payload.background_color;
+        preview.camera = payload.camera;
+        if let Err(e) = preview.reload(payload.animations, current_time) {
+            log::error!("Reload failed: {e:#}");
+            return;
+        }
+        log::info!(
+            "Animation reloaded in {:.1?} (build and run {:.1?}, convert {:.1?}, apply {:.1?})",
+            started.elapsed(),
+            payload.build_time,
+            payload.convert_time,
+            apply_started.elapsed(),
+        );
+    }
+}
+
+/// Builds and runs the animation binary and converts its output. Runs on a background thread.
+fn build_reload(binary: &str, default_theme: &scal_core::Theme) -> ReloadResult {
+    let build_started = std::time::Instant::now();
     let child = std::process::Command::new("sh")
         .arg("-c")
         .arg(binary)
@@ -597,40 +681,41 @@ fn reload_animation(
     let output = child
         .wait_with_output()
         .context("Failed to wait for animation binary")?;
+    let build_time = build_started.elapsed();
 
     if !output.status.success() {
-        log::warn!("Animation binary exited with error: {}", output.status);
-        return Ok(());
+        log::warn!(
+            "Animation binary exited with error: {} (keeping the previous animation)",
+            output.status
+        );
+        return Ok(None);
     }
 
     let data = output.stdout;
     if data.len() < 8 {
         log::warn!("No data received from animation binary");
-        return Ok(());
+        return Ok(None);
     }
 
     let (len_bytes, rest) = data.split_at(8);
     let len = usize::try_from(u64::from_le_bytes(len_bytes.try_into()?))?;
     if rest.len() < len {
         log::warn!("Incomplete project data received");
-        return Ok(());
+        return Ok(None);
     }
 
+    let convert_started = std::time::Instant::now();
     let project: scal_core::Project =
         bincode::deserialize(&rest[..len]).context("Failed to deserialize project. Most likely you forgot to rebuild the scala runtime after implementing new features to the scala_core")?;
 
-    preview.background_color = project.scene_settings.background_color;
-    preview.camera = project.scene_settings.camera;
-
-    let render_animations = convert_anim_ops(project.timeline, default_theme)?;
-    preview.reload(render_animations)?;
-
-    let new_time = current_time.min(preview.total_duration());
-    preview.seek_to(new_time)?;
-    preview.set_paused(was_paused);
-
-    log::info!("Animation reloaded successfully");
-    Ok(())
+    let animations = convert_anim_ops(project.timeline, default_theme)?;
+    Ok(Some(ReloadPayload {
+        background_color: project.scene_settings.background_color,
+        camera: project.scene_settings.camera,
+        animations,
+        build_time,
+        convert_time: convert_started.elapsed(),
+    }))
 }
 
 fn start_file_watcher(
@@ -675,14 +760,12 @@ fn start_file_watcher(
                 return;
             }
 
-            let mut last_reload = std::time::Instant::now();
+            // Trailing-edge debounce: wait until edits settle, then reload once
+            // with the final file contents.
             while rx.recv().is_ok() {
-                let now = std::time::Instant::now();
-                if now.duration_since(last_reload) > Duration::from_millis(500) {
-                    last_reload = now;
-                    log::info!("File change detected, scheduling reload...");
-                    let _ = reload_tx.send(true);
-                }
+                while rx.recv_timeout(Duration::from_millis(300)).is_ok() {}
+                log::info!("File change detected, scheduling reload...");
+                let _ = reload_tx.send(true);
             }
         })
         .context("Failed to spawn file watcher thread")?;
@@ -987,7 +1070,7 @@ impl TimeTextAtlas {
             ],
         });
         TimeTextAtlas {
-            font_system: FontSystem::new(),
+            font_system: crate::anim_object::text::new_font_system(),
             swash_cache: SwashCache::new(),
             labels: Vec::new(),
             texture: Some(default_tex),
@@ -1081,7 +1164,7 @@ impl TimeTextAtlas {
         time_labels: &[(f32, String, f32)],
     ) {
         self.labels.clear();
-        self.dirty = true;
+        self.dirty = false;
 
         if time_labels.is_empty() {
             self.texture = None;
@@ -1418,6 +1501,43 @@ impl PreviewRenderer {
         })
     }
 
+    /// Mixes the sounds, or returns the previous mix if neither the sounds nor their files
+    /// changed. Decoding and resampling is slow and most reloads do not touch the audio.
+    fn mix_cached(sounds: Vec<crate::sfx::ScheduledSound>) -> Result<Arc<Vec<f32>>> {
+        use std::fmt::Write;
+        use std::sync::Mutex;
+        static LAST_MIX: Mutex<Option<(String, Arc<Vec<f32>>)>> = Mutex::new(None);
+
+        // Everything the mix depends on; the source location is left out on purpose, it
+        // changes whenever lines are added above a sound.
+        let mut key = String::new();
+        for sound in &sounds {
+            let _ = write!(
+                key,
+                "{}|{}|{}|{}|{}|{}|{:?};",
+                sound.path,
+                sound.volume,
+                sound.pitch,
+                sound.start_time,
+                sound.seek_offset,
+                sound.duration,
+                crate::anim_object::object_trait::file_cache_key(&sound.path),
+            );
+        }
+        if let Some((last_key, pcm)) = &*LAST_MIX.lock().expect("mix cache poisoned")
+            && *last_key == key
+        {
+            log::debug!("audio unchanged, reusing the previous mix");
+            return Ok(pcm.clone());
+        }
+
+        let started = std::time::Instant::now();
+        let pcm = Arc::new(AudioEngine::new(sounds).mix()?);
+        log::debug!("mixed audio in {:.1?}", started.elapsed());
+        *LAST_MIX.lock().expect("mix cache poisoned") = Some((key, pcm.clone()));
+        Ok(pcm)
+    }
+
     fn init_audio(
         animations: &[AnimOperation],
         timeline_width: u32,
@@ -1449,8 +1569,7 @@ impl PreviewRenderer {
         if sounds.is_empty() {
             return (None, vec![], sound_markers);
         }
-        let engine = AudioEngine::new(sounds);
-        let pcm = match engine.mix() {
+        let pcm = match Self::mix_cached(sounds) {
             Ok(pcm) => pcm,
             Err(e) => {
                 log::error!("failed to mix audio for preview: {e}");
@@ -1461,7 +1580,7 @@ impl PreviewRenderer {
             return (None, vec![], sound_markers);
         }
         let waveform = compute_waveform(&pcm, (timeline_width.max(1) as usize) * 50);
-        let player = match AudioPlayer::new(pcm, crate::sfx::OUTPUT_SAMPLE_RATE) {
+        let player = match AudioPlayer::new(pcm.to_vec(), crate::sfx::OUTPUT_SAMPLE_RATE) {
             Ok(p) => {
                 p.set_paused(initially_paused);
                 Some(p)
@@ -1917,6 +2036,10 @@ impl PreviewRenderer {
                 // Rebuild text atlas on explicit dirty (zoom/resize/reload) or when label set changes
                 if self.time_text_atlas.dirty
                     || label_data.len() != self.time_text_atlas.labels.len()
+                    || label_data
+                        .iter()
+                        .zip(&self.time_text_atlas.labels)
+                        .any(|(d, l)| d.0 != l.time)
                 {
                     self.time_text_atlas
                         .rebuild(&self.device, &self.queue, &label_data);
@@ -2318,26 +2441,32 @@ impl PreviewRenderer {
     }
 
     pub fn seek_to(&mut self, time_sec: f32) -> Result<()> {
-        let frame = (time_sec * self.fps as f32).round() as u64;
-        self.current_frame = frame.min(self.total_frames);
-        self.finished = false;
-        self.frame_rendered = false;
+        let started = std::time::Instant::now();
+        let frame = ((time_sec * self.fps as f32).round() as u64).min(self.total_frames);
 
+        let animator_started = std::time::Instant::now();
         let mut animator = Animator::new(
             self.original_animations.clone(),
             self.fps,
             self.camera,
             self.text_resolution_multiplier,
         )?;
+        let animator_time = animator_started.elapsed();
 
         // Fast-forward
-        for _ in 0..self.current_frame {
+        let fast_forward_started = std::time::Instant::now();
+        let mut finished = false;
+        for _ in 0..frame {
             if animator.animate_next_frame()?.is_none() {
-                self.finished = true;
+                finished = true;
                 break;
             }
         }
+        let fast_forward_time = fast_forward_started.elapsed();
 
+        self.current_frame = frame;
+        self.finished = finished;
+        self.frame_rendered = false;
         self.animator = animator;
         // Upload the glyph atlas — the fast-forward loop above rasterized
         // glyphs into the fresh atlas but discarded every glyph_update_data
@@ -2354,6 +2483,10 @@ impl PreviewRenderer {
             player.seek_to(self.current_time());
         }
 
+        log::debug!(
+            "seek to frame {frame} took {:.1?} (animator setup {animator_time:.1?}, fast-forward {fast_forward_time:.1?})",
+            started.elapsed(),
+        );
         Ok(())
     }
 
@@ -2477,7 +2610,11 @@ impl PreviewRenderer {
         self.time_text_atlas.dirty = true;
     }
 
-    pub fn reload(&mut self, animations: Vec<AnimOperation>) -> Result<()> {
+    /// Replaces the animation and seeks the new one to `time_sec` (clamped to its length).
+    /// Playback is left paused or playing as it was.
+    pub fn reload(&mut self, animations: Vec<AnimOperation>, time_sec: f32) -> Result<()> {
+        let started = std::time::Instant::now();
+        let was_paused = self.paused;
         let (timeline_ops, total_dur) = flatten_ops(&animations);
         self.total_frames = if total_dur > 0.0 {
             (total_dur * self.fps as f32).ceil() as u64
@@ -2486,37 +2623,30 @@ impl PreviewRenderer {
         };
         self.timeline_ops = timeline_ops;
         self.original_animations = animations;
-        self.current_frame = 0;
-        self.finished = false;
-        self.paused = false;
-        self.frame_rendered = false;
 
-        self.animator = Animator::new(
-            self.original_animations.clone(),
-            self.fps,
-            self.camera,
-            self.text_resolution_multiplier,
-        )?;
-
-        // Upload the new glyph atlas — the GPU texture still has the old atlas
-        // data from the previous animation.  Without this, any change to text
-        // content (value, font-size, etc.) would render with stale glyph pixels
-        // until the next frame advance that happens to upload.
-        self.animator.text_manager.atlas.dirty = true;
-        if let Some(glyph_data) = self.animator.text_manager.atlas.get_glyph_update_data() {
-            self.text_renderer
-                .update_glyphs_if_needed(glyph_data, &self.queue);
-        }
+        // Object uuids change on every reload; drop what was built for the old ones.
+        self.renderer.begin_reload();
 
         // Re-init audio (starts paused; unpaused on first frame advance)
+        let audio_started = std::time::Instant::now();
         let (audio_player, waveform, sound_markers) =
             Self::init_audio(&self.original_animations, self.surface_config.width, true);
         self.audio_player = audio_player;
         self.waveform = waveform;
         self.sound_markers = sound_markers;
+        let audio_time = audio_started.elapsed();
+
+        // Builds the new animator, fast-forwards it and uploads its glyph atlas.
+        self.paused = false;
+        let seek_result = self.seek_to(time_sec.min(self.total_duration()));
+        self.set_paused(was_paused);
+        seek_result?;
 
         self.time_text_atlas.dirty = true;
-
+        log::debug!(
+            "preview state replaced in {:.1?} (audio {audio_time:.1?})",
+            started.elapsed()
+        );
         Ok(())
     }
 

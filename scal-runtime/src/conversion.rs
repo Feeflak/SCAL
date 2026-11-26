@@ -62,6 +62,12 @@ fn convert_anim_op(
                 }
                 op
             } else {
+                if let scal_core::anim_obj::AnimObjKind::Image { path, .. } = &core_obj.kind
+                    && !std::path::Path::new(path).is_file()
+                {
+                    let loc_str = loc.as_ref().map(|l| l.to_string()).unwrap_or_default();
+                    bail!("image file not found: \"{path}\" {loc_str}");
+                }
                 let render_obj = convert_core_anim_obj(*core_obj, default_theme)?;
                 AnimOperation::Instantiate(render_obj, loc)
             }

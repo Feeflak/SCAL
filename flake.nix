@@ -95,6 +95,7 @@
         devShells.default = pkgs.mkShell {
           packages =
             buildDeps
+            ++ [ pkgs.mold ]
             ++ runtimeDeps
             ++ (with pkgs; [
               rust-analyzer
@@ -114,7 +115,7 @@
           # Bake the runtime libs into binaries built by cargo (rpath) instead of
           # exporting LD_LIBRARY_PATH, which leaks into every program started in
           # the shell and breaks binaries built against a different nixpkgs.
-          RUSTFLAGS = "-C link-arg=-Wl,--disable-new-dtags -C link-arg=-Wl,-rpath,${pkgs.lib.makeLibraryPath runtimeDeps}";
+          RUSTFLAGS = "-C link-arg=-fuse-ld=mold -C link-arg=-Wl,--disable-new-dtags -C link-arg=-Wl,-rpath,${pkgs.lib.makeLibraryPath runtimeDeps}";
         };
       }
     );

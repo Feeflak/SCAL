@@ -436,6 +436,14 @@ impl AnimObjectTrait for Math {
         }
         Ok((vertices, indices, PipelineKind::Image))
     }
+    fn bind_group_cache_key(&self) -> Option<String> {
+        // The rasterized layers fully determine the texture.
+        Some(format!(
+            "math|{:016x}|{:?}",
+            hash_str(&format!("{:?}", self.layers)),
+            self.size
+        ))
+    }
     fn bind_group_loader(&self) -> Option<BindGroupLoader> {
         let layers = self.layers.clone();
         let size = self.size;

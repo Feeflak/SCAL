@@ -50,7 +50,7 @@ fn set_content(
 fn measure_text_width(text: &Text) -> f32 {
     static FONT_SYSTEM: OnceLock<Mutex<FontSystem>> = OnceLock::new();
     let mut font_system = FONT_SYSTEM
-        .get_or_init(|| Mutex::new(FontSystem::new()))
+        .get_or_init(|| Mutex::new(new_font_system()))
         .lock()
         .expect("font system lock poisoned");
 
@@ -195,6 +195,29 @@ impl AnimObjectTrait for Text {
     }
 }
 
+/// Creates a [`FontSystem`] without rescanning the system fonts every time.
+///
+/// `FontSystem::new()` scans every installed font, which takes a long time (especially in
+/// debug builds) and every `Animator` needs one, so a reload would pay for it twice. The
+/// scanned font database is kept around and cloned for each new `FontSystem` instead.
+pub fn new_font_system() -> FontSystem {
+    use cosmic_text::fontdb;
+    static FONT_DB: OnceLock<(String, fontdb::Database)> = OnceLock::new();
+    let started = std::time::Instant::now();
+    let mut scanned = false;
+    let (locale, db) = FONT_DB.get_or_init(|| {
+        scanned = true;
+        FontSystem::new().into_locale_and_db()
+    });
+    let system = FontSystem::new_with_locale_and_db(locale.clone(), db.clone());
+    log::debug!(
+        "font system ready in {:.1?} ({})",
+        started.elapsed(),
+        if scanned { "scanned system fonts" } else { "reused font database" }
+    );
+    system
+}
+
 pub struct TextManager {
     pub code_highlighter: CodeHighlighter,
     pub font_system: FontSystem,
@@ -210,7 +233,7 @@ impl TextManager {
             code_highlighter: CodeHighlighter {
                 highlighter: Highlighter::new(),
             },
-            font_system: FontSystem::new(),
+            font_system: new_font_system(),
             atlas: atlas::GlyphAtlas::new(scale),
             scale,
         }
