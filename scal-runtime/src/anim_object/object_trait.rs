@@ -50,6 +50,10 @@ pub trait AnimObjectTrait: Any + std::fmt::Debug + Send + Sync {
     fn bind_group_cache_key(&self) -> Option<String> {
         None
     }
+    /// Does the CPU work of `bind_group_loader` (decoding, rasterizing) ahead of time. Called
+    /// from a background thread when an animation is loaded, so the first frame does not have
+    /// to. Only objects with a `bind_group_cache_key` are prewarmed.
+    fn prewarm(&self) {}
     fn layout_parent(&self) -> Option<Uuid> {
         self.transform().layout_container
     }

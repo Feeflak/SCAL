@@ -155,6 +155,7 @@ impl Renderer {
         self.content_bind_groups
             .retain(|_, cached| cached.generation >= generation);
         self.generation += 1;
+        crate::anim_object::prepared::reset_built(self.content_bind_groups.keys().cloned());
         debug!(
             "renderer reset for reload: dropped {transforms} object transform buffers, kept {} of {before} cached bind group sets",
             self.content_bind_groups.len()
@@ -273,6 +274,7 @@ impl Renderer {
                 if let Some(key) = cache_key
                     && !groups.is_empty()
                 {
+                    crate::anim_object::prepared::mark_built(&key);
                     self.insert_cached_bind_groups(key, groups.clone());
                 }
                 self.per_object_bind_groups.insert(uuid, (version, groups));

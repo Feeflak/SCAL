@@ -4,6 +4,7 @@ use glam::Vec2;
 use scal_core::{Color, StretchMode};
 
 use crate::anim_object::Transform;
+use crate::anim_object::prepared::Pixels;
 use crate::anim_object::image::mesh::generate_image_mesh_data;
 use crate::anim_object::object_trait::{AnimObjectTrait, BindGroupLoader, MeshResult};
 use crate::anim_object::render::PipelineData;
@@ -37,11 +38,23 @@ impl AnimObjectTrait for Image {
             crate::anim_object::object_trait::file_cache_key(&self.path)?
         ))
     }
+    fn prewarm(&self) {
+        if let Some(key) = self.bind_group_cache_key() {
+            match decode_image(&self.path) {
+                Ok(pixels) => crate::anim_object::prepared::put(key, pixels),
+                Err(e) => log::debug!("could not prepare image {}: {e:#}", self.path),
+            }
+        }
+    }
     fn bind_group_loader(&self) -> Option<BindGroupLoader> {
         let path = self.path.clone();
+        let key = self.bind_group_cache_key();
         Some(Box::new(
             move |device, queue| match crate::anim_object::image::load_image_bind_group(
-                device, queue, &path,
+                device,
+                queue,
+                &path,
+                key.as_deref(),
             ) {
                 Ok(bg) => vec![bg],
                 Err(e) => {
@@ -175,14 +188,37 @@ pub fn create_image_pipeline(
     }
 }
 
+/// Reads and decodes the image at `path`.
+fn decode_image(path: &str) -> Result<Pixels, anyhow::Error> {
+    use anyhow::Context;
+    let img = image::ImageReader::open(path)
+        .with_context(|| format!("while opening the image {path:?}"))?
+        .decode()
+        .with_context(|| format!("while decoding the image {path:?}"))?
+        .to_rgba8();
+    let (width, height) = img.dimensions();
+    Ok(Pixels {
+        data: img.into_raw(),
+        width,
+        height,
+    })
+}
+
 pub fn load_image_bind_group(
     device: &wgpu::Device,
     queue: &wgpu::Queue,
     path: &str,
+    cache_key: Option<&str>,
 ) -> Result<wgpu::BindGroup, anyhow::Error> {
-    let img = image::ImageReader::open(path)?.decode()?.to_rgba8();
-    let (width, height) = img.dimensions();
-    let pixels = img.into_raw();
+    let prepared = cache_key.and_then(crate::anim_object::prepared::take);
+    let Pixels {
+        data: pixels,
+        width,
+        height,
+    } = match prepared {
+        Some(pixels) => pixels,
+        None => decode_image(path)?,
+    };
 
     let texture = device.create_texture(&wgpu::TextureDescriptor {
         label: Some(&format!("image_tex_{path}")),

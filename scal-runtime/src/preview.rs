@@ -272,7 +272,17 @@ impl ApplicationHandler for PreviewState {
 
                 if should_advance {
                     self.last_frame_advance = std::time::Instant::now();
-                    match preview.advance_render_present() {
+                    let frame_started = std::time::Instant::now();
+                    let frame_result = preview.advance_render_present();
+                    let frame_time = frame_started.elapsed();
+                    // The event loop is blocked while a frame renders, so a slow one makes the
+                    // whole window (and its logs) lag. Say so instead of leaving it a mystery.
+                    if frame_time > Duration::from_millis(200) {
+                        log::warn!(
+                            "slow frame: {frame_time:.1?} (the window cannot react in the meantime)"
+                        );
+                    }
+                    match frame_result {
                         Ok(more) => {
                             if !more {
                                 // Replay on finish
@@ -578,6 +588,8 @@ struct ReloadPayload {
     build_time: Duration,
     /// How long decoding its output and converting it to render operations took.
     convert_time: Duration,
+    /// How long preparing its textures (decoding, rasterizing) took.
+    prewarm_time: Duration,
 }
 
 /// What the background thread of a reload sends back; `None` means the reload was skipped
@@ -658,10 +670,11 @@ impl PreviewState {
             return;
         }
         log::info!(
-            "Animation reloaded in {:.1?} (build and run {:.1?}, convert {:.1?}, apply {:.1?})",
+            "Animation reloaded in {:.1?} (build and run {:.1?}, convert {:.1?}, textures {:.1?}, apply {:.1?})",
             started.elapsed(),
             payload.build_time,
             payload.convert_time,
+            payload.prewarm_time,
             apply_started.elapsed(),
         );
     }
@@ -712,12 +725,18 @@ fn build_reload(binary: &str, default_theme: &scal_core::Theme) -> ReloadResult 
         bincode::deserialize(&rest[..len]).context("Failed to deserialize project. Most likely you forgot to rebuild the scala runtime after implementing new features to the scala_core")?;
 
     let animations = convert_anim_ops(project.timeline, default_theme)?;
+    let convert_time = convert_started.elapsed();
+    // Decode and rasterize textures now, off the render thread.
+    let prewarm_started = std::time::Instant::now();
+    crate::anim_object::prepared::prewarm(&animations);
+    let prewarm_time = prewarm_started.elapsed();
     Ok(Some(ReloadPayload {
         background_color: project.scene_settings.background_color,
         camera: project.scene_settings.camera,
         animations,
         build_time,
-        convert_time: convert_started.elapsed(),
+        convert_time,
+        prewarm_time,
     }))
 }
 

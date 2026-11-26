@@ -444,12 +444,32 @@ impl AnimObjectTrait for Math {
             self.size
         ))
     }
+    fn prewarm(&self) {
+        if let Some(key) = self.bind_group_cache_key() {
+            match rasterize(&self.layers, self.size) {
+                Ok((data, width, height)) => crate::anim_object::prepared::put(
+                    key,
+                    crate::anim_object::prepared::Pixels {
+                        data,
+                        width,
+                        height,
+                    },
+                ),
+                Err(e) => log::debug!("could not prepare equation {}: {e:#}", self.latex),
+            }
+        }
+    }
     fn bind_group_loader(&self) -> Option<BindGroupLoader> {
         let layers = self.layers.clone();
         let size = self.size;
         let label = format!("math_{}", self.latex);
+        let key = self.bind_group_cache_key();
         Some(Box::new(move |device, queue| {
-            match rasterize(&layers, size) {
+            let rasterized = match key.as_deref().and_then(crate::anim_object::prepared::take) {
+                Some(p) => Ok((p.data, p.width, p.height)),
+                None => rasterize(&layers, size),
+            };
+            match rasterized {
                 Ok((pixels, w, h)) => {
                     vec![upload_rgba_bind_group(device, queue, &label, &pixels, w, h)]
                 }

@@ -16,6 +16,7 @@ pub mod image;
 pub mod math;
 pub mod object_trait;
 pub mod padding;
+pub mod prepared;
 pub mod primitive_shapes;
 pub mod render;
 pub mod scroll;

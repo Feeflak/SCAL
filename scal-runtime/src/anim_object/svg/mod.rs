@@ -5,6 +5,7 @@ use glam::Vec2;
 use scal_core::{Color, StretchMode};
 
 use crate::anim_object::Transform;
+use crate::anim_object::prepared::Pixels;
 use crate::anim_object::object_trait::{AnimObjectTrait, BindGroupLoader, MeshResult};
 use crate::anim_object::svg::mesh::generate_svg_mesh_data;
 
@@ -44,11 +45,23 @@ impl AnimObjectTrait for Svg {
             self.stretch,
         ))
     }
+    fn prewarm(&self) {
+        if let Some(key) = self.bind_group_cache_key() {
+            match rasterize_svg(self) {
+                Ok(pixels) => crate::anim_object::prepared::put(key, pixels),
+                Err(e) => log::debug!("could not prepare svg {}: {e:#}", self.path),
+            }
+        }
+    }
     fn bind_group_loader(&self) -> Option<BindGroupLoader> {
         let svg = self.clone();
+        let key = self.bind_group_cache_key();
         Some(Box::new(
             move |device, queue| match crate::anim_object::svg::load_svg_bind_group(
-                device, queue, &svg,
+                device,
+                queue,
+                &svg,
+                key.as_deref(),
             ) {
                 Ok(bg) => vec![bg],
                 Err(e) => {
@@ -98,8 +111,30 @@ pub fn load_svg_bind_group(
     device: &wgpu::Device,
     queue: &wgpu::Queue,
     svg: &Svg,
+    cache_key: Option<&str>,
 ) -> Result<wgpu::BindGroup, anyhow::Error> {
-    let svg_data = std::fs::read(&svg.path)?;
+    let Pixels {
+        data,
+        width,
+        height,
+    } = match cache_key.and_then(crate::anim_object::prepared::take) {
+        Some(pixels) => pixels,
+        None => rasterize_svg(svg)?,
+    };
+    Ok(upload_rgba_bind_group(
+        device,
+        queue,
+        &format!("svg_{}", svg.path),
+        &data,
+        width,
+        height,
+    ))
+}
+
+/// Reads the svg file and rasterizes it at its display size.
+fn rasterize_svg(svg: &Svg) -> Result<Pixels, anyhow::Error> {
+    let svg_data = std::fs::read(&svg.path)
+        .with_context(|| format!("while reading the svg {:?}", svg.path))?;
 
     let raw = String::from_utf8(svg_data)?;
 
@@ -152,14 +187,11 @@ pub fn load_svg_bind_group(
         &mut pixmap.as_mut(),
     );
 
-    Ok(upload_rgba_bind_group(
-        device,
-        queue,
-        &format!("svg_{}", svg.path),
-        &pixmap.take(),
-        render_w,
-        render_h,
-    ))
+    Ok(Pixels {
+        data: pixmap.take(),
+        width: render_w,
+        height: render_h,
+    })
 }
 
 /// Uploads straight-RGBA8 pixels as a texture and returns the texture + sampler bind group
