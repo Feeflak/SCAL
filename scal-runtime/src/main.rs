@@ -5,6 +5,7 @@ pub mod animator;
 pub mod audio_player;
 pub mod conversion;
 pub mod encoder;
+mod fast_build;
 pub mod nv12;
 pub mod preview;
 pub mod projection;

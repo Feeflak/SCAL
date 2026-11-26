@@ -670,11 +670,14 @@ impl PreviewState {
 /// Builds and runs the animation binary and converts its output. Runs on a background thread.
 fn build_reload(binary: &str, default_theme: &scal_core::Theme) -> ReloadResult {
     let build_started = std::time::Instant::now();
-    let child = std::process::Command::new("sh")
+    let mut command = std::process::Command::new("sh");
+    command
         .arg("-c")
         .arg(binary)
         .stdout(std::process::Stdio::piped())
-        .stderr(std::process::Stdio::inherit())
+        .stderr(std::process::Stdio::inherit());
+    crate::fast_build::apply(&mut command);
+    let child = command
         .spawn()
         .context("Failed to spawn animation binary")?;
 

@@ -54,7 +54,7 @@
             "scal-runtime"
           ];
 
-          nativeBuildInputs = buildDeps;
+          nativeBuildInputs = buildDeps ++ [ pkgs.makeWrapper ];
 
           buildInputs = runtimeDeps;
 
@@ -72,6 +72,12 @@
             patchelf \
               --add-rpath "${pkgs.lib.makeLibraryPath runtimeDeps}" \
               $out/bin/scal-runtime
+
+            # The runtime builds the user's animation on every preview reload and links it
+            # with mold when it finds one (see scal-runtime/src/fast_build.rs). Suffix, so a
+            # mold the user already has takes precedence.
+            wrapProgram $out/bin/scal-runtime \
+              --suffix PATH : ${pkgs.lib.makeBinPath [ pkgs.mold ]}
           '';
 
           # Needed by some crates using bindgen
