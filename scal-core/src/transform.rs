@@ -5,6 +5,7 @@ use uuid::Uuid;
 use crate::anim_op::{AnimOP, IntoAnimOp};
 use crate::color::Color;
 use crate::ease::Ease;
+use crate::motion::{Motion, Tween};
 use crate::seconds::Time;
 
 /// The transform of an object, containing its position, rotation, and scale.
@@ -57,13 +58,7 @@ impl Transform {
     /// ```
     #[must_use]
     pub const fn position(&self) -> PositionBuilder {
-        PositionBuilder {
-            uuid: self.uuid,
-            target: None,
-            object: None,
-            duration: 1.0,
-            ease: Ease::Linear,
-        }
+        PositionBuilder::new(self.uuid)
     }
 
     /// Returns a builder for an animation that scales this object.
@@ -75,13 +70,7 @@ impl Transform {
     /// ```
     #[must_use]
     pub const fn scale(&self) -> ScaleBuilder {
-        ScaleBuilder {
-            uuid: self.uuid,
-            target: None,
-            object: None,
-            duration: 1.0,
-            ease: Ease::Linear,
-        }
+        ScaleBuilder::new(self.uuid)
     }
 
     /// Returns a builder for an animation that rotates this object.
@@ -93,12 +82,7 @@ impl Transform {
     /// ```
     #[must_use]
     pub const fn rotation(&self) -> RotateBuilder {
-        RotateBuilder {
-            uuid: self.uuid,
-            target: None,
-            duration: 1.0,
-            ease: Ease::Linear,
-        }
+        RotateBuilder::new(self.uuid)
     }
 }
 
@@ -113,6 +97,16 @@ pub struct PositionBuilder {
 
 #[allow(clippy::return_self_not_must_use)]
 impl PositionBuilder {
+    pub(crate) const fn new(uuid: Uuid) -> Self {
+        Self {
+            uuid,
+            target: None,
+            object: None,
+            duration: 1.0,
+            ease: Ease::Linear,
+        }
+    }
+
     #[must_use]
     /// Move to the position of another object instead of a coordinate
     pub fn object(mut self, target: impl Into<uuid::Uuid>) -> Self {
@@ -169,6 +163,16 @@ pub struct ScaleBuilder {
 
 #[allow(clippy::return_self_not_must_use)]
 impl ScaleBuilder {
+    pub(crate) const fn new(uuid: Uuid) -> Self {
+        Self {
+            uuid,
+            target: None,
+            object: None,
+            duration: 1.0,
+            ease: Ease::Linear,
+        }
+    }
+
     #[must_use]
     /// Match the scale of another object instead of using a coordinate
     pub fn object(mut self, target: impl Into<uuid::Uuid>) -> Self {
@@ -226,6 +230,15 @@ pub struct RotateBuilder {
 
 #[allow(clippy::return_self_not_must_use)]
 impl RotateBuilder {
+    pub(crate) const fn new(uuid: Uuid) -> Self {
+        Self {
+            uuid,
+            target: None,
+            duration: 1.0,
+            ease: Ease::Linear,
+        }
+    }
+
     #[must_use]
     /// Set the target rotation in degrees
     pub const fn to(mut self, target: f32) -> Self {
@@ -467,3 +480,44 @@ impl IntoAnimOp for NumberBuilder {
         self.into()
     }
 }
+
+macro_rules! impl_motion {
+    ($($builder:ty),* $(,)?) => {$(
+        #[allow(clippy::return_self_not_must_use)]
+        impl $builder {
+            /// Set duration and easing at once from a named [`Motion`], instead of
+            /// `.over(..).ease(..)`.
+            /// ```ignore
+            /// const POP: Motion = Motion::new(0.5, Ease::OutBack);
+            /// title.scale_to(1.0).with(POP)
+            /// ```
+            #[must_use]
+            pub const fn with(mut self, motion: Motion) -> Self {
+                self.duration = motion.duration;
+                self.ease = motion.ease;
+                self
+            }
+        }
+
+        impl Tween for $builder {
+            fn set_duration(mut self, duration: Time) -> Self {
+                self.duration = duration;
+                self
+            }
+            fn set_ease(mut self, ease: Ease) -> Self {
+                self.ease = ease;
+                self
+            }
+        }
+    )*};
+}
+
+impl_motion!(
+    PositionBuilder,
+    ScaleBuilder,
+    RotateBuilder,
+    ColorBuilder,
+    MathPartColorBuilder,
+    MathHighlightBuilder,
+    NumberBuilder,
+);

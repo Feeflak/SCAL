@@ -11,6 +11,7 @@ use crate::anim_builders::{
 use crate::anim_op::{AnimOP, CodeAnimationStyle};
 use crate::color::Color;
 use crate::ease::Ease;
+use crate::motion::{IntoScale, Motion};
 use crate::theme::Theme;
 use crate::transform::Transform;
 
@@ -42,6 +43,47 @@ impl AnimObj {
     #[must_use]
     pub fn instantiate(&self) -> AnimOP {
         AnimOP::Instantiate(Box::new(self.clone()), None)
+    }
+
+    /// Shortcut for `transform.position().to(target)`: animate this object to a position.
+    /// ```ignore
+    /// title.move_to(vec2(0.0, 100.0)).with(SLIDE)
+    /// ```
+    #[must_use]
+    pub fn move_to(&self, target: impl Into<Vec2>) -> crate::transform::PositionBuilder {
+        self.transform.position().to(target.into())
+    }
+
+    /// Shortcut for `transform.scale().to(..)`: animate this object to a scale. Takes an `f32`
+    /// for uniform scale (`0.5` = half size) or a `Vec2`.
+    /// ```ignore
+    /// title.scale_to(0.5).with(SLIDE)
+    /// ```
+    #[must_use]
+    pub fn scale_to(&self, target: impl IntoScale) -> crate::transform::ScaleBuilder {
+        self.transform.scale().to(target.into_scale())
+    }
+
+    /// Shortcut for `transform.rotation().to(degrees)`: animate this object to a rotation.
+    /// ```ignore
+    /// wing.rotate_to(15.0).with(SWEEP)
+    /// ```
+    #[must_use]
+    pub fn rotate_to(&self, degrees: f32) -> crate::transform::RotateBuilder {
+        self.transform.rotation().to(degrees)
+    }
+
+    /// Scale this object up to full size with [`Motion::POP_IN`]. Pair with `.hidden()` on the
+    /// object builder. Override the timing with `.with(..)`, `.over(..)` or `.ease(..)`.
+    #[must_use]
+    pub fn pop_in(&self) -> crate::transform::ScaleBuilder {
+        self.scale_to(1.0).with(Motion::POP_IN)
+    }
+
+    /// Scale this object down to nothing with [`Motion::POP_OUT`].
+    #[must_use]
+    pub fn pop_out(&self) -> crate::transform::ScaleBuilder {
+        self.scale_to(0.0).with(Motion::POP_OUT)
     }
 
     /// Returns a builder for an animation that counts the number shown by this text or math
@@ -838,6 +880,21 @@ macro_rules! impl_handle {
                     ease: Ease::Linear,
                 }
             }
+            /// Shortcut for `.position().to(target)`.
+            #[must_use]
+            pub fn move_to(&self, target: impl Into<Vec2>) -> crate::transform::PositionBuilder {
+                self.position().to(target.into())
+            }
+            /// Shortcut for `.scale().to(..)`, takes an `f32` or a `Vec2`.
+            #[must_use]
+            pub fn scale_to(&self, target: impl IntoScale) -> crate::transform::ScaleBuilder {
+                self.scale().to(target.into_scale())
+            }
+            /// Shortcut for `.rotation().to(degrees)`.
+            #[must_use]
+            pub fn rotate_to(&self, degrees: f32) -> crate::transform::RotateBuilder {
+                self.rotation().to(degrees)
+            }
             /// Returns a builder for an animation that changes this object's color.
             /// ```ignore
             ///                handle.color()
@@ -944,7 +1001,14 @@ pub struct TextSpan {
 
 /// Wrapper around the ``AnimObj`` struct for math equations. Derefs to ``AnimObj``, so
 /// ``instantiate()`` and ``transform`` work like on every other object.
-pub struct MathHandle(pub AnimObj);
+pub struct MathHandle(
+    pub AnimObj,
+    /// Default color and dim of [`MathHandle::highlight`], set with `math_style().highlight(..)`.
+    pub(crate) (Color, f32),
+);
+
+/// Color and dim [`MathHandle::highlight`] uses unless the style or the builder says otherwise.
+pub(crate) const DEFAULT_HIGHLIGHT: (Color, f32) = (Color::new(1.0, 0.9, 0.25, 1.0), 0.25);
 
 impl std::ops::Deref for MathHandle {
     type Target = AnimObj;
@@ -991,7 +1055,8 @@ impl MathHandle {
 
     /// Returns a builder for an animation that highlights the given parts and dims everything
     /// else. The highlight stays until another `highlight` replaces it (animated as a crossfade)
-    /// or `reset_highlight` clears it.
+    /// or `reset_highlight` clears it. Color and dim default to the math style's
+    /// `.highlight(color, dim)` (yellow, 0.25 without one).
     ///
     /// # Panics
     /// If a name was not defined with `var_color`.
@@ -1009,8 +1074,8 @@ impl MathHandle {
         crate::transform::MathHighlightBuilder {
             uuid: self.0.id,
             parts,
-            color: Color::new(1.0, 0.9, 0.25, 1.0),
-            dim: 0.25,
+            color: self.1.0,
+            dim: self.1.1,
             duration: 0.5,
             ease: Ease::InOutCubic,
         }

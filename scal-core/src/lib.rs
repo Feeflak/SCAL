@@ -524,6 +524,8 @@ pub mod color;
 /// Simple way to make your animations smooth. <https://easings.net/>
 pub mod ease;
 pub mod highlight_specs;
+/// Named durations/easings (`Motion`) and animating several objects at once (`group!`)
+pub mod motion;
 /// `{:.1}` style number placeholders for animated text and math
 pub mod number_format;
 #[allow(missing_docs)]
@@ -551,6 +553,7 @@ pub use anim_op::{
 pub use camera::Camera;
 pub use color::{Color, color, hex, hsv, latex_color};
 pub use ease::Ease;
+pub use motion::{Group, GroupOp, IntoScale, Motion};
 pub use project::{Project, SceneSettings};
 pub use scal_ipc_macros::timeline;
 pub use seconds::{DurationExt, Time};
@@ -575,11 +578,12 @@ pub mod prelude {
     pub use crate::camera::Camera;
     pub use crate::color::{Color, color, hex, hsv, latex_color};
     pub use crate::ease::Ease;
+    pub use crate::motion::{Group, GroupOp, IntoScale, Motion};
     pub use crate::object_builders::*;
     pub use crate::project::{Project, SceneSettings};
     pub use crate::seconds::DurationExt;
     pub use crate::sfx::{Sfx, sfx};
     pub use crate::theme::{Base16, Theme};
     pub use crate::transform::Transform;
-    pub use crate::{parallel, sequence, timeline};
+    pub use crate::{group, parallel, sequence, spawn, timeline};
 }

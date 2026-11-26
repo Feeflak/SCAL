@@ -1,11 +1,13 @@
 use glam::{Vec2, Vec3};
 use uuid::Uuid;
 
+use crate::anim_obj::DEFAULT_HIGHLIGHT;
 use crate::anim_obj::{
     Alignment, AnimObj, AnimObjKind, CodeHandle, CodeWindowHandle, LayoutDir, MathHandle, ScrollLayoutHandle,
     StretchMode, Syntax, TerminalHandle, TextModifier, TextSpan,
 };
 use crate::color::Color;
+use crate::motion::IntoScale;
 use crate::theme::Theme;
 use crate::transform::Transform;
 
@@ -24,9 +26,16 @@ macro_rules! impl_transform_methods {
                 self.transform.position.z = z;
                 self
             }
-            /// Set the scale of this object's transform
-            pub const fn scale(mut self, scale: Vec2) -> Self {
-                self.transform.scale = scale;
+            /// Set the scale of this object's transform. Takes a `Vec2` or an `f32` for uniform
+            /// scale: `.scale(0.5)`.
+            pub fn scale(mut self, scale: impl IntoScale) -> Self {
+                self.transform.scale = scale.into_scale();
+                self
+            }
+            /// Start invisible (scale zero). Bring it in later with `pop_in()` or
+            /// `scale_to(..)`; it can already be instantiated while hidden.
+            pub const fn hidden(mut self) -> Self {
+                self.transform.scale = Vec2::ZERO;
                 self
             }
             /// Set the rotation of this object's transform
@@ -684,8 +693,76 @@ pub fn math(latex: impl Into<String>) -> MathBuilder {
         font_size: 32.0,
         display: true,
         palette: Vec::new(),
+        highlight: DEFAULT_HIGHLIGHT,
         number: 0.0,
         transform: Transform::new(Vec3::ZERO),
+    }
+}
+
+/// Create a reusable style for math equations: font size, colors, named variable colors and
+/// the highlight look. Apply it with [`MathBuilder::style`].
+/// ```ignore
+/// let style = math_style()
+///     .font_size(200.0)
+///     .vars([("C", RED), ("S", BLUE), ("q", GREEN)])
+///     .highlight(YELLOW, 0.2);
+///
+/// let drag = math(r"F = \textcolor{C}{C}\textcolor{S}{S}\textcolor{q}{q}")
+///     .style(&style)
+///     .build();
+/// drag.highlight(["q"]) // already yellow with dim 0.2
+/// ```
+pub fn math_style() -> MathStyle {
+    MathStyle::default()
+}
+
+/// Reusable styling for math equations, see [`math_style`].
+#[derive(Clone, Debug, Default)]
+pub struct MathStyle {
+    font_size: Option<f32>,
+    color: Option<Color>,
+    display: Option<bool>,
+    palette: Vec<(String, Color)>,
+    highlight: Option<(Color, f32)>,
+}
+
+#[allow(clippy::return_self_not_must_use)]
+impl MathStyle {
+    /// Set the font size (em size in pixels)
+    pub const fn font_size(mut self, size: f32) -> Self {
+        self.font_size = Some(size);
+        self
+    }
+    /// Set the color of the equation
+    pub const fn color(mut self, color: Color) -> Self {
+        self.color = Some(color);
+        self
+    }
+    /// Use display style or the more compact text style
+    pub const fn display(mut self, display: bool) -> Self {
+        self.display = Some(display);
+        self
+    }
+    /// Define a named color, like [`MathBuilder::var_color`]
+    pub fn var(mut self, name: impl Into<String>, color: Color) -> Self {
+        let name = name.into();
+        match self.palette.iter_mut().find(|(n, _)| *n == name) {
+            Some(entry) => entry.1 = color,
+            None => self.palette.push((name, color)),
+        }
+        self
+    }
+    /// Define several named colors at once
+    pub fn vars<N: Into<String>>(mut self, vars: impl IntoIterator<Item = (N, Color)>) -> Self {
+        for (name, color) in vars {
+            self = self.var(name, color);
+        }
+        self
+    }
+    /// Color and dim used by `highlight(..)` on equations with this style
+    pub const fn highlight(mut self, color: Color, dim: f32) -> Self {
+        self.highlight = Some((color, dim));
+        self
     }
 }
 
@@ -697,6 +774,7 @@ pub struct MathBuilder {
     font_size: f32,
     display: bool,
     palette: Vec<(String, Color)>,
+    highlight: (Color, f32),
     number: f32,
     transform: Transform,
 }
@@ -726,7 +804,43 @@ impl MathBuilder {
     ///     .var_color("b", Color::BLUE)
     /// ```
     pub fn var_color(mut self, name: impl Into<String>, color: Color) -> Self {
-        self.palette.push((name.into(), color));
+        let name = name.into();
+        match self.palette.iter_mut().find(|(n, _)| *n == name) {
+            Some(entry) => entry.1 = color,
+            None => self.palette.push((name, color)),
+        }
+        self
+    }
+    /// Color and dim used by [`MathHandle::highlight`] when the animation does not set its own.
+    pub const fn highlight_style(mut self, color: Color, dim: f32) -> Self {
+        self.highlight = (color, dim);
+        self
+    }
+    /// Apply a reusable [`MathStyle`]. Only what the style sets is changed, and later calls on
+    /// this builder win over the style. Style variables that the latex never uses
+    /// (`\textcolor{name}`) are skipped, so one style can serve many equations.
+    /// ```ignore
+    /// let style = math_style().font_size(200.0).var("q", GREEN).highlight(YELLOW, 0.2);
+    /// math(r"\textcolor{q}{q} = v^2").style(&style).build()
+    /// ```
+    pub fn style(mut self, style: &MathStyle) -> Self {
+        if let Some(size) = style.font_size {
+            self.font_size = size;
+        }
+        if let Some(color) = style.color {
+            self.color = color;
+        }
+        if let Some(display) = style.display {
+            self.display = display;
+        }
+        if let Some(highlight) = style.highlight {
+            self.highlight = highlight;
+        }
+        for (name, color) in &style.palette {
+            if self.latex.contains(&format!("{{{name}}}")) {
+                self = self.var_color(name.clone(), *color);
+            }
+        }
         self
     }
     /// Set the number shown by `{:spec}` placeholders in the latex, e.g. `{:.1}` (default 0).
@@ -741,18 +855,21 @@ impl MathBuilder {
     #[must_use]
     pub fn build(self) -> MathHandle {
         let id = self.transform.uuid;
-        MathHandle(AnimObj {
-            id,
-            transform: self.transform,
-            kind: AnimObjKind::Math {
-                palette: self.palette,
-                latex: self.latex,
-                color: self.color,
-                font_size: self.font_size,
-                display: self.display,
-                number: self.number,
+        MathHandle(
+            AnimObj {
+                id,
+                transform: self.transform,
+                kind: AnimObjKind::Math {
+                    palette: self.palette,
+                    latex: self.latex,
+                    color: self.color,
+                    font_size: self.font_size,
+                    display: self.display,
+                    number: self.number,
+                },
             },
-        })
+            self.highlight,
+        )
     }
 }
 

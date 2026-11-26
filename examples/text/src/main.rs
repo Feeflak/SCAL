@@ -9,7 +9,7 @@ fn main() -> Project {
         .corner_radius(48.0)
         .color(color(0.08, 0.10, 0.14, 1.0))
         .pos(vec2(960.0, 540.0))
-        .scale(vec2(0.0, 0.0))
+        .hidden()
         .build();
 
     // Reusable template for small labels.
@@ -32,7 +32,7 @@ fn main() -> Project {
     let title = text()
         .value("SCAL")
         .pos(vec2(960.0, 600.0))
-        .scale(vec2(0.0, 0.0))
+        .hidden()
         .font_size(260.0)
         .font_family("sans-serif")
         .color(color(0.95, 0.97, 1.0, 1.0))
@@ -78,7 +78,7 @@ fn main() -> Project {
         .text()
         .value("Built with Rust + WGPU")
         .pos(vec2(960.0, 840.0))
-        .scale(vec2(0.5, 0.5))
+        .scale(0.5)
         .rot(-10.0)
         .color(color(0.42, 0.82, 0.62, 1.0))
         .build();
@@ -90,8 +90,13 @@ fn main() -> Project {
         .corner_radius(26.0)
         .color(color(0.2, 0.5, 0.9, 1.0))
         .pos(vec2(960.0, 305.0))
-        .scale(vec2(0.0, 0.0))
+        .hidden()
         .build();
+
+    let pop = Motion::new(0.45, Ease::OutBack);
+    let pulse = Motion::new(0.35, Ease::InOutCubic);
+    let slide = Motion::new(0.6, Ease::OutCubic);
+
     Project {
         scene_settings: SceneSettings {
             background_color: color(0.03, 0.03, 0.04, 1.0),
@@ -100,65 +105,30 @@ fn main() -> Project {
         },
         timeline: timeline![
             // Instantiate everything first.
-            panel.instantiate(),
-            badge.instantiate(),
-            title.instantiate(),
-            subtitle.instantiate(),
-            feature.instantiate(),
+            spawn![panel, badge, title, subtitle, feature],
             // Panel and title scale in together.
             parallel![
-                panel
-                    .transform
-                    .scale()
-                    .to(Vec2::ONE)
-                    .over(0.8.s())
-                    .ease(Ease::OutBack),
-                title_handle
-                    .scale()
-                    .to(Vec2::ONE)
-                    .over(0.9.s())
-                    .ease(Ease::OutBack),
-                title_handle
-                    .position()
-                    .to(vec2(960.0, 420.0))
-                    .over(0.9.s())
-                    .ease(Ease::OutBack),
+                panel.pop_in().over(0.8),
+                title_handle.scale_to(1.0).with(pop).over(0.9),
+                title_handle.move_to(vec2(960.0, 420.0)).with(pop).over(0.9),
             ],
             wait(0.15.s()),
             // Badge pops in under the title.
-            badge
-                .transform
-                .scale()
-                .to(Vec2::ONE)
-                .over(0.45.s())
-                .ease(Ease::OutBack),
+            badge.pop_in().over(0.45),
             wait(0.15.s()),
             // Subtitle slides up and fades in.
             parallel![
-                subtitle_handle
-                    .position()
-                    .to(vec2(960.0, 620.0))
-                    .over(0.6.s())
-                    .ease(Ease::OutCubic),
+                subtitle_handle.move_to(vec2(960.0, 620.0)).with(slide),
                 subtitle_handle
                     .color()
                     .to(color(0.72, 0.76, 0.84, 1.0))
-                    .over(0.6.s())
-                    .ease(Ease::OutCubic),
+                    .with(slide),
             ],
             wait(0.25.s()),
             // Feature label pops in with a little rotation.
             parallel![
-                feature_handle
-                    .scale()
-                    .to(Vec2::ONE)
-                    .over(0.5.s())
-                    .ease(Ease::OutBack),
-                feature_handle
-                    .rotation()
-                    .to(0.0)
-                    .over(0.5.s())
-                    .ease(Ease::OutBack),
+                feature_handle.scale_to(1.0).with(pop),
+                feature_handle.rotate_to(0.0).with(pop),
             ],
             wait(0.6.s()),
             // Title color pulse + subtle scale bounce.
@@ -166,25 +136,15 @@ fn main() -> Project {
                 title_handle
                     .color()
                     .to(color(0.55, 0.8, 1.0, 1.0))
-                    .over(0.35.s())
-                    .ease(Ease::InOutCubic),
-                title_handle
-                    .scale()
-                    .to(vec2(1.06, 1.06))
-                    .over(0.35.s())
-                    .ease(Ease::InOutCubic),
+                    .with(pulse),
+                title_handle.scale_to(1.06).with(pulse),
             ],
             parallel![
                 title_handle
                     .color()
                     .to(color(0.95, 0.97, 1.0, 1.0))
-                    .over(0.35.s())
-                    .ease(Ease::InOutCubic),
-                title_handle
-                    .scale()
-                    .to(Vec2::ONE)
-                    .over(0.35.s())
-                    .ease(Ease::InOutCubic),
+                    .with(pulse),
+                title_handle.scale_to(1.0).with(pulse),
             ],
             wait(1.0.s()),
         ],

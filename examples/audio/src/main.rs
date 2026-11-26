@@ -89,21 +89,15 @@ fn fib(n: u32) -> u32 {
                 .ease(Ease::InOutCubic),
             parallel![
                 sequence![
-                    cw.close_button().scale().to(Vec2::ONE * 0.8).over(0.3.s()),
-                    cw.close_button().scale().to(Vec2::ONE).over(0.3.s()),
+                    cw.close_button().scale_to(0.8).over(0.3),
+                    cw.close_button().scale_to(1.0).over(0.3),
                 ],
                 click.play(),
             ],
             click.play(),
-            cw.transform
-                .scale()
-                .to(Vec2::ZERO)
-                .over(0.5)
-                .ease(Ease::OutCubic),
+            cw.scale_to(0.0).over(0.5).ease(Ease::OutCubic),
             typing.play(),
-            cw.transform
-                .position()
-                .to((WINDOW - vec2(CW_WIDTH, CW_HEIGHT)) / 2.)
+            cw.move_to((WINDOW - vec2(CW_WIDTH, CW_HEIGHT)) / 2.)
                 .over(0.5)
                 .ease(Ease::OutCubic),
             wait(0.5.s()),

@@ -50,8 +50,8 @@ fn main() -> Project {
     // left, so a clockwise turn lifts the nose: a positive angle of attack is a positive
     // rotation. Facing the other way, you would use `-aoa`.
     let aoa = 15.0;
-    let over = 3.0.s();
-    let ease = Ease::InOutCubic;
+    // One motion shared by the rotation and the counters keeps them in sync.
+    let sweep = Motion::new(3.0, Ease::InOutCubic);
 
     Project {
         scene_settings: SceneSettings {
@@ -60,22 +60,19 @@ fn main() -> Project {
             default_theme: Theme::default(),
         },
         timeline: timeline![
-            airflow.instantiate(),
-            wing.instantiate(),
-            label.instantiate(),
-            plain.instantiate(),
+            spawn![airflow, wing, label, plain],
             wait(0.5.s()),
             parallel![
-                wing.transform.rotation().to(aoa).over(over).ease(ease),
-                label.number().from(0.0).to(aoa).over(over).ease(ease),
-                plain.number().from(0.0).to(aoa).over(over).ease(ease),
+                wing.rotate_to(aoa).with(sweep),
+                label.number().from(0.0).to(aoa).with(sweep),
+                plain.number().from(0.0).to(aoa).with(sweep),
             ],
             wait(0.5.s()),
             // `from` is optional: without it the count starts from the number being shown.
             parallel![
-                wing.transform.rotation().to(0.0).over(over).ease(ease),
-                label.number().to(0.0).over(over).ease(ease),
-                plain.number().to(0.0).over(over).ease(ease),
+                wing.rotate_to(0.0).with(sweep),
+                label.number().to(0.0).with(sweep),
+                plain.number().to(0.0).with(sweep),
             ],
             wait(0.5.s()),
         ],
