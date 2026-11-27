@@ -284,6 +284,34 @@ impl Code {
         Ok(())
     }
 
+    /// Starts a new highlight at progress 0 and returns its index. With `clear` the existing
+    /// highlights are not removed at once, they fade out with `set_highlight_progress`.
+    pub fn begin_highlight(&mut self, highlight: CodeHighlight, clear: bool) -> usize {
+        if clear {
+            for old in &mut self.highlights {
+                old.fade_from.get_or_insert(old.progress);
+            }
+        }
+        self.highlights.push(highlight);
+        self.highlights.len() - 1
+    }
+
+    /// Fades in the highlight `index` to `t` (0..1) and fades out the replaced ones by the same
+    /// amount. At `t == 1` the replaced ones are dropped, so `index` is not valid anymore.
+    pub fn set_highlight_progress(&mut self, index: usize, t: f32) {
+        if let Some(highlight) = self.highlights.get_mut(index) {
+            highlight.progress = t;
+        }
+        for old in &mut self.highlights {
+            if let Some(from) = old.fade_from {
+                old.progress = from * (1.0 - t);
+            }
+        }
+        if t >= 1.0 {
+            self.highlights.retain(|h| h.fade_from.is_none());
+        }
+    }
+
     /// Lines a highlight covers.
     fn highlight_lines_of(&self, highlight: &CodeHighlight) -> Vec<usize> {
         match &highlight.kind {
