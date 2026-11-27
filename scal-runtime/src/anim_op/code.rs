@@ -415,6 +415,85 @@ pub fn morph(
 mod tests {
     use super::*;
 
+    fn highlight_op(uuid: Uuid, range: std::ops::Range<usize>, clear: bool) -> Animation {
+        highlight_fade_in(
+            uuid,
+            CodeHighlightAction::Lines {
+                ranges: vec![range],
+                color: scal_core::Color::WHITE,
+                duration: 1.0,
+                curve: Ease::Linear,
+                clear,
+            },
+            1.0,
+            Ease::Linear,
+        )
+    }
+
+    fn weights(animator: &crate::animator::Animator, uuid: Uuid) -> (f32, Vec<(usize, f32)>) {
+        let code = animator
+            .get_object(&uuid)
+            .unwrap()
+            .anim_data
+            .as_any()
+            .downcast_ref::<Code>()
+            .unwrap();
+        let (overall, lines) = code.highlight_weights();
+        let mut lines: Vec<_> = lines.into_iter().collect();
+        lines.sort_by_key(|(l, _)| *l);
+        (overall, lines)
+    }
+
+    #[test]
+    fn replacing_a_highlight_crossfades_instead_of_undimming_at_once() {
+        let uuid = Uuid::new_v4();
+        let camera = scal_core::Camera::new(glam::Vec2::new(100.0, 100.0), glam::Vec2::ZERO, 1.0);
+        let mut animator = crate::animator::Animator::new(
+            vec![crate::anim_op::AnimOperation::Wait(0.001, None)],
+            60,
+            camera,
+            1.0,
+        )
+        .unwrap();
+        let code = Code::new(
+            "a\nb\nc\nd".to_string(),
+            scal_core::Syntax::Plain,
+            scal_core::Theme::default(),
+            "monospace".to_string(),
+            crate::anim_object::Alignment::Start,
+            20.0,
+            crate::anim_object::Transform::with_uuid(uuid, glam::Vec3::ZERO),
+            0.0,
+        );
+        animator
+            .add_anim_object(crate::anim_object::object_trait::DynAnimObj(Box::new(code)))
+            .unwrap();
+
+        // Line 0 is fully highlighted, everything else dimmed.
+        let first = highlight_op(uuid, 0..1, false);
+        let mut store = vec![];
+        (first.start)(&mut animator, &mut store).unwrap();
+        (first.update.unwrap())(&mut animator, 1.0, &mut store).unwrap();
+        assert_eq!(weights(&animator, uuid), (1.0, vec![(0, 1.0)]));
+
+        // Replace it with line 2.
+        let second = highlight_op(uuid, 2..3, true);
+        let mut store = vec![];
+        (second.start)(&mut animator, &mut store).unwrap();
+        let update = second.update.unwrap();
+
+        // Right at the start nothing changes: line 0 is still lit, line 2 still dimmed.
+        update(&mut animator, 0.0, &mut store).unwrap();
+        assert_eq!(weights(&animator, uuid), (1.0, vec![(0, 1.0), (2, 0.0)]));
+        // Halfway the old line is half dimmed and the new one half lit, the rest stays dimmed
+        // the same, so the overall dimming never lets go.
+        update(&mut animator, 0.5, &mut store).unwrap();
+        assert_eq!(weights(&animator, uuid), (1.0, vec![(0, 0.5), (2, 0.5)]));
+        // At the end only the new highlight is left.
+        update(&mut animator, 1.0, &mut store).unwrap();
+        assert_eq!(weights(&animator, uuid), (1.0, vec![(2, 1.0)]));
+    }
+
     #[test]
     fn insert_lines_beginning() {
         let mut source = "line1\nline2".to_string();
@@ -564,7 +643,11 @@ pub fn highlight_fade_in(
                     CodeHighlightAction::Pattern { clear, .. } => *clear,
                 };
                 if clear {
-                    code.highlights.clear();
+                    // The old highlights fade out together with the new one fading in, instead
+                    // of vanishing at once. Finished fades are dropped at the end of the update.
+                    for old in &mut code.highlights {
+                        old.fade_from.get_or_insert(old.progress);
+                    }
                 }
                 let highlight = match &action {
                     CodeHighlightAction::Lines { ranges, color, .. } => CodeHighlight {
@@ -573,6 +656,7 @@ pub fn highlight_fade_in(
                             ranges: ranges.clone(),
                         },
                         progress: 0.0,
+                        fade_from: None,
                     },
                     CodeHighlightAction::Pattern { regex, color, .. } => CodeHighlight {
                         color: *color,
@@ -580,6 +664,7 @@ pub fn highlight_fade_in(
                             regex: regex.clone(),
                         },
                         progress: 0.0,
+                        fade_from: None,
                     },
                 };
                 let idx = code.highlights.len();
@@ -600,6 +685,14 @@ pub fn highlight_fade_in(
         if let Some(code) = code_mut(obj.anim_data.as_any_mut()) {
             if let Some(hl) = code.highlights.get_mut(idx) {
                 hl.progress = t;
+            }
+            for old in &mut code.highlights {
+                if let Some(from) = old.fade_from {
+                    old.progress = from * (1.0 - t);
+                }
+            }
+            if t >= 1.0 {
+                code.highlights.retain(|h| h.fade_from.is_none());
             }
         }
         let _ = obj;

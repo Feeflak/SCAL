@@ -8,7 +8,7 @@ use tree_sitter_highlight::HighlightConfiguration;
 
 use uuid::Uuid;
 
-use std::collections::HashSet;
+use std::collections::HashMap;
 use std::ops::Range;
 
 use crate::{
@@ -106,6 +106,8 @@ pub struct CodeHighlight {
     pub color: Color,
     pub kind: CodeHighlightKind,
     pub progress: f32,
+    /// Set while a replaced highlight fades out: the progress it had when it was replaced.
+    pub fade_from: Option<f32>,
 }
 
 /// State of a running morph from one source and font size to another, see [`morph`].
@@ -282,36 +284,44 @@ impl Code {
         Ok(())
     }
 
-    pub fn highlighted_lines(&self) -> HashSet<usize> {
-        let mut lines = HashSet::new();
-        for highlight in &self.highlights {
-            match &highlight.kind {
-                CodeHighlightKind::Lines { ranges } => {
-                    for range in ranges {
-                        for line in range.clone() {
-                            lines.insert(line);
-                        }
-                    }
-                }
-                CodeHighlightKind::Pattern { regex } => {
-                    if let Ok(re) = regex::Regex::new(regex) {
-                        for (line_idx, line_text) in self.source_code.lines().enumerate() {
-                            if re.is_match(line_text) {
-                                lines.insert(line_idx);
-                            }
-                        }
-                    }
-                }
-            }
+    /// Lines a highlight covers.
+    fn highlight_lines_of(&self, highlight: &CodeHighlight) -> Vec<usize> {
+        match &highlight.kind {
+            CodeHighlightKind::Lines { ranges } => ranges.iter().flat_map(|r| r.clone()).collect(),
+            CodeHighlightKind::Pattern { regex } => regex::Regex::new(regex)
+                .map(|re| {
+                    self.source_code
+                        .lines()
+                        .enumerate()
+                        .filter(|(_, text)| re.is_match(text))
+                        .map(|(i, _)| i)
+                        .collect()
+                })
+                .unwrap_or_default(),
         }
-        lines
     }
 
-    pub fn max_highlight_progress(&self) -> f32 {
-        self.highlights
-            .iter()
-            .map(|h| h.progress)
-            .fold(0.0f32, f32::max)
+    /// How much everything is dimmed, and how highlighted each line is, both 0..1.
+    ///
+    /// A line is dimmed by `overall - its own highlight`. Highlights fade in with their progress
+    /// and replaced ones fade out, so while one replaces another the old lines dim and the new
+    /// lines light up together, and the lines that were never highlighted stay evenly dimmed.
+    pub fn highlight_weights(&self) -> (f32, HashMap<usize, f32>) {
+        let mut line_weight: HashMap<usize, f32> = HashMap::new();
+        let (mut incoming, mut outgoing) = (0.0f32, 0.0f32);
+        for highlight in &self.highlights {
+            let weight = highlight.progress.clamp(0.0, 1.0);
+            if highlight.fade_from.is_some() {
+                outgoing = outgoing.max(weight);
+            } else {
+                incoming = incoming.max(weight);
+            }
+            for line in self.highlight_lines_of(highlight) {
+                let w = line_weight.entry(line).or_insert(0.0);
+                *w = w.max(weight);
+            }
+        }
+        ((incoming + outgoing).min(1.0), line_weight)
     }
 }
 

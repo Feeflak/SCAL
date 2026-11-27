@@ -1,5 +1,3 @@
-use std::collections::HashSet;
-
 use anyhow::{Context, Result};
 use glam::vec2;
 use scal_core::{CodeAnimationStyle, Color};
@@ -63,9 +61,7 @@ pub fn generate_code_mesh(
     };
     let mut animated_glyphs_emitted = 0usize;
 
-    let highlighted_lines: HashSet<usize> = code.highlighted_lines();
-    let overall_progress = code.max_highlight_progress();
-    let has_highlights = !highlighted_lines.is_empty();
+    let (overall_dim, line_highlight) = code.highlight_weights();
 
     let mut li: usize = 0;
     let mut ply: Option<f32> = None;
@@ -188,8 +184,9 @@ pub fn generate_code_mesh(
                 Color::WHITE
             };
 
-            if has_highlights && !highlighted_lines.contains(&li) {
-                let darken = 1.0 - overall_progress * 0.5;
+            let dim = (overall_dim - line_highlight.get(&li).copied().unwrap_or(0.0)).max(0.0);
+            if dim > 0.0 {
+                let darken = 1.0 - dim * 0.5;
                 color = Color::new(
                     color.r * darken,
                     color.g * darken,
