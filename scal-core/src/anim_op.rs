@@ -100,6 +100,8 @@ pub enum AnimOP {
     /// highlight. uuid, parts, color, dim alpha, dur, ease, loc.
     MathHighlight(Uuid, Vec<String>, Color, f32, Time, Ease, Option<SourceLoc>),
     ScrollOffset(Uuid, ScrollOffsetTarget, Time, Ease, Option<SourceLoc>),
+    /// Move points of a vector to new scene positions: uuid, `(index, target)` pairs, dur, ease, loc.
+    VectorMovePoints(Uuid, Vec<(usize, Vec2)>, Time, Ease, Option<SourceLoc>),
     /// Animate the number shown by the `{:spec}` placeholders of a text or math object:
     /// uuid, start (`None` = the current number), target, dur, ease, loc.
     NumberTo(Uuid, Option<f32>, f32, Time, Ease, Option<SourceLoc>),
@@ -130,6 +132,7 @@ impl AnimOP {
             | Self::MathPartColor(_, _, _, _, _, l)
             | Self::MathHighlight(_, _, _, _, _, _, l)
             | Self::ScrollOffset(_, _, _, _, l)
+            | Self::VectorMovePoints(_, _, _, _, l)
             | Self::NumberTo(_, _, _, _, _, l)
             | Self::All(_, l)
             | Self::Sequence(_, l)
@@ -242,6 +245,7 @@ impl AnimOP {
             | Self::MathPartColor(_, _, _, _, _, l)
             | Self::MathHighlight(_, _, _, _, _, _, l)
             | Self::ScrollOffset(_, _, _, _, l)
+            | Self::VectorMovePoints(_, _, _, _, l)
             | Self::NumberTo(_, _, _, _, _, l)
             | Self::All(_, l)
             | Self::Sequence(_, l)

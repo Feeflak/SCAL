@@ -544,7 +544,7 @@ pub mod transform;
 pub use anim_obj::{
     Alignment, AnimObj, CircleHandle, CodeHandle, CodeWindowHandle, LayoutDir, MathHandle, MathPartHandle,
     RectangleHandle, ScrollLayoutHandle, StretchMode, Syntax, TerminalHandle, TextHandle,
-    TextModifier, TextSpan,
+    TextModifier, TextSpan, VectorHandle,
 };
 pub use anim_op::{
     AnimOP, CodeAnimationStyle, CodeHighlightAction, IntoAnimOp, ScrollOffsetTarget, SourceLoc,
@@ -569,7 +569,7 @@ pub mod prelude {
     pub use crate::anim_obj::{
         Alignment, AnimObj, CircleHandle, CodeHandle, CodeWindowHandle, LayoutDir, MathHandle, MathPartHandle,
         RectangleHandle, ScrollLayoutHandle, StretchMode, Syntax, TerminalHandle, TextHandle,
-        TextModifier, TextSpan,
+        TextModifier, TextSpan, VectorHandle,
     };
     pub use crate::anim_op::{
         AnimOP, CodeAnimationStyle, CodeHighlightAction, IntoAnimOp, ScrollOffsetTarget,

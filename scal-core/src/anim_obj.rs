@@ -150,6 +150,18 @@ pub enum AnimObjKind {
         sides: u32,
         color: Color,
     },
+    /// A line through several points, optionally ending in an arrow head. See [`crate::object_builders::vector`].
+    Vector {
+        /// Points relative to the center of the object (`transform.position`).
+        points: Vec<Vec2>,
+        color: Color,
+        thickness: f32,
+        arrow_head: bool,
+        head_length: f32,
+        head_width: f32,
+        /// Dash length and gap, `None` for a solid line.
+        dash: Option<(f32, f32)>,
+    },
     Text {
         value: String,
         font_family: String,
@@ -1056,6 +1068,97 @@ pub struct TextSpan {
     pub color: Option<Color>,
     /// Whether this section is drawn bold.
     pub bold: bool,
+}
+
+/// Wrapper around the ``AnimObj`` struct for vectors (lines through points, see [`crate::object_builders::vector`]).
+/// Derefs to ``AnimObj``, so ``instantiate()`` and ``transform`` work like on every other object.
+pub struct VectorHandle(pub AnimObj);
+
+impl std::ops::Deref for VectorHandle {
+    type Target = AnimObj;
+    fn deref(&self) -> &AnimObj {
+        &self.0
+    }
+}
+
+impl VectorHandle {
+    fn point_count(&self) -> usize {
+        match &self.0.kind {
+            AnimObjKind::Vector { points, .. } => points.len(),
+            _ => unreachable!("VectorHandle always wraps a Vector object"),
+        }
+    }
+
+    /// Returns a builder for an animation that moves one point of the vector to a new place.
+    /// Positions are scene coordinates, like the ones you gave to `vector().points(..)`. The
+    /// arrow head follows the end of the line.
+    ///
+    /// # Panics
+    /// If the vector has no point `index`.
+    /// ```ignore
+    /// arrow.move_point(1, vec2(900., 300.)).over(1.s()).ease(Ease::InOutCubic)
+    /// ```
+    #[must_use]
+    pub fn move_point(&self, index: usize, target: impl Into<Vec2>) -> crate::transform::VectorPointsBuilder {
+        crate::transform::VectorPointsBuilder::new(self.0.id, self.point_count()).point(index, target)
+    }
+
+    /// Returns a builder for an animation that moves several points at once, each to its own new
+    /// place, as `(index, position)` pairs. The points move along straight lines.
+    ///
+    /// # Panics
+    /// If an index is out of range.
+    /// ```ignore
+    /// arrow.move_points([(0, vec2(100., 100.)), (2, vec2(800., 500.))]).over(1.s())
+    /// ```
+    #[must_use]
+    pub fn move_points(
+        &self,
+        moves: impl IntoIterator<Item = (usize, Vec2)>,
+    ) -> crate::transform::VectorPointsBuilder {
+        let mut builder = crate::transform::VectorPointsBuilder::new(self.0.id, self.point_count());
+        for (index, target) in moves {
+            builder = builder.point(index, target);
+        }
+        builder
+    }
+
+    /// Returns a builder for an animation that moves every point to the matching one in
+    /// `targets`.
+    ///
+    /// # Panics
+    /// If `targets` does not have exactly as many positions as the vector has points.
+    /// ```ignore
+    /// arrow.points_to([vec2(0., 0.), vec2(300., 100.), vec2(600., 0.)]).over(1.s())
+    /// ```
+    #[must_use]
+    pub fn points_to(
+        &self,
+        targets: impl IntoIterator<Item = Vec2>,
+    ) -> crate::transform::VectorPointsBuilder {
+        let targets: Vec<Vec2> = targets.into_iter().collect();
+        assert_eq!(
+            targets.len(),
+            self.point_count(),
+            "points_to needs one position for each of the {} points of the vector",
+            self.point_count()
+        );
+        self.move_points(targets.into_iter().enumerate())
+    }
+
+    /// Returns a builder for an animation that changes the color of the vector.
+    /// ```ignore
+    /// arrow.color().to(Color::RED).over(1.s())
+    /// ```
+    #[must_use]
+    pub const fn color(&self) -> crate::transform::ColorBuilder {
+        crate::transform::ColorBuilder {
+            uuid: self.0.id,
+            target: None,
+            duration: 1.0,
+            ease: Ease::Linear,
+        }
+    }
 }
 
 /// Wrapper around the ``AnimObj`` struct for math equations. Derefs to ``AnimObj``, so

@@ -481,6 +481,75 @@ impl IntoAnimOp for NumberBuilder {
     }
 }
 
+/// Builder for an animation that moves points of a vector to new scene positions, see
+/// [`crate::VectorHandle::move_point`].
+pub struct VectorPointsBuilder {
+    pub(crate) uuid: Uuid,
+    pub(crate) point_count: usize,
+    pub(crate) moves: Vec<(usize, Vec2)>,
+    pub(crate) duration: Time,
+    pub(crate) ease: Ease,
+}
+
+#[allow(clippy::return_self_not_must_use)]
+impl VectorPointsBuilder {
+    pub(crate) const fn new(uuid: Uuid, point_count: usize) -> Self {
+        Self {
+            uuid,
+            point_count,
+            moves: Vec::new(),
+            duration: 1.0,
+            ease: Ease::Linear,
+        }
+    }
+
+    #[must_use]
+    /// Also move point `index` to `target`, in the same animation. Moving the same point twice
+    /// keeps the last target.
+    ///
+    /// # Panics
+    /// If the vector has no point `index`.
+    pub fn point(mut self, index: usize, target: impl Into<Vec2>) -> Self {
+        assert!(
+            index < self.point_count,
+            "the vector has {} points, there is no point {index}",
+            self.point_count
+        );
+        let target = target.into();
+        match self.moves.iter_mut().find(|(i, _)| *i == index) {
+            Some(existing) => existing.1 = target,
+            None => self.moves.push((index, target)),
+        }
+        self
+    }
+
+    #[must_use]
+    /// Set the duration of the animation
+    pub const fn over(mut self, duration: Time) -> Self {
+        self.duration = duration;
+        self
+    }
+
+    #[must_use]
+    /// Set the easing function
+    pub fn ease(mut self, ease: Ease) -> Self {
+        self.ease = ease;
+        self
+    }
+}
+
+impl From<VectorPointsBuilder> for AnimOP {
+    fn from(b: VectorPointsBuilder) -> Self {
+        Self::VectorMovePoints(b.uuid, b.moves, b.duration, b.ease, None)
+    }
+}
+
+impl IntoAnimOp for VectorPointsBuilder {
+    fn into_anim_op(self) -> AnimOP {
+        self.into()
+    }
+}
+
 macro_rules! impl_motion {
     ($($builder:ty),* $(,)?) => {$(
         #[allow(clippy::return_self_not_must_use)]
@@ -520,4 +589,5 @@ impl_motion!(
     MathPartColorBuilder,
     MathHighlightBuilder,
     NumberBuilder,
+    VectorPointsBuilder,
 );

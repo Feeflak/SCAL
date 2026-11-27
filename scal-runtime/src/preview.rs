@@ -915,6 +915,7 @@ fn op_label(op: &AnimOperation) -> &'static str {
         AnimOperation::ObjectColor(..) | AnimOperation::MathPartColor(..) => "Color",
         AnimOperation::MathHighlight(..) => "Highlight",
         AnimOperation::ScrollOffset(..) => "Scroll",
+        AnimOperation::VectorMovePoints(..) => "Move Points",
         AnimOperation::NumberTo(..) => "Number",
         AnimOperation::PlaySound(..) => "Sound",
     }
@@ -938,6 +939,7 @@ fn op_kind(op: &AnimOperation) -> OpKind {
         AnimOperation::ObjectColor(..)
         | AnimOperation::MathPartColor(..)
         | AnimOperation::MathHighlight(..)
+        | AnimOperation::VectorMovePoints(..)
         | AnimOperation::NumberTo(..) => OpKind::Transform,
         AnimOperation::ScrollOffset(..) => OpKind::Scroll,
         AnimOperation::All(..) => OpKind::Parallel,
@@ -980,6 +982,7 @@ fn op_source_loc(op: &AnimOperation) -> Option<scal_core::SourceLoc> {
         | AnimOperation::MathPartColor(_, _, _, _, _, loc)
         | AnimOperation::MathHighlight(_, _, _, _, _, _, loc)
         | AnimOperation::ScrollOffset(_, _, _, _, loc)
+        | AnimOperation::VectorMovePoints(_, _, _, _, loc)
         | AnimOperation::NumberTo(_, _, _, _, _, loc)
         | AnimOperation::All(_, loc)
         | AnimOperation::Sequence(_, loc)
@@ -1015,6 +1018,7 @@ fn op_duration(op: &AnimOperation) -> f32 {
         | AnimOperation::MathPartColor(_, _, _, d, _, _)
         | AnimOperation::MathHighlight(_, _, _, _, d, _, _)
         | AnimOperation::ScrollOffset(_, _, d, _, _)
+        | AnimOperation::VectorMovePoints(_, _, d, _, _)
         | AnimOperation::NumberTo(_, _, _, d, _, _) => *d,
         AnimOperation::CodeHighlight(_, action, _) => action.duration_and_curve().0,
         AnimOperation::PlaySound(..) | AnimOperation::Instantiate(..) | AnimOperation::Drop(..) => {

@@ -4,6 +4,7 @@ mod number;
 mod scroll;
 pub mod terminal;
 mod transform;
+mod vector;
 
 use std::any::Any;
 
@@ -82,6 +83,7 @@ pub enum AnimOperation {
     MathPartColor(Uuid, String, Color, Time, Ease, Option<SourceLoc>),
     MathHighlight(Uuid, Vec<String>, Color, f32, Time, Ease, Option<SourceLoc>),
     ScrollOffset(Uuid, ScrollOffsetTarget, Time, Ease, Option<SourceLoc>),
+    VectorMovePoints(Uuid, Vec<(usize, Vec2)>, Time, Ease, Option<SourceLoc>),
     NumberTo(Uuid, Option<f32>, f32, Time, Ease, Option<SourceLoc>),
     All(Vec<Self>, Option<SourceLoc>),
     Sequence(Vec<Self>, Option<SourceLoc>),
@@ -109,6 +111,7 @@ impl AnimOperation {
             | AnimOperation::MathPartColor(_, _, _, _, _, l)
             | AnimOperation::MathHighlight(_, _, _, _, _, _, l)
             | AnimOperation::ScrollOffset(_, _, _, _, l)
+            | AnimOperation::VectorMovePoints(_, _, _, _, l)
             | AnimOperation::NumberTo(_, _, _, _, _, l)
             | AnimOperation::All(_, l)
             | AnimOperation::Sequence(_, l)
@@ -207,6 +210,11 @@ pub fn resolve_op(op: AnimOperation) -> Result<Animation> {
             debug!("ScrollOffset uuid={uuid} target={target:?}");
             ensure_duration(duration, "ScrollOffset")?;
             scroll::scroll_offset_to(uuid, target, duration, curve)
+        }
+        AnimOperation::VectorMovePoints(uuid, moves, duration, curve, _loc) => {
+            debug!("VectorMovePoints uuid={uuid} moves={moves:?}");
+            ensure_duration(duration, "VectorMovePoints")?;
+            vector::move_points(uuid, moves, duration, curve)
         }
 
         AnimOperation::NumberTo(uuid, from, target, duration, curve, _loc) => {
@@ -506,6 +514,8 @@ fn set_object_color(obj: &mut dyn Any, color: Color) {
         image.color = color;
     } else if let Some(math) = obj.downcast_mut::<crate::anim_object::math::Math>() {
         math.color = color;
+    } else if let Some(vector) = obj.downcast_mut::<crate::anim_object::vector::Vector>() {
+        vector.color = color;
     }
 }
 
@@ -683,6 +693,8 @@ fn get_object_color(obj: &dyn Any) -> Option<Color> {
         Some(image.color)
     } else if let Some(math) = obj.downcast_ref::<crate::anim_object::math::Math>() {
         Some(math.color)
+    } else if let Some(vector) = obj.downcast_ref::<crate::anim_object::vector::Vector>() {
+        Some(vector.color)
     } else {
         None
     }

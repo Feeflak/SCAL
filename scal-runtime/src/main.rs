@@ -244,7 +244,8 @@ async fn run_loop(
             | AnimOperation::TransformScale(_, _, dur, _, _)
             | AnimOperation::TerminalTypeInput(_, _, _, _, _, dur, _, _, _)
             | AnimOperation::TerminalOutput(_, _, dur, _, _, _)
-            | AnimOperation::ObjectColor(_, _, dur, _, _) => start_time + dur,
+            | AnimOperation::ObjectColor(_, _, dur, _, _)
+            | AnimOperation::VectorMovePoints(_, _, dur, _, _) => start_time + dur,
             AnimOperation::MathPartColor(_, _, _, dur, _, _) => start_time + dur,
             AnimOperation::MathHighlight(_, _, _, _, dur, _, _) => start_time + dur,
             AnimOperation::ScrollOffset(_, _, dur, _, _) => start_time + dur,

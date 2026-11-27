@@ -612,7 +612,8 @@ pub fn collect_sounds_from_ops(ops: &[AnimOperation]) -> Vec<ScheduledSound> {
             | AnimOperation::CodeMorph(_, _, _, d, _, _)
             | AnimOperation::TerminalTypeInput(_, _, _, _, _, d, _, _, _)
             | AnimOperation::TerminalOutput(_, _, d, _, _, _)
-            | AnimOperation::ObjectColor(_, _, d, _, _) => t + d,
+            | AnimOperation::ObjectColor(_, _, d, _, _)
+            | AnimOperation::VectorMovePoints(_, _, d, _, _) => t + d,
             AnimOperation::MathPartColor(_, _, _, d, _, _) => t + d,
             AnimOperation::MathHighlight(_, _, _, _, d, _, _) => t + d,
             AnimOperation::ScrollOffset(_, _, d, _, _) => t + d,

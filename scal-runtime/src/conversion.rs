@@ -119,6 +119,9 @@ fn convert_anim_op(
         scal_core::AnimOP::ScrollOffset(u, target, d, e, loc) => {
             AnimOperation::ScrollOffset(u, target, d, e, loc)
         }
+        scal_core::AnimOP::VectorMovePoints(u, moves, d, e, loc) => {
+            AnimOperation::VectorMovePoints(u, moves, d, e, loc)
+        }
         scal_core::AnimOP::NumberTo(u, from, to, d, e, loc) => {
             AnimOperation::NumberTo(u, from, to, d, e, loc)
         }
@@ -295,6 +298,24 @@ fn convert_core_anim_obj(
                 transform,
             },
         ))),
+        scal_core::anim_obj::AnimObjKind::Vector {
+            points,
+            color,
+            thickness,
+            arrow_head,
+            head_length,
+            head_width,
+            dash,
+        } => Ok(RenderObj(Box::new(crate::anim_object::vector::Vector {
+            points,
+            color,
+            thickness,
+            arrow_head,
+            head_length,
+            head_width,
+            dash,
+            transform,
+        }))),
         scal_core::anim_obj::AnimObjKind::Text {
             value,
             font_family,

@@ -4,7 +4,7 @@ use uuid::Uuid;
 use crate::anim_obj::DEFAULT_HIGHLIGHT;
 use crate::anim_obj::{
     Alignment, AnimObj, AnimObjKind, CodeHandle, CodeWindowHandle, LayoutDir, MathHandle, ScrollLayoutHandle,
-    StretchMode, Syntax, TerminalHandle, TextModifier, TextSpan,
+    StretchMode, Syntax, TerminalHandle, TextModifier, TextSpan, VectorHandle,
 };
 use crate::color::Color;
 use crate::motion::IntoScale;
@@ -435,6 +435,172 @@ impl PolygonBuilder {
 }
 
 impl_transform_methods!(PolygonBuilder);
+
+/// Create a new vector builder: a line through some points, optionally ending in an arrow head.
+///
+/// Points are scene coordinates (like `.pos(..)` of other objects). The arrow head points the
+/// way the line goes from the second to last point to the last one. Animate the points with
+/// `move_point`, `move_points` and `points_to` on the handle.
+/// ```ignore
+/// let force = vector()
+///     .points([vec2(400., 800.), vec2(900., 500.)])
+///     .color(Color::RED)
+///     .thickness(8.0)
+///     .build();
+///
+/// // dashed line through three points, without an arrow head
+/// let path = vector()
+///     .points([vec2(0., 0.), vec2(300., 200.), vec2(600., 0.)])
+///     .arrow_head(false)
+///     .dashed(true)
+///     .build();
+///
+/// force.move_point(1, vec2(900., 200.)).over(1.s()).ease(Ease::InOutCubic)
+/// ```
+pub fn vector() -> VectorBuilder {
+    VectorBuilder::default()
+}
+
+#[must_use]
+pub struct VectorBuilder {
+    points: Vec<Vec2>,
+    color: Color,
+    thickness: f32,
+    arrow_head: bool,
+    head_length: Option<f32>,
+    head_width: Option<f32>,
+    dash: Option<(f32, f32)>,
+    dashed: bool,
+    transform: Transform,
+}
+
+impl Default for VectorBuilder {
+    fn default() -> Self {
+        Self {
+            points: Vec::new(),
+            color: Color::WHITE,
+            thickness: 6.0,
+            arrow_head: true,
+            head_length: None,
+            head_width: None,
+            dash: None,
+            dashed: false,
+            transform: Transform::new(Vec3::ZERO),
+        }
+    }
+}
+
+#[allow(clippy::return_self_not_must_use)]
+impl VectorBuilder {
+    /// Set all the points the line goes through, in order. Needs at least two.
+    pub fn points<P: Into<Vec2>>(mut self, points: impl IntoIterator<Item = P>) -> Self {
+        self.points = points.into_iter().map(Into::into).collect();
+        self
+    }
+    /// Add one more point at the end of the line
+    pub fn point(mut self, point: impl Into<Vec2>) -> Self {
+        self.points.push(point.into());
+        self
+    }
+    /// Set the color of the line and the arrow head
+    pub const fn color(mut self, color: Color) -> Self {
+        self.color = color;
+        self
+    }
+    /// Set the thickness of the line in pixels (default 6)
+    pub const fn thickness(mut self, thickness: f32) -> Self {
+        self.thickness = thickness;
+        self
+    }
+    /// Draw an arrow head on the last point (default on)
+    pub const fn arrow_head(mut self, arrow_head: bool) -> Self {
+        self.arrow_head = arrow_head;
+        self
+    }
+    /// Set the length of the arrow head, from its base to the tip (default 5x the thickness).
+    /// It shrinks when the last segment of the line gets shorter than this.
+    pub const fn head_length(mut self, length: f32) -> Self {
+        self.head_length = Some(length);
+        self
+    }
+    /// Set the width of the arrow head (default 80% of its length)
+    pub const fn head_width(mut self, width: f32) -> Self {
+        self.head_width = Some(width);
+        self
+    }
+    /// Draw the line dashed (default off). The dashes are 3x the thickness long with a gap of
+    /// 2x the thickness, use [`VectorBuilder::dash`] to change that.
+    pub const fn dashed(mut self, dashed: bool) -> Self {
+        self.dashed = dashed;
+        self
+    }
+    /// Draw the line dashed, with dashes of `length` and gaps of `gap` pixels
+    pub const fn dash(mut self, length: f32, gap: f32) -> Self {
+        self.dashed = true;
+        self.dash = Some((length, gap));
+        self
+    }
+    /// Set the z position of this object's transform. It's used for ordering object drawing.
+    pub const fn z(mut self, z: f32) -> Self {
+        self.transform.position.z = z;
+        self
+    }
+    /// Set the scale of this object's transform, around the middle of the line. Takes a `Vec2`
+    /// or an `f32` for uniform scale.
+    pub fn scale(mut self, scale: impl IntoScale) -> Self {
+        self.transform.scale = scale.into_scale();
+        self
+    }
+    /// Start invisible (scale zero). Bring it in later with `pop_in()` or `scale_to(..)`.
+    pub const fn hidden(mut self) -> Self {
+        self.transform.scale = Vec2::ZERO;
+        self
+    }
+    /// Set the rotation of this object's transform, around the middle of the line
+    pub const fn rot(mut self, rotation: f32) -> Self {
+        self.transform.rotation = rotation;
+        self
+    }
+
+    /// # Panics
+    /// If there are fewer than two points.
+    #[must_use]
+    pub fn build(mut self) -> VectorHandle {
+        assert!(
+            self.points.len() >= 2,
+            "vector() needs at least two points, got {}",
+            self.points.len()
+        );
+        // The object sits in the middle of its points, so it scales and rotates around it
+        // like every other object. The points are stored relative to that middle.
+        let min = self.points.iter().copied().fold(Vec2::splat(f32::MAX), Vec2::min);
+        let max = self.points.iter().copied().fold(Vec2::splat(f32::MIN), Vec2::max);
+        let center = (min + max) * 0.5;
+        self.transform.position.x = center.x;
+        self.transform.position.y = center.y;
+
+        let head_length = self.head_length.unwrap_or(self.thickness * 5.0);
+        let head_width = self.head_width.unwrap_or(head_length * 0.8);
+        let dash = self.dashed.then(|| {
+            self.dash
+                .unwrap_or((self.thickness * 3.0, self.thickness * 2.0))
+        });
+        let id = self.transform.uuid;
+        VectorHandle(AnimObj {
+            id,
+            transform: self.transform,
+            kind: AnimObjKind::Vector {
+                points: self.points.iter().map(|p| *p - center).collect(),
+                color: self.color,
+                thickness: self.thickness,
+                arrow_head: self.arrow_head,
+                head_length,
+                head_width,
+                dash,
+            },
+        })
+    }
+}
 
 /// Create a new image object builder.
 /// ```ignore
@@ -1781,3 +1947,64 @@ impl ScrollLayoutBuilder {
 }
 
 impl_transform_methods!(ScrollLayoutBuilder);
+
+#[cfg(test)]
+mod vector_tests {
+    use crate::{AnimOP, anim_obj::AnimObjKind, prelude::*};
+    use glam::vec2;
+
+    #[test]
+    fn points_are_stored_around_the_middle_and_defaults_are_filled_in() {
+        let v = vector()
+            .points([vec2(100., 100.), vec2(300., 200.)])
+            .thickness(10.0)
+            .dashed(true)
+            .build();
+        assert_eq!(v.transform.position.truncate(), vec2(200., 150.));
+        let AnimObjKind::Vector { points, arrow_head, head_length, head_width, dash, .. } = &v.kind
+        else {
+            panic!("not a vector");
+        };
+        assert_eq!(points, &[vec2(-100., -50.), vec2(100., 50.)]);
+        assert!(arrow_head);
+        assert_eq!((*head_length, *head_width), (50.0, 40.0));
+        assert_eq!(*dash, Some((30.0, 20.0)));
+
+        let explicit = vector().points([vec2(0., 0.), vec2(1., 1.)]).dash(8.0, 4.0).build();
+        let AnimObjKind::Vector { dash, .. } = &explicit.kind else { panic!() };
+        assert_eq!(*dash, Some((8.0, 4.0)));
+    }
+
+    #[test]
+    fn moving_points_builds_one_op_and_checks_indices() {
+        let v = vector().points([vec2(0., 0.), vec2(10., 0.), vec2(20., 0.)]).build();
+        let op: AnimOP = v
+            .move_point(1, vec2(10., 50.))
+            .point(2, vec2(20., 90.))
+            .point(1, vec2(10., 60.))
+            .over(2.0)
+            .into();
+        let AnimOP::VectorMovePoints(id, moves, duration, _, _) = op else { panic!() };
+        assert_eq!(id, v.transform.uuid);
+        // Moving a point twice keeps the last target.
+        assert_eq!(moves, [(1, vec2(10., 60.)), (2, vec2(20., 90.))]);
+        assert_eq!(duration, 2.0);
+
+        let all = v.points_to([vec2(1., 1.), vec2(2., 2.), vec2(3., 3.)]);
+        let AnimOP::VectorMovePoints(_, moves, ..) = all.into() else { panic!() };
+        assert_eq!(moves.len(), 3);
+    }
+
+    #[test]
+    #[should_panic(expected = "there is no point 3")]
+    fn moving_a_missing_point_panics() {
+        let v = vector().points([vec2(0., 0.), vec2(10., 0.), vec2(20., 0.)]).build();
+        let _ = v.move_point(3, vec2(0., 0.));
+    }
+
+    #[test]
+    #[should_panic(expected = "at least two points")]
+    fn needs_two_points() {
+        let _ = vector().points([vec2(0., 0.)]).build();
+    }
+}

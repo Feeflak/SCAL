@@ -23,6 +23,7 @@ pub mod scroll;
 pub mod svg;
 pub mod terminal;
 pub mod text;
+pub mod vector;
 
 use object_trait::DynAnimObj;
 
