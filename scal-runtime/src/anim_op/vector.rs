@@ -136,6 +136,30 @@ mod tests {
     }
 
     #[test]
+    fn a_second_move_in_a_sequence_starts_where_the_first_ended() {
+        let (mut animator, uuid) = animator_with_vector();
+        let move_end = |to: Vec2| {
+            AnimOperation::VectorMovePoints(uuid, vec![(1, to)], 1.0, Ease::Linear, None)
+        };
+        let anim = resolve_op(AnimOperation::Sequence(
+            vec![move_end(vec2(200.0, 300.0)), move_end(vec2(200.0, 500.0))],
+            None,
+        ))
+        .unwrap();
+        let mut store = vec![];
+        (anim.start)(&mut animator, &mut store).unwrap();
+        let update = anim.update.unwrap();
+
+        // The point is at scene (200, 100) and goes down 200, then another 200.
+        update(&mut animator, 0.5, &mut store).unwrap();
+        assert_eq!(points(&animator, &uuid)[1], vec2(50.0, 200.0));
+        update(&mut animator, 0.75, &mut store).unwrap();
+        assert_eq!(points(&animator, &uuid)[1], vec2(50.0, 300.0));
+        update(&mut animator, 1.0, &mut store).unwrap();
+        assert_eq!(points(&animator, &uuid)[1], vec2(50.0, 400.0));
+    }
+
+    #[test]
     fn out_of_range_point_is_an_error() {
         let (mut animator, uuid) = animator_with_vector();
         let anim = resolve_op(AnimOperation::VectorMovePoints(

@@ -326,18 +326,14 @@ pub fn sequence(ops: Vec<AnimOperation>) -> AnimOperation {
 pub fn all(ops: Vec<AnimOperation>) -> AnimOperation {
     AnimOperation::All(ops, None)
 }
-/// Whether `op` only removes objects. Inside a sequence these must run when the sequence reaches
-/// them, not when it starts like every other child, or the objects would vanish immediately.
-fn is_drop_only(op: &AnimOperation) -> bool {
-    match op {
-        AnimOperation::Drop(..) => true,
-        AnimOperation::All(children, _) | AnimOperation::Sequence(children, _) => {
-            !children.is_empty() && children.iter().all(is_drop_only)
-        }
-        _ => false,
-    }
-}
-
+/// Runs the ops one after another.
+///
+/// A child is started when the sequence reaches it, not when the sequence starts, so it sees what
+/// the children before it did: a second move of the same object begins where the first one ended.
+/// Every child also gets a final update with `t = 1`, so it ends exactly on its target.
+///
+/// The store holds `[started, chunk...]` where `started` is how many children have been started
+/// and every started child has a chunk `[data_len, done, data...]`.
 pub fn get_sequence_animation(ops: Vec<AnimOperation>) -> Result<Animation> {
     let mut child_durations: Vec<f32> = Vec::with_capacity(ops.len());
     let mut total_dur = 0_f32;
@@ -352,24 +348,18 @@ pub fn get_sequence_animation(ops: Vec<AnimOperation>) -> Result<Animation> {
         total_dur += d;
     }
 
-    // Without any duration there is no update to run them from, so they just run at the start.
-    let deferred: Vec<bool> = ops
-        .iter()
-        .map(|op| total_dur > 0. && is_drop_only(op))
-        .collect();
-
     let start = Box::new({
         let loc_ops = ops.to_owned();
-        let deferred = deferred.clone();
+        let lazy = total_dur > 0.;
         move |animator: &mut Animator, store: &mut Vec<f32>| {
             store.clear();
+            if lazy {
+                // The update starts the children one by one.
+                store.push(0.0);
+                return Ok(());
+            }
+            // Nothing takes time, so there is no update to start the children from.
             for (child_idx, op) in loc_ops.to_owned().into_iter().enumerate() {
-                if deferred[child_idx] {
-                    // One flag: has this child run yet.
-                    store.push(1.0);
-                    store.push(0.0);
-                    continue;
-                }
                 let op_debug = format!("{op:?}");
 
                 let anim: Animation = resolve_op(op.to_owned())?;
@@ -377,8 +367,6 @@ pub fn get_sequence_animation(ops: Vec<AnimOperation>) -> Result<Animation> {
                 (*anim.start)(animator, &mut data).with_context(|| {
                     format!("child[{child_idx}] start failed for op {op_debug}")
                 })?;
-                store.push(data.len() as f32);
-                store.append(&mut data);
             }
             Ok(())
         }
@@ -387,48 +375,60 @@ pub fn get_sequence_animation(ops: Vec<AnimOperation>) -> Result<Animation> {
     let update: Option<UpdateAnimationFunction> = if total_dur > 0. {
         let ops_clone = ops.to_owned();
         let durations = child_durations;
-        let deferred = deferred;
         Some(Box::new(
             move |animator: &mut Animator, t: f32, store: &mut Vec<f32>| {
                 let abs_time = t * total_dur;
                 let mut cumulative = 0_f32;
-                let mut store_index = 0;
+                // Where the chunk of the current child starts in the store.
+                let mut chunk = 1;
 
                 for (i, op) in ops_clone.iter().enumerate() {
+                    if abs_time < cumulative {
+                        break;
+                    }
                     let op_debug = format!("{op:?}");
-
                     let anim: Animation = resolve_op(op.to_owned())
                         .with_context(|| format!("failed to convert child[{i}] op {op_debug}"))?;
-                    let to_read = store[store_index] as usize;
                     let child_duration = durations[i];
 
-                    if deferred[i] {
-                        if abs_time >= cumulative && store[store_index + 1] == 0.0 {
-                            store[store_index + 1] = 1.0;
-                            (*anim.start)(animator, &mut Vec::new()).with_context(|| {
-                                format!("child[{i}] start failed for op {op_debug}")
-                            })?;
-                        }
-                    } else if child_duration > 0.
-                        && abs_time >= cumulative
-                        && abs_time < cumulative + child_duration
-                    {
-                        let local_t = (abs_time - cumulative) / child_duration;
-                        let mut temp_store =
-                            store[store_index + 1..store_index + 1 + to_read].to_vec();
+                    if i == store[0] as usize {
+                        let mut data = vec![];
+                        (*anim.start)(animator, &mut data).with_context(|| {
+                            format!("child[{i}] start failed for op {op_debug}")
+                        })?;
+                        let header = [data.len() as f32, 0.0];
+                        store.splice(chunk..chunk, header.into_iter().chain(data));
+                        store[0] += 1.0;
+                    }
+
+                    let done = store[chunk + 1] != 0.0;
+                    if child_duration <= 0.0 {
+                        store[chunk + 1] = 1.0;
+                    } else if !done {
+                        let finished = abs_time >= cumulative + child_duration;
+                        let local_t = if finished {
+                            1.0
+                        } else {
+                            (abs_time - cumulative) / child_duration
+                        };
+                        let len = store[chunk] as usize;
+                        let mut data = store[chunk + 2..chunk + 2 + len].to_vec();
                         if let Some(update) = anim.update {
-                            (*update)(animator, anim.curve.apply(local_t), &mut temp_store)
+                            (*update)(animator, anim.curve.apply(local_t), &mut data)
                                 .with_context(|| {
                                     format!("child[{i}] update failed for op {op_debug}")
                                 })?;
                         }
-                        store[store_index + 1..store_index + 1 + to_read]
-                            .copy_from_slice(&temp_store);
-                        break;
+                        // A nested sequence's data grows as it starts its own children.
+                        store.splice(chunk + 2..chunk + 2 + len, data.iter().copied());
+                        store[chunk] = data.len() as f32;
+                        if finished {
+                            store[chunk + 1] = 1.0;
+                        }
                     }
 
+                    chunk += 2 + store[chunk] as usize;
                     cumulative += child_duration;
-                    store_index += to_read + 1;
                 }
 
                 Ok(())
@@ -654,6 +654,73 @@ mod tests {
         assert_eq!(kept.render_data.vertices_base_index, 0);
         assert_eq!(kept.render_data.indices_base_index, 0);
         assert!(animator.drop_object(&a).is_err());
+    }
+
+    fn move_to(uuid: Uuid, x: f32) -> AnimOperation {
+        AnimOperation::TransformMovePos(uuid, Vec2::new(x, 0.0), 1.0, Ease::Linear, None)
+    }
+
+    #[test]
+    fn sequence_starts_each_child_where_the_previous_one_ended() {
+        let uuid = Uuid::new_v4();
+        let mut animator = make_animator_with_rect(uuid);
+        let op = AnimOperation::Sequence(vec![move_to(uuid, 100.0), move_to(uuid, 300.0)], None);
+        let anim = resolve_op(op).unwrap();
+        let mut store = vec![];
+        (anim.start)(&mut animator, &mut store).unwrap();
+        let update = anim.update.unwrap();
+        let x = |animator: &Animator| animator.get_object(&uuid).unwrap().transform().position.x;
+
+        update(&mut animator, 0.25, &mut store).unwrap();
+        assert!((x(&animator) - 50.0).abs() < 0.01);
+        update(&mut animator, 0.75, &mut store).unwrap();
+        // Halfway through the second move, which started at 100, not at 0.
+        assert!((x(&animator) - 200.0).abs() < 0.01, "x = {}", x(&animator));
+        update(&mut animator, 1.0, &mut store).unwrap();
+        assert_eq!(x(&animator), 300.0);
+    }
+
+    #[test]
+    fn sequence_children_end_exactly_on_their_target_even_when_frames_skip() {
+        let uuid = Uuid::new_v4();
+        let mut animator = make_animator_with_rect(uuid);
+        let op = AnimOperation::Sequence(
+            vec![move_to(uuid, 100.0), move_to(uuid, 300.0), move_to(uuid, 50.0)],
+            None,
+        );
+        let anim = resolve_op(op).unwrap();
+        let mut store = vec![];
+        (anim.start)(&mut animator, &mut store).unwrap();
+        let update = anim.update.unwrap();
+        // One big step over the first two children and into the third.
+        update(&mut animator, 0.9, &mut store).unwrap();
+        let x = animator.get_object(&uuid).unwrap().transform().position.x;
+        assert!((x - (300.0 + 0.7 * (50.0 - 300.0))).abs() < 0.01, "x = {x}");
+        update(&mut animator, 1.0, &mut store).unwrap();
+        assert_eq!(animator.get_object(&uuid).unwrap().transform().position.x, 50.0);
+    }
+
+    #[test]
+    fn nested_sequences_in_a_sequence_keep_their_own_state() {
+        let uuid = Uuid::new_v4();
+        let mut animator = make_animator_with_rect(uuid);
+        let inner = AnimOperation::Sequence(vec![move_to(uuid, 100.0), move_to(uuid, 200.0)], None);
+        let op = AnimOperation::Sequence(
+            vec![inner, AnimOperation::All(vec![move_to(uuid, 0.0)], None)],
+            None,
+        );
+        let anim = resolve_op(op).unwrap();
+        let mut store = vec![];
+        (anim.start)(&mut animator, &mut store).unwrap();
+        let update = anim.update.unwrap();
+        let x = |animator: &Animator| animator.get_object(&uuid).unwrap().transform().position.x;
+        for step in [0.1, 0.4, 0.6, 0.9] {
+            update(&mut animator, step, &mut store).unwrap();
+        }
+        // 0.9 of 3 seconds is 0.7 into the last move, from 200 towards 0.
+        assert!((x(&animator) - 60.0).abs() < 0.01, "x = {}", x(&animator));
+        update(&mut animator, 1.0, &mut store).unwrap();
+        assert_eq!(x(&animator), 0.0);
     }
 
     #[test]
