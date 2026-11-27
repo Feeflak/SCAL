@@ -305,6 +305,8 @@ fn convert_core_anim_obj(
             arrow_head,
             head_length,
             head_width,
+            head_style,
+            head_animation,
             dash,
         } => Ok(RenderObj(Box::new(crate::anim_object::vector::Vector {
             points,
@@ -313,6 +315,9 @@ fn convert_core_anim_obj(
             arrow_head,
             head_length,
             head_width,
+            head_style,
+            head_animation,
+            time: 0.0,
             dash,
             transform,
         }))),

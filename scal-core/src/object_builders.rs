@@ -10,6 +10,7 @@ use crate::color::Color;
 use crate::motion::IntoScale;
 use crate::theme::Theme;
 use crate::transform::Transform;
+use crate::vector_head::{HeadAnimation, HeadStyle};
 
 macro_rules! impl_transform_methods {
     ($builder:ty) => {
@@ -456,6 +457,13 @@ impl_transform_methods!(PolygonBuilder);
 ///     .build();
 ///
 /// force.move_point(1, vec2(900., 200.)).over(1.s()).ease(Ease::InOutCubic)
+///
+/// // open rounded head that slides back and forth every half second
+/// let velocity = vector()
+///     .points([vec2(400., 300.), vec2(900., 300.)])
+///     .head_style(HeadStyle::Rounded)
+///     .head_animation(HeadAnimation::new().period(0.5).distance(25.))
+///     .build();
 /// ```
 pub fn vector() -> VectorBuilder {
     VectorBuilder::default()
@@ -469,6 +477,8 @@ pub struct VectorBuilder {
     arrow_head: bool,
     head_length: Option<f32>,
     head_width: Option<f32>,
+    head_style: HeadStyle,
+    head_animation: Option<HeadAnimation>,
     dash: Option<(f32, f32)>,
     dashed: bool,
     transform: Transform,
@@ -483,6 +493,8 @@ impl Default for VectorBuilder {
             arrow_head: true,
             head_length: None,
             head_width: None,
+            head_style: HeadStyle::Filled,
+            head_animation: None,
             dash: None,
             dashed: false,
             transform: Transform::new(Vec3::ZERO),
@@ -526,6 +538,24 @@ impl VectorBuilder {
     /// Set the width of the arrow head (default 80% of its length)
     pub const fn head_width(mut self, width: f32) -> Self {
         self.head_width = Some(width);
+        self
+    }
+    /// Set how the arrow head looks (default [`HeadStyle::Filled`], a solid triangle).
+    /// [`HeadStyle::Rounded`] is an open `>` with rounded corners, as thick as the line.
+    pub const fn head_style(mut self, style: HeadStyle) -> Self {
+        self.head_style = style;
+        self
+    }
+    /// Loop a quick back and forth of the arrow head along the line (default off), to hint at
+    /// the direction of the vector. Configure it with [`HeadAnimation`], or use
+    /// [`VectorBuilder::animate_head`] for the defaults.
+    pub const fn head_animation(mut self, animation: HeadAnimation) -> Self {
+        self.head_animation = Some(animation);
+        self
+    }
+    /// Turn the back and forth of the arrow head on with the default [`HeadAnimation`], or off.
+    pub fn animate_head(mut self, animate: bool) -> Self {
+        self.head_animation = animate.then(HeadAnimation::default);
         self
     }
     /// Draw the line dashed (default off). The dashes are 3x the thickness long with a gap of
@@ -596,6 +626,8 @@ impl VectorBuilder {
                 arrow_head: self.arrow_head,
                 head_length,
                 head_width,
+                head_style: self.head_style,
+                head_animation: self.head_animation,
                 dash,
             },
         })
@@ -1952,6 +1984,33 @@ impl_transform_methods!(ScrollLayoutBuilder);
 mod vector_tests {
     use crate::{AnimOP, anim_obj::AnimObjKind, prelude::*};
     use glam::vec2;
+
+    #[test]
+    fn head_style_and_animation_are_stored() {
+        let plain = vector().points([vec2(0., 0.), vec2(10., 0.)]).build();
+        let AnimObjKind::Vector { head_style, head_animation, .. } = &plain.kind else {
+            panic!("not a vector");
+        };
+        assert_eq!(*head_style, HeadStyle::Filled);
+        assert!(head_animation.is_none());
+
+        let animated = vector()
+            .points([vec2(0., 0.), vec2(10., 0.)])
+            .head_style(HeadStyle::Rounded)
+            .head_animation(HeadAnimation::new().period(2.0))
+            .build();
+        let AnimObjKind::Vector { head_style, head_animation, .. } = &animated.kind else {
+            panic!("not a vector");
+        };
+        assert_eq!(*head_style, HeadStyle::Rounded);
+        assert_eq!(head_animation.unwrap().period, 2.0);
+
+        let defaults = vector().points([vec2(0., 0.), vec2(10., 0.)]).animate_head(true).build();
+        let AnimObjKind::Vector { head_animation, .. } = &defaults.kind else {
+            panic!("not a vector");
+        };
+        assert_eq!(*head_animation, Some(HeadAnimation::default()));
+    }
 
     #[test]
     fn points_are_stored_around_the_middle_and_defaults_are_filled_in() {

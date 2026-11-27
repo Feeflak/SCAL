@@ -540,6 +540,8 @@ pub mod sfx;
 pub mod theme;
 /// Standard way to control all anim object's position, scale and rotation
 pub mod transform;
+/// Look and animation of the head of a vector
+pub mod vector_head;
 
 pub use anim_obj::{
     Alignment, AnimObj, CircleHandle, CodeHandle, CodeWindowHandle, LayoutDir, MathHandle, MathPartHandle,
@@ -561,6 +563,7 @@ pub use settings::{CodecType, EncodingSettings, RenderingSettings};
 pub use sfx::{Sfx, SfxBuilder};
 pub use theme::{Base16, Theme};
 pub use transform::Transform;
+pub use vector_head::{HeadAnimation, HeadStyle};
 
 /// All the stuff that you need to create animations in Scal
 pub mod prelude {
@@ -585,5 +588,6 @@ pub mod prelude {
     pub use crate::sfx::{Sfx, sfx};
     pub use crate::theme::{Base16, Theme};
     pub use crate::transform::Transform;
+    pub use crate::vector_head::{HeadAnimation, HeadStyle};
     pub use crate::{drop, group, parallel, sequence, spawn, timeline};
 }

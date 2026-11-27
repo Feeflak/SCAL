@@ -1,6 +1,6 @@
 //! Lines through several points with an optional arrow head, solid or dashed.
 use glam::Vec2;
-use scal_core::Color;
+use scal_core::{Color, HeadAnimation, HeadStyle};
 
 use crate::anim_object::Transform;
 use crate::anim_object::object_trait::{AnimObjectTrait, BindGroupLoader, MeshResult};
@@ -16,6 +16,11 @@ pub struct Vector {
     pub arrow_head: bool,
     pub head_length: f32,
     pub head_width: f32,
+    pub head_style: HeadStyle,
+    /// Back and forth of the head, `None` for a still head.
+    pub head_animation: Option<HeadAnimation>,
+    /// Seconds since the animation started, what the head animation is at. See `tick`.
+    pub time: f32,
     /// Dash length and gap, `None` for a solid line.
     pub dash: Option<(f32, f32)>,
     pub transform: Transform,
@@ -40,6 +45,14 @@ impl AnimObjectTrait for Vector {
     }
     fn generate_mesh(&mut self, _mgr: &mut crate::anim_object::text::TextManager) -> MeshResult {
         Ok(mesh::generate_vector_mesh(self))
+    }
+    fn tick(&mut self, time: f32) -> bool {
+        let Some(animation) = self.head_animation else {
+            return false;
+        };
+        let moved = animation.progress(time) != animation.progress(self.time);
+        self.time = time;
+        moved
     }
     fn bind_group_loader(&self) -> Option<BindGroupLoader> {
         None

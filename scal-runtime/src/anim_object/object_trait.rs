@@ -38,6 +38,11 @@ pub trait AnimObjectTrait: Any + std::fmt::Debug + Send + Sync {
     fn set_number(&mut self, _number: f32) -> Result<bool> {
         anyhow::bail!("this object cannot show an animated number")
     }
+    /// Called once per rendered frame with the seconds since the animation started, for objects
+    /// that move by themselves. Returns `true` if the mesh has to be regenerated.
+    fn tick(&mut self, _time: f32) -> bool {
+        false
+    }
     /// Identifies the content a bind group was built from. When it changes the renderer drops
     /// the object's cached bind groups and calls `bind_group_loader` again.
     fn content_version(&self) -> u64 {

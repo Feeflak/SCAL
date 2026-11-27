@@ -61,6 +61,8 @@ impl Object {
 pub struct Animator {
     pub camera: Camera,
     pub fps: u32,
+    /// Frames shown so far, the clock for objects that move by themselves.
+    pub frame: u64,
     pub anim_state: AnimationState,
     pub animations_left: Vec<AnimOperation>,
 
@@ -107,6 +109,7 @@ impl Animator {
             camera,
             text_manager: TextManager::new(text_scale),
             fps,
+            frame: 0,
             anim_state: AnimationState::new(first_anim)?,
             animations_left: animations,
             objects: vec![],
@@ -179,6 +182,10 @@ impl Animator {
             }
         }
 
+        self.tick_objects()
+            .context("while updating objects that move by themselves")?;
+        self.frame += 1;
+
         self.update_object_matrix_cache()
             .context("while updating object matrix caches")?;
         self.sort_objects_by_z();
@@ -196,6 +203,20 @@ impl Animator {
             scene,
             glyph_update_data: self.text_manager.atlas.get_glyph_update_data(),
         }))
+    }
+    /// Lets every object that moves by itself (like a vector with an animated head) step to the
+    /// time of the current frame, and regenerates the meshes that changed.
+    fn tick_objects(&mut self) -> Result<()> {
+        let time = self.frame as f32 / self.fps as f32;
+        let changed: Vec<Uuid> = self
+            .objects
+            .iter_mut()
+            .filter_map(|obj| obj.anim_data.tick(time).then(|| *obj.uuid()))
+            .collect();
+        for uuid in changed {
+            self.regenerate_object_mesh(&uuid)?;
+        }
+        Ok(())
     }
     pub fn sort_objects_by_z(&mut self) {
         self.objects.sort_by(|a, b| a.z_pos().total_cmp(&b.z_pos()));

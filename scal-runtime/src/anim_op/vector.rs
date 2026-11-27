@@ -90,6 +90,9 @@ mod tests {
                 arrow_head: true,
                 head_length: 40.0,
                 head_width: 30.0,
+                head_style: scal_core::HeadStyle::Filled,
+                head_animation: None,
+                time: 0.0,
                 dash: None,
                 transform: Transform::with_uuid(uuid, Vec3::new(150.0, 100.0, 0.0)),
             })))

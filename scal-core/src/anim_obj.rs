@@ -14,6 +14,7 @@ use crate::ease::Ease;
 use crate::motion::{IntoScale, Motion};
 use crate::theme::Theme;
 use crate::transform::Transform;
+use crate::vector_head::{HeadAnimation, HeadStyle};
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 /// Generic for all object type. Conversion is done using ``IntoAnimOp`` trait.
@@ -159,6 +160,9 @@ pub enum AnimObjKind {
         arrow_head: bool,
         head_length: f32,
         head_width: f32,
+        head_style: HeadStyle,
+        /// Loops a back and forth of the head, `None` for a still head.
+        head_animation: Option<HeadAnimation>,
         /// Dash length and gap, `None` for a solid line.
         dash: Option<(f32, f32)>,
     },
