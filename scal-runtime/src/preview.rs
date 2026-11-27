@@ -356,10 +356,10 @@ impl ApplicationHandler for PreviewState {
                 let (cx, cy) = self.cursor_pos;
                 let (ww, wh) = self.window_size;
                 let h = wh as f32;
-                let timeline_top = h - 80.0;
-                let marker_bot = h - 34.0;
+                let timeline_top = h - UI_TIMELINE_HEIGHT;
+                let marker_bot = h - UI_MARKER_BOTTOM_OFFSET;
                 let op_click = if cy as f32 >= timeline_top && cy as f32 <= marker_bot {
-                    preview.find_op_at_x(cx as f32).map(|op| {
+                    preview.find_op_at(cx as f32, cy as f32).map(|op| {
                         let info = match op.source_loc {
                             Some(ref loc) => {
                                 format!("{} @ {}:{}", op.label, loc.file, loc.line)
@@ -444,7 +444,7 @@ fn seek_on_timeline(
     let (ww, wh) = window_size;
     if ww > 0 && wh > 0 {
         let (cx, cy) = cursor_pos;
-        let timeline_top = wh as f64 - 80.0;
+        let timeline_top = wh as f64 - UI_TIMELINE_HEIGHT as f64;
         if cy >= timeline_top && cy <= wh as f64 {
             let seek_time = preview.screen_x_to_time(cx as f32);
             if let Err(e) = preview.seek_to(seek_time) {
@@ -817,6 +817,20 @@ pub struct TimelineOp {
     pub end_time: f32,
     pub kind: OpKind,
     pub source_loc: Option<scal_core::SourceLoc>,
+    /// Vertical span of the op in the timeline, `0.0` = top, `1.0` = bottom. An animation that
+    /// does not run in parallel with anything fills it all, animations in a `parallel![]` split
+    /// the span of the group between them.
+    pub y0: f32,
+    pub y1: f32,
+    /// How many outlines (`sequence![]` / `parallel![]` with several parts) are around the op.
+    pub depth: u32,
+}
+
+impl TimelineOp {
+    /// `sequence![]` and `parallel![]` are drawn as an outline around their animations.
+    pub fn is_outline(&self) -> bool {
+        matches!(self.kind, OpKind::Composite | OpKind::Parallel)
+    }
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -828,7 +842,10 @@ pub enum OpKind {
     Wait,
     Sound,
     Scroll,
+    /// A `sequence![]`, drawn as an outline.
     Composite,
+    /// A `parallel![]`, drawn as an outline.
+    Parallel,
 }
 
 #[derive(Clone, Debug)]
@@ -840,9 +857,25 @@ pub struct SoundMarker {
     pub name: String,
 }
 
-const UI_TIMELINE_HEIGHT: f32 = 80.0;
+const UI_TIMELINE_HEIGHT: f32 = 108.0;
 
-const UI_OPERATION_MARKER_HEIGHT: f32 = 20.0;
+/// Animations share this height: one alone fills it, four in a `parallel![]` get a quarter each.
+const UI_OPERATION_MARKER_HEIGHT: f32 = 48.0;
+/// Distance from the bottom of the window to the bottom of the animation blocks. What is below
+/// is the sound waveform.
+const UI_MARKER_BOTTOM_OFFSET: f32 = UI_TIMELINE_HEIGHT
+    - (2.0 + UI_TIME_TEXT_HEIGHT + 2.0 + UI_OPERATION_MARKER_HEIGHT);
+
+/// Outline colors by nesting: the outermost `sequence![]` / `parallel![]` is blue, the one
+/// inside it red, and so on. Wraps around after the last one.
+const OUTLINE_COLORS: [[f32; 3]; 6] = [
+    [0.25, 0.55, 1.0],
+    [1.0, 0.3, 0.3],
+    [0.3, 0.9, 0.4],
+    [1.0, 0.8, 0.2],
+    [0.75, 0.4, 1.0],
+    [0.2, 0.9, 0.9],
+];
 const UI_PLAYHEAD_WIDTH: f32 = 2.0;
 
 const UI_TIME_TEXT_FONT_SIZE: f32 = 17.0;
@@ -907,7 +940,8 @@ fn op_kind(op: &AnimOperation) -> OpKind {
         | AnimOperation::MathHighlight(..)
         | AnimOperation::NumberTo(..) => OpKind::Transform,
         AnimOperation::ScrollOffset(..) => OpKind::Scroll,
-        AnimOperation::All(..) | AnimOperation::Sequence(..) => OpKind::Composite,
+        AnimOperation::All(..) => OpKind::Parallel,
+        AnimOperation::Sequence(..) => OpKind::Composite,
         AnimOperation::Wait(..) => OpKind::Wait,
         AnimOperation::PlaySound(..) => OpKind::Sound,
     }
@@ -922,7 +956,8 @@ fn op_color(kind: OpKind) -> [f32; 4] {
         OpKind::Wait => [0.4, 0.4, 0.4, 1.0],
         OpKind::Sound => [0.9, 0.2, 0.2, 1.0],
         OpKind::Scroll => [0.2, 0.9, 0.9, 1.0],
-        OpKind::Composite => [0.6, 0.6, 0.8, 1.0],
+        OpKind::Composite => [0.95, 0.95, 1.0, 1.0],
+        OpKind::Parallel => [0.55, 0.85, 1.0, 1.0],
     }
 }
 
@@ -953,61 +988,113 @@ fn op_source_loc(op: &AnimOperation) -> Option<scal_core::SourceLoc> {
     }
 }
 
+/// What one pass of [`flatten_ops`] produced for a list of ops that run one after another.
+struct Flattened {
+    end: f32,
+    /// How many of the ops show up on the timeline at all.
+    visible: usize,
+}
+
+/// How long `op` takes on the timeline.
+fn op_duration(op: &AnimOperation) -> f32 {
+    match op {
+        AnimOperation::All(children, _) => children.iter().map(op_duration).fold(0.0, f32::max),
+        AnimOperation::Sequence(children, _) => children.iter().map(op_duration).sum(),
+        AnimOperation::Wait(d, _)
+        | AnimOperation::TransformMovePos(_, _, d, _, _)
+        | AnimOperation::TransformMoveToObj(_, _, _, d, _, _)
+        | AnimOperation::TransformRotate(_, _, d, _, _)
+        | AnimOperation::TransformScale(_, _, d, _, _)
+        | AnimOperation::CodeAddLines(_, _, _, d, _, _, _)
+        | AnimOperation::CodeModifyLine(_, _, _, d, _, _, _)
+        | AnimOperation::CodeRemoveLines(_, _, d, _, _, _)
+        | AnimOperation::CodeMorph(_, _, _, d, _, _)
+        | AnimOperation::TerminalTypeInput(_, _, _, _, _, d, _, _, _)
+        | AnimOperation::TerminalOutput(_, _, d, _, _, _)
+        | AnimOperation::ObjectColor(_, _, d, _, _)
+        | AnimOperation::MathPartColor(_, _, _, d, _, _)
+        | AnimOperation::MathHighlight(_, _, _, _, d, _, _)
+        | AnimOperation::ScrollOffset(_, _, d, _, _)
+        | AnimOperation::NumberTo(_, _, _, d, _, _) => *d,
+        AnimOperation::CodeHighlight(_, action, _) => action.duration_and_curve().0,
+        AnimOperation::PlaySound(..) | AnimOperation::Instantiate(..) | AnimOperation::Drop(..) => {
+            0.0
+        }
+    }
+}
+
+/// Flattens the ops into blocks for the timeline. Every animation gets its own block. An
+/// animation fills the whole height, the animations of a `parallel![]` split the height of the
+/// group evenly. Each `sequence![]` / `parallel![]` with at least two visible parts gets an
+/// outline around them, so the parts can be told apart.
 pub fn flatten_ops(ops: &[AnimOperation]) -> (Vec<TimelineOp>, f32) {
-    fn flatten_inner(ops: &[AnimOperation], start_time: f32, result: &mut Vec<TimelineOp>) -> f32 {
+    /// `y0..y1` is the vertical span all of `ops` may use.
+    fn flatten_inner(
+        ops: &[AnimOperation],
+        start_time: f32,
+        y0: f32,
+        y1: f32,
+        result: &mut Vec<TimelineOp>,
+    ) -> Flattened {
         let mut time = start_time;
+        let mut visible = 0;
         for op in ops {
+            let duration = op_duration(op);
+            if duration <= 0.0 {
+                continue;
+            }
             let op_start = time;
+            let first_inner = result.len();
+            let mut outline_parts = 0;
             match op {
                 AnimOperation::All(children, _) => {
-                    let mut max_end = time;
-                    for child in children {
-                        let end = flatten_inner(std::slice::from_ref(child), time, result);
-                        if end > max_end {
-                            max_end = end;
-                        }
+                    let shown: Vec<&AnimOperation> =
+                        children.iter().filter(|c| op_duration(c) > 0.0).collect();
+                    let slice = (y1 - y0) / shown.len().max(1) as f32;
+                    for (i, child) in shown.into_iter().enumerate() {
+                        let top = y0 + slice * i as f32;
+                        flatten_inner(
+                            std::slice::from_ref(child),
+                            op_start,
+                            top,
+                            top + slice,
+                            result,
+                        );
+                        outline_parts += 1;
                     }
-                    time = max_end;
                 }
                 AnimOperation::Sequence(children, _) => {
-                    time = flatten_inner(children, time, result);
+                    outline_parts = flatten_inner(children, op_start, y0, y1, result).visible;
                 }
-                AnimOperation::Wait(d, _) => time += d,
-                AnimOperation::TransformMovePos(_, _, d, _, _)
-                | AnimOperation::TransformMoveToObj(_, _, _, d, _, _)
-                | AnimOperation::TransformRotate(_, _, d, _, _)
-                | AnimOperation::TransformScale(_, _, d, _, _) => time += d,
-                AnimOperation::CodeAddLines(_, _, _, d, _, _, _)
-                | AnimOperation::CodeModifyLine(_, _, _, d, _, _, _)
-                | AnimOperation::CodeRemoveLines(_, _, d, _, _, _)
-                | AnimOperation::CodeMorph(_, _, _, d, _, _) => time += d,
-                AnimOperation::CodeHighlight(_, action, _) => {
-                    time += action.duration_and_curve().0;
-                }
-                AnimOperation::TerminalTypeInput(_, _, _, _, _, d, _, _, _)
-                | AnimOperation::TerminalOutput(_, _, d, _, _, _) => time += d,
-                AnimOperation::ObjectColor(_, _, d, _, _) => time += d,
-                AnimOperation::MathPartColor(_, _, _, d, _, _) => time += d,
-                AnimOperation::MathHighlight(_, _, _, _, d, _, _) => time += d,
-                AnimOperation::ScrollOffset(_, _, d, _, _) => time += d,
-                AnimOperation::NumberTo(_, _, _, d, _, _) => time += d,
-                AnimOperation::PlaySound(_, _, _) => {}
-                AnimOperation::Instantiate(..) | AnimOperation::Drop(..) => {}
+                _ => {}
             }
-            if time > op_start {
-                result.push(TimelineOp {
-                    label: op_label(op).to_string(),
-                    start_time: op_start,
-                    end_time: time,
-                    kind: op_kind(op),
-                    source_loc: op_source_loc(op),
-                });
+            time += duration;
+            visible += 1;
+
+            let is_group = matches!(op, AnimOperation::All(..) | AnimOperation::Sequence(..));
+            // A group of one thing would only repeat the outline of that thing.
+            if is_group && outline_parts < 2 {
+                continue;
             }
+            // Everything inside is now one level deeper.
+            for inner in &mut result[first_inner..] {
+                inner.depth += 1;
+            }
+            result.push(TimelineOp {
+                label: op_label(op).to_string(),
+                start_time: op_start,
+                end_time: time,
+                kind: op_kind(op),
+                source_loc: op_source_loc(op),
+                y0,
+                y1,
+                depth: 0,
+            });
         }
-        time
+        Flattened { end: time, visible }
     }
     let mut ops_list = vec![];
-    let total = flatten_inner(ops, 0.0, &mut ops_list);
+    let total = flatten_inner(ops, 0.0, 0.0, 1.0, &mut ops_list).end;
     (ops_list, total)
 }
 
@@ -1858,7 +1945,7 @@ impl PreviewRenderer {
 
         let marker_top = text_y + UI_TIME_TEXT_HEIGHT + 2.0;
         let marker_bot = marker_top + UI_OPERATION_MARKER_HEIGHT;
-        let border_w = 3.0;
+        let border_w: f32 = 3.0;
 
         let waveform_area_top = marker_bot + 2.0;
         let waveform_area_bot = timeline_bottom - 4.0;
@@ -1976,8 +2063,13 @@ impl PreviewRenderer {
             }
         }
 
-        // Operation markers
+        // Operation markers: one block per animation, in rows when they run in parallel, with
+        // an outline around every sequence![] / parallel![] to show what belongs together.
+        let band_h = marker_bot - marker_top;
         for (i, op) in self.timeline_ops.iter().enumerate() {
+            if op.is_outline() {
+                continue;
+            }
             let op_start_x = self.time_to_x(op.start_time, w);
             let op_end_x = self.time_to_x(op.end_time, w);
             if op_end_x < 0.0 || op_start_x > w {
@@ -1999,20 +2091,24 @@ impl PreviewRenderer {
                 continue;
             }
             let visible_w = visible_end - visible_start;
+            // Blocks that share a border with a neighbour in another row leave a small gap.
+            let block_top = marker_top + op.y0 * band_h + if op.y0 > 0.0 { 1.0 } else { 0.0 };
+            let block_bot = marker_top + op.y1 * band_h - if op.y1 < 1.0 { 1.0 } else { 0.0 };
+            let block_border_w = border_w.min(((block_bot - block_top) * 0.2).max(1.0));
             append_rect(
                 &mut vertices,
                 &mut indices,
                 visible_start,
-                marker_top,
+                block_top,
                 visible_start + visible_w,
-                marker_bot,
+                block_bot,
                 border_color,
                 NO_UV,
             );
-            let fill_x0 = visible_start + border_w;
-            let fill_x1 = (visible_start + visible_w - border_w).max(fill_x0);
-            let fill_y0 = marker_top + border_w;
-            let fill_y1 = marker_bot - border_w;
+            let fill_x0 = visible_start + block_border_w;
+            let fill_x1 = (visible_start + visible_w - block_border_w).max(fill_x0);
+            let fill_y0 = block_top + block_border_w;
+            let fill_y1 = block_bot - block_border_w;
             if fill_x1 > fill_x0 && fill_y1 > fill_y0 {
                 append_rect(
                     &mut vertices,
@@ -2024,6 +2120,45 @@ impl PreviewRenderer {
                     color,
                     NO_UV,
                 );
+            }
+        }
+        // Outlines go on top of the blocks, the outermost last.
+        let mut outlines: Vec<usize> = (0..self.timeline_ops.len())
+            .filter(|&i| self.timeline_ops[i].is_outline())
+            .collect();
+        outlines.sort_by_key(|&i| std::cmp::Reverse(self.timeline_ops[i].depth));
+        for i in outlines {
+            let op = &self.timeline_ops[i];
+            let x0 = self.time_to_x(op.start_time, w);
+            let x1 = self.time_to_x(op.end_time, w);
+            if x1 < 0.0 || x0 > w {
+                continue;
+            }
+            let hovered = self.hovered_op == Some(i);
+            let t = if hovered { 3.0 } else { 2.0 };
+            let rgb = OUTLINE_COLORS[op.depth as usize % OUTLINE_COLORS.len()];
+            let color = [rgb[0], rgb[1], rgb[2], if hovered { 1.0 } else { 0.9 }];
+            // Deeper outlines sit further inside so nested ones stay apart.
+            let step = t + 1.0;
+            let y0 = marker_top + op.y0 * band_h;
+            let y1 = marker_top + op.y1 * band_h;
+            let inset = op.depth as f32 * step;
+            let inset_x = inset.min(((x1 - x0) / 2.0 - t).max(0.0));
+            let inset_y = inset.min(((y1 - y0) / 2.0 - t).max(0.0));
+            let (x0, x1) = (x0 + inset_x, x1 - inset_x);
+            let (y0, y1) = (y0 + inset_y, y1 - inset_y);
+            // Only the parts that are on screen, so a long outline stays cheap.
+            let (vx0, vx1) = (x0.max(0.0), x1.min(w));
+            if vx1 <= vx0 {
+                continue;
+            }
+            append_rect(&mut vertices, &mut indices, vx0, y0, vx1, y0 + t, color, NO_UV);
+            append_rect(&mut vertices, &mut indices, vx0, y1 - t, vx1, y1, color, NO_UV);
+            if x0 >= 0.0 {
+                append_rect(&mut vertices, &mut indices, x0, y0, x0 + t, y1, color, NO_UV);
+            }
+            if x1 <= w {
+                append_rect(&mut vertices, &mut indices, x1 - t, y0, x1, y1, color, NO_UV);
             }
         }
 
@@ -2686,16 +2821,34 @@ impl PreviewRenderer {
         &self.animator
     }
 
-    pub fn find_op_at_x(&self, x: f32) -> Option<&TimelineOp> {
+    /// The op under a point of the timeline: an animation if there is one, otherwise the
+    /// innermost sequence or parallel group around that spot.
+    fn op_index_at(&self, x: f32, y: f32) -> Option<usize> {
         let w = self.surface_config.width as f32;
         if w <= 0.0 {
             return None;
         }
-        let click_time = self.x_to_time(x, w);
+        let time = self.x_to_time(x, w);
+        let marker_top = self.surface_config.height as f32 - UI_TIMELINE_HEIGHT
+            + 2.0
+            + UI_TIME_TEXT_HEIGHT
+            + 2.0;
+        let row = ((y - marker_top) / UI_OPERATION_MARKER_HEIGHT).clamp(0.0, 1.0);
+        let covers = |op: &TimelineOp| {
+            time >= op.start_time && time <= op.end_time && row >= op.y0 && row <= op.y1
+        };
         self.timeline_ops
             .iter()
-            .rev()
-            .find(|op| click_time >= op.start_time && click_time <= op.end_time)
+            .rposition(|op| !op.is_outline() && covers(op))
+            .or_else(|| {
+                (0..self.timeline_ops.len())
+                    .filter(|&i| self.timeline_ops[i].is_outline() && covers(&self.timeline_ops[i]))
+                    .max_by_key(|&i| self.timeline_ops[i].depth)
+            })
+    }
+
+    pub fn find_op_at(&self, x: f32, y: f32) -> Option<&TimelineOp> {
+        self.op_index_at(x, y).map(|i| &self.timeline_ops[i])
     }
 
     pub fn find_sound_at_x(&self, x: f32) -> Option<(f32, Option<f32>, usize, &SoundMarker)> {
@@ -2740,16 +2893,12 @@ impl PreviewRenderer {
 
     pub fn set_hovered_from_cursor(&mut self, cx: f32, cy: f32) {
         let h = self.surface_config.height as f32;
-        let timeline_top = h - 80.0;
-        let marker_bot = h - 34.0;
+        let timeline_top = h - UI_TIMELINE_HEIGHT;
+        let marker_bot = h - UI_MARKER_BOTTOM_OFFSET;
         let prev_op = self.hovered_op;
         let prev_sound = self.hovered_sound;
         if cy >= timeline_top && cy <= marker_bot {
-            let idx = self.timeline_ops.iter().rposition(|op| {
-                let t = self.x_to_time(cx, self.surface_config.width as f32);
-                t >= op.start_time && t <= op.end_time
-            });
-            self.hovered_op = idx;
+            self.hovered_op = self.op_index_at(cx, cy);
             self.hovered_sound = None;
         } else if cy >= marker_bot && cy <= h {
             let idx = self.sound_markers.iter().position(|m| {
@@ -2881,4 +3030,137 @@ fn append_rect_textured(
     indices.push(base);
     indices.push(base + 2);
     indices.push(base + 3);
+}
+
+#[cfg(test)]
+mod timeline_tests {
+    use super::*;
+    use uuid::Uuid;
+
+    fn wait(d: f32) -> AnimOperation {
+        AnimOperation::Wait(d, None)
+    }
+
+    fn mv(d: f32) -> AnimOperation {
+        AnimOperation::TransformMovePos(
+            Uuid::nil(),
+            glam::Vec2::ZERO,
+            d,
+            scal_core::Ease::Linear,
+            None,
+        )
+    }
+
+    #[test]
+    fn sequence_children_are_separate_blocks_with_an_outline() {
+        let ops = vec![AnimOperation::Sequence(vec![wait(1.0), mv(2.0), wait(0.5)], None)];
+        let (list, total) = flatten_ops(&ops);
+        assert_eq!(total, 3.5);
+        let blocks: Vec<_> = list.iter().filter(|o| !o.is_outline()).collect();
+        assert_eq!(blocks.len(), 3);
+        assert_eq!(
+            blocks.iter().map(|b| (b.start_time, b.end_time)).collect::<Vec<_>>(),
+            [(0.0, 1.0), (1.0, 3.0), (3.0, 3.5)]
+        );
+        assert!(blocks.iter().all(|b| b.y0 == 0.0 && b.y1 == 1.0));
+        let outline: Vec<_> = list.iter().filter(|o| o.is_outline()).collect();
+        assert_eq!(outline.len(), 1);
+        assert_eq!((outline[0].start_time, outline[0].end_time), (0.0, 3.5));
+    }
+
+    #[test]
+    fn parallel_children_get_their_own_rows() {
+        let ops = vec![AnimOperation::All(
+            vec![
+                wait(1.0),
+                AnimOperation::Sequence(vec![mv(0.5), mv(0.5)], None),
+                AnimOperation::Instantiate(
+                    crate::anim_object::object_trait::DynAnimObj(Box::new(
+                        crate::anim_object::primitive_shapes::Rectangle {
+                            size: glam::Vec2::ONE,
+                            corner_radius: 0.0,
+                            color: scal_core::Color::WHITE,
+                            transform: crate::anim_object::Transform::with_uuid(
+                                Uuid::new_v4(),
+                                glam::Vec3::ZERO,
+                            ),
+                        },
+                    )),
+                    None,
+                ),
+            ],
+            None,
+        )];
+        let (list, _) = flatten_ops(&ops);
+        let spans: Vec<(f32, f32)> = list
+            .iter()
+            .filter(|o| !o.is_outline())
+            .map(|o| (o.y0, o.y1))
+            .collect();
+        // The instant spawn takes no space: the wait gets the top half, the sequence the bottom
+        // half and both of its steps fill that half.
+        assert_eq!(spans, [(0.0, 0.5), (0.5, 1.0), (0.5, 1.0)]);
+        let outer = list.iter().find(|o| o.kind == OpKind::Parallel).unwrap();
+        assert_eq!((outer.y0, outer.y1), (0.0, 1.0));
+    }
+
+    #[test]
+    fn four_parallel_animations_take_a_quarter_each() {
+        let ops = vec![AnimOperation::All(
+            vec![wait(1.0), wait(1.0), wait(1.0), wait(1.0)],
+            None,
+        )];
+        let (list, _) = flatten_ops(&ops);
+        let spans: Vec<(f32, f32)> = list
+            .iter()
+            .filter(|o| !o.is_outline())
+            .map(|o| (o.y0, o.y1))
+            .collect();
+        assert_eq!(spans, [(0.0, 0.25), (0.25, 0.5), (0.5, 0.75), (0.75, 1.0)]);
+    }
+
+    #[test]
+    fn animations_after_a_parallel_group_fill_the_height_again() {
+        let ops = vec![
+            AnimOperation::All(vec![wait(1.0), wait(1.0)], None),
+            wait(1.0),
+        ];
+        let (list, _) = flatten_ops(&ops);
+        let last = list.iter().filter(|o| !o.is_outline()).last().unwrap();
+        assert_eq!((last.y0, last.y1), (0.0, 1.0));
+    }
+
+    #[test]
+    fn outline_depth_counts_only_drawn_outlines() {
+        // outer(parallel) > [ sequence(2 parts) > ..., single-child sequence (no outline) ]
+        let ops = vec![AnimOperation::All(
+            vec![
+                AnimOperation::Sequence(vec![wait(1.0), wait(1.0)], None),
+                AnimOperation::Sequence(
+                    vec![AnimOperation::Sequence(vec![wait(1.0)], None)],
+                    None,
+                ),
+            ],
+            None,
+        )];
+        let (list, _) = flatten_ops(&ops);
+        let depths: Vec<(OpKind, u32)> = list
+            .iter()
+            .filter(|o| o.is_outline())
+            .map(|o| (o.kind, o.depth))
+            .collect();
+        assert_eq!(depths, [(OpKind::Composite, 1), (OpKind::Parallel, 0)]);
+    }
+
+    #[test]
+    fn groups_of_one_thing_get_no_outline() {
+        let ops = vec![AnimOperation::Sequence(
+            vec![AnimOperation::All(vec![wait(1.0)], None)],
+            None,
+        )];
+        let (list, total) = flatten_ops(&ops);
+        assert_eq!(total, 1.0);
+        assert_eq!(list.len(), 1);
+        assert!(!list[0].is_outline());
+    }
 }

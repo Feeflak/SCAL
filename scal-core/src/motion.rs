@@ -94,6 +94,8 @@ pub trait Tween: Sized {
 #[derive(Clone, Debug)]
 pub struct Group {
     ids: Vec<Uuid>,
+    /// One instantiate op per object, in the order they were grouped.
+    spawn_ops: Vec<AnimOP>,
 }
 
 impl Group {
@@ -102,7 +104,36 @@ impl Group {
     pub fn new(ids: impl IntoIterator<Item = Uuid>) -> Self {
         Self {
             ids: ids.into_iter().collect(),
+            spawn_ops: vec![],
         }
+    }
+
+    /// Create a group that can also be spawned: `spawn_ops` are the `instantiate()` ops of the
+    /// objects. Prefer the [`group!`](crate::group) macro.
+    #[doc(hidden)]
+    #[must_use]
+    pub const fn with_spawn_ops(ids: Vec<Uuid>, spawn_ops: Vec<AnimOP>) -> Self {
+        Self { ids, spawn_ops }
+    }
+
+    /// Add every object of the group to the scene at once. This is what `spawn![group]` uses.
+    /// Groups made with [`Group::new`] have no objects to add, only the `group!` macro keeps them.
+    #[must_use]
+    pub fn instantiate(&self) -> AnimOP {
+        AnimOP::All(self.spawn_ops.clone(), None)
+    }
+
+    /// Remove every object of the group from the scene for good, see [`drop!`](crate::drop).
+    /// This is what `drop![group]` uses.
+    #[must_use]
+    pub fn despawn(&self) -> AnimOP {
+        AnimOP::All(
+            self.ids
+                .iter()
+                .map(|id| AnimOP::Drop(*id, None))
+                .collect(),
+            None,
+        )
     }
 
     /// Move every object of the group to `target`.
@@ -206,15 +237,31 @@ impl<B: IntoAnimOp> From<GroupOp<B>> for AnimOP {
 #[macro_export]
 macro_rules! group {
     ( $( $obj:expr ),* $(,)? ) => {
-        $crate::Group::new([ $( ($obj).transform.uuid ),* ])
+        {
+            #[allow(unused_mut)]
+            let mut ids = ::std::vec::Vec::new();
+            #[allow(unused_mut)]
+            let mut spawn_ops = ::std::vec::Vec::new();
+            $(
+                {
+                    // Evaluate each object expression only once.
+                    let object = &($obj);
+                    ids.push(object.transform.uuid);
+                    spawn_ops.push(object.instantiate());
+                }
+            )*
+            $crate::Group::with_spawn_ops(ids, spawn_ops)
+        }
     };
 }
 
 /// Instantiate several objects at once. Instantiating takes no time, so this is the same as
-/// listing each `.instantiate()` on its own line.
+/// listing each `.instantiate()` on its own line. Takes objects and [`group!`](crate::group)s,
+/// mixed as you like.
 /// ```ignore
+/// let labels = group![title, subtitle];
 /// timeline![
-///     spawn![title, subtitle, formula],
+///     spawn![labels, formula],
 /// ]
 /// ```
 #[macro_export]
@@ -230,17 +277,18 @@ macro_rules! spawn {
 ///
 /// Objects are never removed automatically. After `pop_out` an object is only scaled to nothing
 /// and still costs memory, so drop what a later part of the video does not need anymore.
-/// Works with every object that has a `.transform`, like [`group!`](crate::group).
+/// Takes objects (anything with a `.transform`) and [`group!`](crate::group)s, mixed as you like.
 /// ```ignore
+/// let labels = group![title, subtitle];
 /// sequence![
-///     parallel![cw.pop_out().with(POP), formula.pop_out().with(POP)],
-///     drop![cw, formula],
+///     parallel![cw.pop_out().with(POP), labels.pop_out()],
+///     drop![cw, labels],
 /// ]
 /// ```
 #[macro_export]
 macro_rules! drop {
     ( $( $obj:expr ),* $(,)? ) => {
-        $crate::AnimOP::All(vec![ $( $crate::AnimOP::Drop(($obj).transform.uuid, None) ),* ], None)
+        $crate::AnimOP::All(vec![ $( ($obj).despawn() ),* ], None)
     };
 }
 
@@ -258,5 +306,53 @@ mod drop_tests {
         assert!(matches!(ops[0], AnimOP::Drop(id, _) if id == a.transform.uuid));
         assert!(matches!(ops[1], AnimOP::Drop(id, _) if id == b.transform.uuid));
         assert_eq!(ops.len(), 2);
+    }
+}
+
+#[cfg(test)]
+mod group_spawn_tests {
+    use crate::{AnimOP, prelude::*};
+
+    #[test]
+    fn spawn_and_drop_accept_groups() {
+        let a = rectangle().build();
+        let b = text().build();
+        let c = rectangle().build();
+        let pair = group![a, b];
+
+        let AnimOP::All(spawned, _) = spawn![pair, c] else {
+            panic!("spawn! should be a parallel group");
+        };
+        // The group spawns as one nested op holding both objects.
+        let AnimOP::All(inner, _) = &spawned[0] else {
+            panic!("a group should spawn as one op");
+        };
+        assert_eq!(inner.len(), 2);
+        assert!(matches!(&inner[0], AnimOP::Instantiate(o, _) if o.transform.uuid == a.transform.uuid));
+        assert!(matches!(&spawned[1], AnimOP::Instantiate(o, _) if o.transform.uuid == c.transform.uuid));
+
+        let AnimOP::All(dropped, _) = drop![pair, c] else {
+            panic!("drop! should be a parallel group");
+        };
+        let AnimOP::All(inner, _) = &dropped[0] else {
+            panic!("a group should drop as one op");
+        };
+        assert!(matches!(inner[1], AnimOP::Drop(id, _) if id == b.transform.uuid));
+        assert!(matches!(dropped[1], AnimOP::Drop(id, _) if id == c.transform.uuid));
+    }
+
+    #[test]
+    fn group_expressions_are_evaluated_once() {
+        let g = group![rectangle().build()];
+        let AnimOP::All(spawned, _) = g.instantiate() else {
+            panic!()
+        };
+        let AnimOP::All(dropped, _) = g.despawn() else {
+            panic!()
+        };
+        let (AnimOP::Instantiate(o, _), AnimOP::Drop(id, _)) = (&spawned[0], &dropped[0]) else {
+            panic!()
+        };
+        assert_eq!(o.transform.uuid, *id);
     }
 }

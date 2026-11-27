@@ -45,6 +45,13 @@ impl AnimObj {
         AnimOP::Instantiate(Box::new(self.clone()), None)
     }
 
+    /// Returns an animation that instantly removes this object, and everything attached to it,
+    /// from the scene for good. See [`drop!`](crate::drop).
+    #[must_use]
+    pub fn despawn(&self) -> AnimOP {
+        AnimOP::Drop(self.transform.uuid, None)
+    }
+
     /// Shortcut for `transform.position().to(target)`: animate this object to a position.
     /// ```ignore
     /// title.move_to(vec2(0.0, 100.0)).with(SLIDE)
