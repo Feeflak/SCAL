@@ -203,6 +203,72 @@ impl IntoAnimOp for CodeRemoveLinesBuilder {
     }
 }
 
+/// Builder for an animation that morphs a code block into other code and/or a bigger (or smaller)
+/// font size in one smooth motion.
+///
+/// Tokens that exist in both the old and the new code glide to their new place, the rest fades
+/// out or in, and the font size and the size of a surrounding code window change along the way.
+/// ```ignore
+/// cw.morph_to("let airflow = wind - span_dir * wind.dot(span_dir);")
+///     .font_size(80.)
+///     .over(2.s())
+/// ```
+pub struct CodeMorphBuilder {
+    pub(crate) uuid: Uuid,
+    pub(crate) source: Option<String>,
+    pub(crate) font_size: Option<f32>,
+    pub(crate) duration: Time,
+    pub(crate) ease: Ease,
+}
+
+impl CodeMorphBuilder {
+    pub(crate) const fn new(uuid: Uuid) -> Self {
+        Self {
+            uuid,
+            source: None,
+            font_size: None,
+            duration: 1.5,
+            ease: Ease::InOutCubic,
+        }
+    }
+    #[must_use]
+    /// The code to morph into
+    pub fn source(mut self, source: impl Into<String>) -> Self {
+        self.source = Some(source.into());
+        self
+    }
+    #[must_use]
+    /// Font size to end with. Without it the font size stays as it is.
+    pub const fn font_size(mut self, font_size: f32) -> Self {
+        self.font_size = Some(font_size);
+        self
+    }
+    #[must_use]
+    /// Duration that you want to be animating the morph over
+    pub const fn over(mut self, duration: Time) -> Self {
+        self.duration = duration;
+        self
+    }
+    #[must_use]
+    /// Ease function that you want to use on this animation
+    pub const fn ease(mut self, ease: Ease) -> Self {
+        self.ease = ease;
+        self
+    }
+}
+
+impl From<CodeMorphBuilder> for AnimOP {
+    fn from(b: CodeMorphBuilder) -> Self {
+        Self::CodeMorph(b.uuid, b.source, b.font_size, b.duration, b.ease, None)
+    }
+}
+
+impl IntoAnimOp for CodeMorphBuilder {
+    fn into_anim_op(self) -> AnimOP {
+        self.into()
+    }
+}
+
 /// Builder for an animation of highlighting code by line range or regex pattern.
 /// ```ignore
 ///                code.highlight()

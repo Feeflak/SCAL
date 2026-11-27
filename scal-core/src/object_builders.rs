@@ -1115,7 +1115,8 @@ impl Default for CodeWindowBuilder {
             title_font_size: 16.0,
             width: 800.0,
             height: 600.0,
-            background_color: Color::new(0.176, 0.176, 0.176, 1.0),
+            // #11121d, the background of the default theme
+            background_color: Color::new(0.067, 0.071, 0.114, 1.0),
             show_line_numbers: false,
             line_number_color: Color::new(0.5, 0.5, 0.5, 0.6),
             transform: Transform::new(Vec3::ZERO),

@@ -3,7 +3,7 @@ use std::ops::Range;
 use scal_core::{CodeAnimationStyle, CodeHighlightAction, Ease};
 use uuid::Uuid;
 
-use crate::anim_object::text::code::{Code, CodeHighlight, CodeHighlightKind};
+use crate::anim_object::text::code::{Code, CodeHighlight, CodeHighlightKind, CodeMorph};
 use crate::anim_op::Animation;
 use crate::types::*;
 
@@ -344,6 +344,69 @@ pub fn remove_lines(
             Ok(())
         })),
     };
+
+    Animation::new(duration, curve, start, update)
+}
+
+/// Morphs the code into `source` and/or `font_size` over the duration of the animation.
+///
+/// The object takes the new source and font size right away, `Code::morph` tells the mesh
+/// generator how far the picture has come from the old state to the new one.
+pub fn morph(
+    uuid: Uuid,
+    source: Option<String>,
+    font_size: Option<f32>,
+    duration: Seconds,
+    curve: Ease,
+) -> Animation {
+    let start = Box::new(
+        move |animator: &mut crate::animator::Animator, _storage: &mut Vec<f32>| {
+            let obj = animator.get_object_mut(&uuid)?;
+            if let Some(code) = code_mut(obj.anim_data.as_any_mut()) {
+                let from_source = code.source_code.clone();
+                let from_font = code.font_size;
+                if let Some(source) = &source {
+                    code.source_code = source.clone();
+                }
+                if let Some(font_size) = font_size {
+                    code.font_size = font_size;
+                }
+                code.morph = Some(CodeMorph {
+                    from_source,
+                    from_font,
+                    to_font: code.font_size,
+                    progress: 0.0,
+                    plan: None,
+                });
+                // Earlier line animations must not leak into the new text.
+                code.anim_reveal = 1.0;
+                code.anim_line_start = 0;
+                code.anim_line_end = 0;
+                code.dirty = true;
+            }
+            let _ = obj;
+            animator.regenerate_object_mesh(&uuid)?;
+            Ok(())
+        },
+    );
+
+    let update: Option<
+        Box<dyn Fn(&mut crate::animator::Animator, f32, &mut Vec<f32>) -> anyhow::Result<()>>,
+    > = Some(Box::new(move |animator, t, _storage| {
+        let obj = animator.get_object_mut(&uuid)?;
+        if let Some(code) = code_mut(obj.anim_data.as_any_mut()) {
+            if let Some(morph) = code.morph.as_mut() {
+                morph.progress = t;
+                if t >= 1.0 {
+                    // Done: from now on the code is drawn the regular way.
+                    morph.plan = None;
+                }
+            }
+        }
+        let _ = obj;
+        animator.regenerate_object_mesh(&uuid)?;
+        Ok(())
+    }));
 
     Animation::new(duration, curve, start, update)
 }

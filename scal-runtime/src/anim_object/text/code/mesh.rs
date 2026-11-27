@@ -15,6 +15,9 @@ pub fn generate_code_mesh(
     id: Uuid,
     code: &mut Code,
 ) -> Result<(Vec<Vertex>, Vec<u32>, PipelineKind)> {
+    if super::morph::is_morphing(code) {
+        return super::morph::generate_morph_mesh(manager, code);
+    }
     code.update_highlight_if_dirty(&mut manager.code_highlighter)
         .context("code highlighting did not succeed")?;
     let buffer = manager.layout_code(code, id)?;

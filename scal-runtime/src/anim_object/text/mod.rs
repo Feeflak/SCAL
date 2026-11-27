@@ -11,7 +11,7 @@ use crate::{
     anim_object::{
         Alignment, Transform,
         object_trait::{AnimObjectTrait, BindGroupLoader, MeshResult},
-        text::code::{Code, highliter::CodeHighlighter},
+        text::code::{Code, TextLine, highliter::CodeHighlighter},
     },
     types::into_cosmic,
 };
@@ -218,6 +218,15 @@ pub fn new_font_system() -> FontSystem {
     system
 }
 
+/// Number of digits in the line number gutter of a code block with `line_count` lines.
+pub fn code_gutter_digits(line_count: usize) -> usize {
+    if line_count > 0 {
+        (line_count.ilog10() + 1) as usize
+    } else {
+        1
+    }
+}
+
 pub struct TextManager {
     pub code_highlighter: CodeHighlighter,
     pub font_system: FontSystem,
@@ -245,36 +254,58 @@ impl TextManager {
             }
         }
         code.dirty = false;
-        let metrics = Metrics::new(code.font_size, code.font_size * 1.2);
+
+        let buffer = self.layout_lines(
+            &code.lines,
+            &code.font_family,
+            code.font_size,
+            code.align,
+            code.show_line_numbers,
+            code.line_number_color,
+        );
+
+        self.layouts.insert(id, buffer);
+        self.layouts
+            .get(&id)
+            .context("layout was just inserted, should exist")
+            .map(|b| b.to_owned())
+    }
+
+    /// Shapes highlighted code lines into a buffer, without touching the layout cache.
+    pub fn layout_lines(
+        &mut self,
+        lines: &[TextLine],
+        font_family: &str,
+        font_size: f32,
+        align: Alignment,
+        show_line_numbers: bool,
+        line_number_color: Color,
+    ) -> Buffer {
+        let metrics = Metrics::new(font_size, font_size * 1.2);
 
         let mut buffer = Buffer::new(&mut self.font_system, metrics);
 
-        let default_attrs = Attrs::new().family(Family::Name(&code.font_family));
+        let default_attrs = Attrs::new().family(Family::Name(font_family));
 
         // Keep the backing strings alive while set_rich_text consumes them.
         let mut owned_spans: Vec<(String, Attrs)> = Vec::new();
 
-        let line_count = code.lines.len();
-        let gutter_digits = if line_count > 0 {
-            (line_count.ilog10() + 1) as usize
-        } else {
-            1
-        };
-        for (line_index, line) in code.lines.iter().enumerate() {
-            if code.show_line_numbers {
+        let gutter_digits = code_gutter_digits(lines.len());
+        for (line_index, line) in lines.iter().enumerate() {
+            if show_line_numbers {
                 let num_str = format!("{:>w$} ", line_index + 1, w = gutter_digits);
                 owned_spans.push((
                     num_str,
                     Attrs::new()
-                        .family(Family::Name(&code.font_family))
-                        .color(into_cosmic(code.line_number_color)),
+                        .family(Family::Name(font_family))
+                        .color(into_cosmic(line_number_color)),
                 ));
             }
             for span in &line.spans {
                 owned_spans.push((
                     span.value.clone(),
                     Attrs::new()
-                        .family(Family::Name(&code.font_family))
+                        .family(Family::Name(font_family))
                         .color(into_cosmic(span.color)),
                 ));
             }
@@ -288,16 +319,11 @@ impl TextManager {
             rich_spans,
             &default_attrs,
             Shaping::Advanced,
-            Some(cosmic_text::Align::from(code.align)),
+            Some(cosmic_text::Align::from(align)),
         );
 
         buffer.shape_until_scroll(&mut self.font_system, false);
-
-        self.layouts.insert(id, buffer);
-        self.layouts
-            .get(&id)
-            .context("layout was just inserted, should exist")
-            .map(|b| b.to_owned())
+        buffer
     }
 
     pub fn layout(&mut self, text: &Text) -> Buffer {

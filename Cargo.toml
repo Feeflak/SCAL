@@ -19,6 +19,7 @@ members = [
         "./examples/aoa",
         "./examples/audio",
         "./examples/code",
+        "./examples/code_morph",
         "./examples/code_window",
         "./examples/git_clone",
         "./examples/image",

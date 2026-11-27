@@ -67,6 +67,9 @@ pub enum AnimOP {
         Option<SourceLoc>,
     ),
     CodeHighlight(Uuid, CodeHighlightAction, Option<SourceLoc>),
+    /// Morph a code block into new source and/or a new font size in one animation:
+    /// uuid, new source (`None` = keep), new font size (`None` = keep), dur, ease, loc.
+    CodeMorph(Uuid, Option<String>, Option<f32>, Time, Ease, Option<SourceLoc>),
     TerminalTypeInput(
         Uuid,
         String,
@@ -117,6 +120,7 @@ impl AnimOP {
             | Self::CodeModifyLine(_, _, _, _, _, _, l)
             | Self::CodeRemoveLines(_, _, _, _, _, l)
             | Self::CodeHighlight(_, _, l)
+            | Self::CodeMorph(_, _, _, _, _, l)
             | Self::TerminalTypeInput(_, _, _, _, _, _, _, _, l)
             | Self::TerminalOutput(_, _, _, _, _, l)
             | Self::ObjectColor(_, _, _, _, l)
@@ -227,6 +231,7 @@ impl AnimOP {
             | Self::CodeModifyLine(_, _, _, _, _, _, l)
             | Self::CodeRemoveLines(_, _, _, _, _, l)
             | Self::CodeHighlight(_, _, l)
+            | Self::CodeMorph(_, _, _, _, _, l)
             | Self::TerminalTypeInput(_, _, _, _, _, _, _, _, l)
             | Self::TerminalOutput(_, _, _, _, _, l)
             | Self::ObjectColor(_, _, _, _, l)

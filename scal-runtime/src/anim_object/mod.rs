@@ -74,6 +74,7 @@ pub fn code(
         anim_spacing_accum: 0.0,
         cached_size: None,
         highlights: vec![],
+        morph: None,
     }
 }
 

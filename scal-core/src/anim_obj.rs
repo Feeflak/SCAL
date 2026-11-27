@@ -5,8 +5,8 @@ use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
 use crate::anim_builders::{
-    CodeAddLinesBuilder, CodeHighlightBuilder, CodeModifyLineBuilder, CodeRemoveLinesBuilder,
-    TerminalInputBuilder, TerminalOutputBuilder,
+    CodeAddLinesBuilder, CodeHighlightBuilder, CodeModifyLineBuilder, CodeMorphBuilder,
+    CodeRemoveLinesBuilder, TerminalInputBuilder, TerminalOutputBuilder,
 };
 use crate::anim_op::{AnimOP, CodeAnimationStyle};
 use crate::color::Color;
@@ -411,6 +411,28 @@ impl CodeHandle {
         }
     }
 
+    /// Returns a builder for an animation that morphs the code into other code. Tokens that appear
+    /// in both versions glide to their new place and the rest fades. Add `.font_size(..)` to
+    /// change the font size in the same motion.
+    /// ```ignore
+    ///                code.morph_to("let a = b;")
+    ///                    .font_size(80.)
+    ///                    .over(2.s()),
+    /// ```
+    #[must_use]
+    pub fn morph_to(&self, source: impl Into<String>) -> CodeMorphBuilder {
+        CodeMorphBuilder::new(self.0.id).source(source)
+    }
+
+    /// Returns a builder for an animation that smoothly changes the font size of the code.
+    /// ```ignore
+    ///                code.font_size_to(80.).over(1.s()),
+    /// ```
+    #[must_use]
+    pub fn font_size_to(&self, font_size: f32) -> CodeMorphBuilder {
+        CodeMorphBuilder::new(self.0.id).font_size(font_size)
+    }
+
     /// Returns a builder for an animation of removing lines form a code block.
     /// ```ignore
     ///                code.remove_lines()
@@ -540,6 +562,36 @@ impl CodeWindowHandle {
             duration: 1.0,
             ease: Ease::Linear,
             clear: false,
+        }
+    }
+
+    /// Returns a builder for an animation that morphs the code into other code. Tokens that appear
+    /// in both versions glide to their new place and the rest fades. Add `.font_size(..)` to
+    /// change the font size in the same motion.
+    /// ```ignore
+    ///                code.morph_to("let a = b;")
+    ///                    .font_size(80.)
+    ///                    .over(2.s()),
+    /// ```
+    #[must_use]
+    pub fn morph_to(&self, source: impl Into<String>) -> CodeMorphBuilder {
+        CodeMorphBuilder::new(self.code_id()).source(source)
+    }
+
+    /// Returns a builder for an animation that smoothly changes the font size of the code.
+    /// ```ignore
+    ///                code.font_size_to(80.).over(1.s()),
+    /// ```
+    #[must_use]
+    pub fn font_size_to(&self, font_size: f32) -> CodeMorphBuilder {
+        CodeMorphBuilder::new(self.code_id()).font_size(font_size)
+    }
+
+    fn code_id(&self) -> Uuid {
+        if let AnimObjKind::CodeWindow { code_id, .. } = &self.0.kind {
+            *code_id
+        } else {
+            self.0.id
         }
     }
 

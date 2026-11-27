@@ -14,6 +14,7 @@ pub struct ScheduledSound {
     pub start_time: Seconds,
     pub seek_offset: Seconds,
     pub duration: Seconds,
+    pub fade_out: Seconds,
     pub source_loc: Option<scal_core::SourceLoc>,
 }
 
@@ -288,7 +289,29 @@ impl AudioEngine {
             }
         }
 
+        apply_fade_out(&mut pcm_stereo, sound.fade_out);
+
         Ok(pcm_stereo)
+    }
+}
+
+/// Apply a linear fade to silence over the last `fade_secs` of interleaved
+/// stereo `samples`. The fade is clamped to the length of the buffer.
+fn apply_fade_out(samples: &mut [f32], fade_secs: Seconds) {
+    if fade_secs <= 0.0 || samples.is_empty() {
+        return;
+    }
+    let total_frames = samples.len() / 2;
+    let fade_frames = ((fade_secs * OUTPUT_SAMPLE_RATE as f32) as usize).min(total_frames);
+    if fade_frames == 0 {
+        return;
+    }
+    let start = total_frames - fade_frames;
+    for i in 0..fade_frames {
+        let gain = 1.0 - (i + 1) as f32 / fade_frames as f32;
+        let idx = (start + i) * 2;
+        samples[idx] *= gain;
+        samples[idx + 1] *= gain;
     }
 }
 
@@ -555,6 +578,7 @@ pub fn collect_sounds_from_ops(ops: &[AnimOperation]) -> Vec<ScheduledSound> {
                     start_time: abs_time,
                     seek_offset: sfx.time_offset,
                     duration: sfx.duration,
+                    fade_out: sfx.fade_out,
                     source_loc: source_loc.clone(),
                 };
                 out.push(scheduled);
@@ -585,6 +609,7 @@ pub fn collect_sounds_from_ops(ops: &[AnimOperation]) -> Vec<ScheduledSound> {
             | AnimOperation::CodeAddLines(_, _, _, d, _, _, _)
             | AnimOperation::CodeModifyLine(_, _, _, d, _, _, _)
             | AnimOperation::CodeRemoveLines(_, _, d, _, _, _)
+            | AnimOperation::CodeMorph(_, _, _, d, _, _)
             | AnimOperation::TerminalTypeInput(_, _, _, _, _, d, _, _, _)
             | AnimOperation::TerminalOutput(_, _, d, _, _, _)
             | AnimOperation::ObjectColor(_, _, d, _, _) => t + d,

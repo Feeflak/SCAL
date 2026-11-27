@@ -28,6 +28,7 @@ pub struct Sfx {
     pub time_offset: Seconds,
     pub duration: Seconds,
     pub pitch_variation: f32,
+    pub fade_out: Seconds,
 }
 
 impl Sfx {
@@ -39,6 +40,7 @@ impl Sfx {
             time_offset: 0.0,
             duration: 0.0,
             pitch_variation: 0.0,
+            fade_out: 0.0,
         }
     }
 }
@@ -121,5 +123,6 @@ mod tests {
         assert!((sfx.time_offset).abs() < f32::EPSILON);
         assert!((sfx.duration).abs() < f32::EPSILON);
         assert!((sfx.pitch_variation).abs() < f32::EPSILON);
+        assert!((sfx.fade_out).abs() < f32::EPSILON);
     }
 }

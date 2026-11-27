@@ -57,6 +57,7 @@ pub enum AnimOperation {
         Option<SourceLoc>,
     ),
     CodeHighlight(Uuid, CodeHighlightAction, Option<SourceLoc>),
+    CodeMorph(Uuid, Option<String>, Option<f32>, Time, Ease, Option<SourceLoc>),
     TerminalTypeInput(
         Uuid,
         String,
@@ -99,6 +100,7 @@ impl AnimOperation {
             | AnimOperation::CodeModifyLine(_, _, _, _, _, _, l)
             | AnimOperation::CodeRemoveLines(_, _, _, _, _, l)
             | AnimOperation::CodeHighlight(_, _, l)
+            | AnimOperation::CodeMorph(_, _, _, _, _, l)
             | AnimOperation::TerminalTypeInput(_, _, _, _, _, _, _, _, l)
             | AnimOperation::TerminalOutput(_, _, _, _, _, l)
             | AnimOperation::ObjectColor(_, _, _, _, l)
@@ -219,6 +221,11 @@ pub fn resolve_op(op: AnimOperation) -> Result<Animation> {
             debug!("CodeRemoveLines uuid={uuid}");
             ensure_duration(duration, "CodeRemoveLines")?;
             code::remove_lines(uuid, lines, duration, curve, style)
+        }
+        AnimOperation::CodeMorph(uuid, source, font_size, duration, curve, _loc) => {
+            debug!("CodeMorph uuid={uuid}");
+            ensure_duration(duration, "CodeMorph")?;
+            code::morph(uuid, source, font_size, duration, curve)
         }
         AnimOperation::CodeHighlight(uuid, action, _loc) => {
             let (duration, curve) = action.duration_and_curve();

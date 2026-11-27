@@ -101,10 +101,11 @@ impl Default for Base16 {
                     b: 0.204,
                     a: 1.0,
                 },
+                // Comments, #bfa137
                 Color {
-                    r: 0.157,
-                    g: 0.173,
-                    b: 0.204,
+                    r: 0.749,
+                    g: 0.631,
+                    b: 0.216,
                     a: 1.0,
                 },
                 Color {

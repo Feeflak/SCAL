@@ -237,6 +237,7 @@ async fn run_loop(
             | AnimOperation::CodeAddLines(_, _, _, dur, _, _, _)
             | AnimOperation::CodeModifyLine(_, _, _, dur, _, _, _)
             | AnimOperation::CodeRemoveLines(_, _, dur, _, _, _)
+            | AnimOperation::CodeMorph(_, _, _, dur, _, _)
             | AnimOperation::TransformMovePos(_, _, dur, _, _)
             | AnimOperation::TransformMoveToObj(_, _, _, dur, _, _)
             | AnimOperation::TransformRotate(_, _, dur, _, _)
@@ -284,6 +285,7 @@ async fn run_loop(
                 start_time: abs_start_time,
                 seek_offset: s.time_offset,
                 duration: s.duration,
+                fade_out: s.fade_out,
                 source_loc: source_loc_opt,
             };
             debug!(

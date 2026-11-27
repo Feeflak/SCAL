@@ -32,6 +32,7 @@ fn convert_anim_op(
                 time_offset: sfx.time_offset,
                 duration: sfx.duration,
                 pitch_variation: sfx.pitch_variation,
+                fade_out: sfx.fade_out,
             },
             delay,
             loc,
@@ -92,6 +93,9 @@ fn convert_anim_op(
         }
         scal_core::AnimOP::CodeRemoveLines(u, r, d, e, s, loc) => {
             AnimOperation::CodeRemoveLines(u, r, d, e, s, loc)
+        }
+        scal_core::AnimOP::CodeMorph(u, source, font_size, d, e, loc) => {
+            AnimOperation::CodeMorph(u, source, font_size, d, e, loc)
         }
         scal_core::AnimOP::CodeHighlight(u, action, loc) => {
             AnimOperation::CodeHighlight(u, action, loc)
@@ -394,6 +398,7 @@ fn convert_core_anim_obj(
             anim_spacing_accum: 0.0,
             cached_size: None,
             highlights: vec![],
+            morph: None,
         }))),
         scal_core::anim_obj::AnimObjKind::CodeWindow { .. } => {
             bail!("CodeWindow should be handled by build_code_window_op")

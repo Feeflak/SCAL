@@ -23,6 +23,8 @@ pub struct Sfx {
     pub duration: Time,
     /// Random pitch variation applied each time the sound is played
     pub pitch_variation: f32,
+    /// Length of a linear volume fade-out at the end of the sound (0.0 = none)
+    pub fade_out: Time,
 }
 
 /// Create a new sound effect builder.
@@ -46,6 +48,7 @@ pub struct SfxBuilder {
     time_offset: Time,
     duration: Time,
     pitch_variation: f32,
+    fade_out: Time,
 }
 
 impl Default for SfxBuilder {
@@ -57,6 +60,7 @@ impl Default for SfxBuilder {
             time_offset: 0.0,
             duration: 0.0,
             pitch_variation: 0.0,
+            fade_out: 0.0,
         }
     }
 }
@@ -100,6 +104,13 @@ impl SfxBuilder {
         self
     }
     #[must_use]
+    /// Fade the volume out linearly over the last `dur` seconds of the sound
+    /// (0.0 disables the fade). Clamped to the sound's length.
+    pub const fn fade_out(mut self, dur: Time) -> Self {
+        self.fade_out = dur;
+        self
+    }
+    #[must_use]
     /// Consume the builder and return a `PlaySoundBuilder` to configure playback
     pub fn play(&self) -> PlaySoundBuilder {
         PlaySoundBuilder {
@@ -110,6 +121,7 @@ impl SfxBuilder {
                 time_offset: self.time_offset,
                 duration: self.duration,
                 pitch_variation: self.pitch_variation,
+                fade_out: self.fade_out,
             },
             delay: 0.0,
         }

@@ -563,6 +563,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "code_morph"
+version = "0.1.0"
+dependencies = [
+ "glam",
+ "scal-core",
+ "scal-ipc",
+]
+
+[[package]]
 name = "code_window"
 version = "0.1.0"
 dependencies = [

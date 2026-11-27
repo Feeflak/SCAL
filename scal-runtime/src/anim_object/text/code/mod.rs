@@ -1,5 +1,6 @@
 pub mod highliter;
 pub mod mesh;
+pub mod morph;
 use anyhow::{Context, Result};
 use glam::{Vec2, vec2};
 use scal_core::{CodeAnimationStyle, CodeHighlightAction, Color, Ease, Syntax, Theme};
@@ -107,6 +108,20 @@ pub struct CodeHighlight {
     pub progress: f32,
 }
 
+/// State of a running morph from one source and font size to another, see [`morph`].
+///
+/// The `Code` itself already holds the target source and font size while this exists.
+#[derive(Clone, Debug)]
+pub struct CodeMorph {
+    pub from_source: String,
+    pub from_font: f32,
+    pub to_font: f32,
+    /// Eased progress, 0 = old code, 1 = new code.
+    pub progress: f32,
+    /// Glyph layout of both versions, built on the first frame of the morph.
+    pub plan: Option<morph::MorphPlan>,
+}
+
 #[derive(Clone, Debug)]
 pub struct Code {
     pub id: Uuid,
@@ -130,6 +145,7 @@ pub struct Code {
     pub anim_spacing_accum: f32,
     pub cached_size: Option<Vec2>,
     pub highlights: Vec<CodeHighlight>,
+    pub morph: Option<CodeMorph>,
 }
 
 impl Code {
@@ -253,6 +269,7 @@ impl Code {
             anim_spacing_accum: 0.0,
             cached_size: None,
             highlights: vec![],
+            morph: None,
         }
     }
 
@@ -261,43 +278,7 @@ impl Code {
             return Ok(());
         }
 
-        self.lines.clear();
-
-        let mut spans = highlighter.highlight_code(&self.source_code, &self.theme, &self.syntax)?;
-        let mut current_line: Vec<TextSpan> = Vec::new();
-
-        while let Some(span) = spans.pop() {
-            if span.value.contains('\n') {
-                let parts: Vec<&str> = span.value.split('\n').collect();
-                for (i, part) in parts.iter().enumerate() {
-                    if !part.is_empty() {
-                        current_line.push(TextSpan {
-                            color: span.color,
-                            value: part.to_string(),
-                        });
-                    }
-                    if i < parts.len() - 1 {
-                        if !current_line.is_empty() {
-                            if let Some(last) = current_line.last_mut() {
-                                last.value.push('\n');
-                            }
-                            self.lines.push(TextLine {
-                                spans: std::mem::take(&mut current_line),
-                            });
-                        }
-                    }
-                }
-            } else {
-                current_line.push(span);
-            }
-        }
-
-        if !current_line.is_empty() {
-            self.lines.push(TextLine {
-                spans: current_line,
-            });
-        }
-
+        self.lines = highlight_lines(highlighter, &self.source_code, &self.theme, &self.syntax)?;
         Ok(())
     }
 
@@ -332,6 +313,51 @@ impl Code {
             .map(|h| h.progress)
             .fold(0.0f32, f32::max)
     }
+}
+
+/// Highlights `source` and splits the result into lines of colored spans.
+pub fn highlight_lines(
+    highlighter: &mut CodeHighlighter,
+    source: &str,
+    theme: &Theme,
+    syntax: &Syntax,
+) -> Result<Vec<TextLine>> {
+    let mut lines = Vec::new();
+    let mut spans = highlighter.highlight_code(&source.to_string(), theme, syntax)?;
+    let mut current_line: Vec<TextSpan> = Vec::new();
+
+    while let Some(span) = spans.pop() {
+        if span.value.contains('\n') {
+            let parts: Vec<&str> = span.value.split('\n').collect();
+            for (i, part) in parts.iter().enumerate() {
+                if !part.is_empty() {
+                    current_line.push(TextSpan {
+                        color: span.color,
+                        value: part.to_string(),
+                    });
+                }
+                if i < parts.len() - 1 {
+                    if !current_line.is_empty() {
+                        if let Some(last) = current_line.last_mut() {
+                            last.value.push('\n');
+                        }
+                        lines.push(TextLine {
+                            spans: std::mem::take(&mut current_line),
+                        });
+                    }
+                }
+            }
+        } else {
+            current_line.push(span);
+        }
+    }
+
+    if !current_line.is_empty() {
+        lines.push(TextLine {
+            spans: current_line,
+        });
+    }
+    Ok(lines)
 }
 
 impl AnimObjectTrait for Code {

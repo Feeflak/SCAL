@@ -871,6 +871,7 @@ fn op_label(op: &AnimOperation) -> &'static str {
         AnimOperation::CodeAddLines(..) => "Add Lines",
         AnimOperation::CodeModifyLine(..) => "Modify Line",
         AnimOperation::CodeRemoveLines(..) => "Remove Lines",
+        AnimOperation::CodeMorph(..) => "Morph Code",
         AnimOperation::CodeHighlight(..) => "Highlight",
         AnimOperation::All(..) => "All",
         AnimOperation::Sequence(..) => "Sequence",
@@ -895,6 +896,7 @@ fn op_kind(op: &AnimOperation) -> OpKind {
         AnimOperation::CodeAddLines(..)
         | AnimOperation::CodeModifyLine(..)
         | AnimOperation::CodeRemoveLines(..)
+        | AnimOperation::CodeMorph(..)
         | AnimOperation::CodeHighlight(..) => OpKind::Code,
         AnimOperation::TerminalTypeInput(..) | AnimOperation::TerminalOutput(..) => {
             OpKind::Terminal
@@ -933,6 +935,7 @@ fn op_source_loc(op: &AnimOperation) -> Option<scal_core::SourceLoc> {
         | AnimOperation::CodeAddLines(_, _, _, _, _, _, loc)
         | AnimOperation::CodeModifyLine(_, _, _, _, _, _, loc)
         | AnimOperation::CodeRemoveLines(_, _, _, _, _, loc)
+        | AnimOperation::CodeMorph(_, _, _, _, _, loc)
         | AnimOperation::CodeHighlight(_, _, loc)
         | AnimOperation::TerminalTypeInput(_, _, _, _, _, _, _, _, loc)
         | AnimOperation::TerminalOutput(_, _, _, _, _, loc)
@@ -974,7 +977,8 @@ pub fn flatten_ops(ops: &[AnimOperation]) -> (Vec<TimelineOp>, f32) {
                 | AnimOperation::TransformScale(_, _, d, _, _) => time += d,
                 AnimOperation::CodeAddLines(_, _, _, d, _, _, _)
                 | AnimOperation::CodeModifyLine(_, _, _, d, _, _, _)
-                | AnimOperation::CodeRemoveLines(_, _, d, _, _, _) => time += d,
+                | AnimOperation::CodeRemoveLines(_, _, d, _, _, _)
+                | AnimOperation::CodeMorph(_, _, _, d, _, _) => time += d,
                 AnimOperation::CodeHighlight(_, action, _) => {
                     time += action.duration_and_curve().0;
                 }
