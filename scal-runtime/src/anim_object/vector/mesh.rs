@@ -145,7 +145,10 @@ fn push_rounded_head(
     let axial = (length - half).max(0.0);
     let lateral = (width * 0.5 - half).max(0.0);
 
-    if lateral < EPSILON || axial < EPSILON {
+    // How far behind the apex the inner corner of the two strokes is. When it would be past the
+    // ends of the strokes, the head is too narrow for the thickness of the line to open up.
+    let inner_reach = half * axial.hypot(lateral) / lateral.max(EPSILON);
+    if lateral < EPSILON || axial < EPSILON || inner_reach >= axial {
         // Too narrow to open up, just a round end of the line.
         push_fan(apex, -side * half, PI, color, vertices, indices);
         return RoundedHead {
@@ -481,20 +484,36 @@ mod tests {
     #[test]
     fn rounded_head_is_open_and_its_tip_is_at_the_end_of_the_vector() {
         let mut v = rounded(&[vec2(0.0, 0.0), vec2(200.0, 0.0)]);
-        v.head_length = 40.0;
-        v.head_width = 30.0;
+        v.head_length = 60.0;
+        v.head_width = 50.0;
+        v.thickness = 6.0;
         let (vertices, indices, _) = generate_vector_mesh(&v);
         let (min, max) = bounds(&vertices);
         assert!((max.x - 200.0).abs() < 0.01, "tip at {}", max.x);
-        assert!((max.y - min.y - 30.0).abs() < 0.01, "head is 30 wide");
-        // The inside of the head is empty, the line is not.
-        assert_eq!(coverage(&vertices, &indices, vec2(185.0, 0.3)), 0);
+        // The round ends are polygons, they fall a little short of the exact width.
+        assert!((max.y - min.y - 50.0).abs() < 0.1, "head is 50 wide: {min:?} {max:?}");
+        // The line is there, and the strokes of the head.
         assert_eq!(coverage(&vertices, &indices, vec2(100.0, 0.3)), 1);
-        // The strokes of the head are there.
-        assert_eq!(coverage(&vertices, &indices, vec2(190.0, 9.0)), 1);
-        assert_eq!(coverage(&vertices, &indices, vec2(190.0, -9.0)), 1);
-        // No sharp tip: the corner is cut off round.
-        assert_eq!(coverage(&vertices, &indices, vec2(199.9, 4.9)), 0);
+        assert_eq!(coverage(&vertices, &indices, vec2(175.0, 8.5)), 1);
+        assert_eq!(coverage(&vertices, &indices, vec2(175.0, -8.5)), 1);
+        // Between the line and the strokes it is open, unlike a filled triangle.
+        assert_eq!(coverage(&vertices, &indices, vec2(175.0, 4.2)), 0);
+        assert_eq!(coverage(&vertices, &indices, vec2(175.0, -4.2)), 0);
+        // No sharp tip: the corner is rounded off.
+        assert_eq!(coverage(&vertices, &indices, vec2(199.9, 2.9)), 0);
+    }
+
+    #[test]
+    fn rounded_head_too_narrow_for_the_line_is_a_round_end() {
+        let mut v = rounded(&[vec2(0.0, 0.0), vec2(200.0, 0.0)]);
+        v.head_length = 40.0;
+        v.head_width = 12.0;
+        v.thickness = 10.0;
+        let (vertices, _, _) = generate_vector_mesh(&v);
+        assert!(vertices.iter().all(|v| v.position.is_finite()));
+        let (min, max) = bounds(&vertices);
+        assert!((max.x - 200.0).abs() < 0.01);
+        assert!((max.y - min.y - 10.0).abs() < 0.01, "as wide as the line");
     }
 
     #[test]
@@ -529,25 +548,5 @@ mod tests {
         let (vertices, _, _) = generate_vector_mesh(&v);
         assert!(bounds(&vertices).0.x >= -0.01);
         assert!((bounds(&vertices).1.x - 40.0).abs() < 0.01, "50 - (50 - head length 40)");
-    }
-
-    #[test]
-    #[ignore]
-    fn dump_rounded_head() {
-        let mut v = rounded(&[vec2(0.0, 0.0), vec2(160.0, 60.0)]);
-        v.head_length = 60.0;
-        v.head_width = 50.0;
-        v.thickness = 8.0;
-        let (vertices, indices, _) = generate_vector_mesh(&v);
-        let (w, h) = (900usize, 450usize);
-        let mut ppm = format!("P3\n{w} {h}\n255\n");
-        for py in 0..h {
-            for px in 0..w {
-                let p = vec2(px as f32 / 5.0 - 10.0, py as f32 / 5.0 - 10.0);
-                ppm += if coverage(&vertices, &indices, p) > 0 { "255 255 255 " } else { "20 20 20 " };
-            }
-            ppm += "\n";
-        }
-        std::fs::write("/tmp/opencode/head.ppm", ppm).unwrap();
     }
 }

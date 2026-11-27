@@ -541,7 +541,8 @@ impl VectorBuilder {
         self
     }
     /// Set how the arrow head looks (default [`HeadStyle::Filled`], a solid triangle).
-    /// [`HeadStyle::Rounded`] is an open `>` with rounded corners, as thick as the line.
+    /// [`HeadStyle::Rounded`] is an open `>` with rounded corners, as thick as the line. It
+    /// needs a head clearly wider than the line is thick, a narrower one is just a round end.
     pub const fn head_style(mut self, style: HeadStyle) -> Self {
         self.head_style = style;
         self
