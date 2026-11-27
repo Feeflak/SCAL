@@ -3247,7 +3247,7 @@ dependencies = [
 
 [[package]]
 name = "scal-core"
-version = "1.4.5"
+version = "1.4.6"
 dependencies = [
  "bincode",
  "bytemuck",
@@ -3260,7 +3260,7 @@ dependencies = [
 
 [[package]]
 name = "scal-ipc"
-version = "1.4.5"
+version = "1.4.6"
 dependencies = [
  "bincode",
  "scal-core",
@@ -3278,7 +3278,7 @@ dependencies = [
 
 [[package]]
 name = "scal-runtime"
-version = "1.4.5"
+version = "1.4.6"
 dependencies = [
  "anyhow",
  "bincode",
