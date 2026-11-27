@@ -899,9 +899,11 @@ fn op_label(op: &AnimOperation) -> &'static str {
     match op {
         AnimOperation::Instantiate(..) => "Instantiate",
         AnimOperation::Drop(..) => "Drop",
-        AnimOperation::TransformMovePos(..) | AnimOperation::TransformMoveToObj(..) => "Move",
-        AnimOperation::TransformRotate(..) => "Rotate",
-        AnimOperation::TransformScale(..) => "Scale",
+        AnimOperation::TransformMovePos(..)
+        | AnimOperation::TransformMoveToObj(..)
+        | AnimOperation::TransformMoveBy(..) => "Move",
+        AnimOperation::TransformRotate(..) | AnimOperation::TransformRotateBy(..) => "Rotate",
+        AnimOperation::TransformScale(..) | AnimOperation::TransformScaleBy(..) => "Scale",
         AnimOperation::CodeAddLines(..) => "Add Lines",
         AnimOperation::CodeModifyLine(..) => "Modify Line",
         AnimOperation::CodeRemoveLines(..) => "Remove Lines",
@@ -927,7 +929,10 @@ fn op_kind(op: &AnimOperation) -> OpKind {
         AnimOperation::TransformMovePos(..)
         | AnimOperation::TransformMoveToObj(..)
         | AnimOperation::TransformRotate(..)
-        | AnimOperation::TransformScale(..) => OpKind::Transform,
+        | AnimOperation::TransformScale(..)
+        | AnimOperation::TransformMoveBy(..)
+        | AnimOperation::TransformRotateBy(..)
+        | AnimOperation::TransformScaleBy(..) => OpKind::Transform,
         AnimOperation::CodeAddLines(..)
         | AnimOperation::CodeModifyLine(..)
         | AnimOperation::CodeRemoveLines(..)
@@ -971,6 +976,9 @@ fn op_source_loc(op: &AnimOperation) -> Option<scal_core::SourceLoc> {
         | AnimOperation::TransformMoveToObj(_, _, _, _, _, loc)
         | AnimOperation::TransformRotate(_, _, _, _, loc)
         | AnimOperation::TransformScale(_, _, _, _, loc)
+        | AnimOperation::TransformMoveBy(_, _, _, _, loc)
+        | AnimOperation::TransformRotateBy(_, _, _, _, loc)
+        | AnimOperation::TransformScaleBy(_, _, _, _, loc)
         | AnimOperation::CodeAddLines(_, _, _, _, _, _, loc)
         | AnimOperation::CodeModifyLine(_, _, _, _, _, _, loc)
         | AnimOperation::CodeRemoveLines(_, _, _, _, _, loc)
@@ -1008,6 +1016,9 @@ fn op_duration(op: &AnimOperation) -> f32 {
         | AnimOperation::TransformMoveToObj(_, _, _, d, _, _)
         | AnimOperation::TransformRotate(_, _, d, _, _)
         | AnimOperation::TransformScale(_, _, d, _, _)
+        | AnimOperation::TransformMoveBy(_, _, d, _, _)
+        | AnimOperation::TransformRotateBy(_, _, d, _, _)
+        | AnimOperation::TransformScaleBy(_, _, d, _, _)
         | AnimOperation::CodeAddLines(_, _, _, d, _, _, _)
         | AnimOperation::CodeModifyLine(_, _, _, d, _, _, _)
         | AnimOperation::CodeRemoveLines(_, _, d, _, _, _)

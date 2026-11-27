@@ -91,6 +91,8 @@ pub struct PositionBuilder {
     pub(crate) uuid: Uuid,
     pub(crate) target: Option<Vec2>,
     pub(crate) object: Option<Uuid>,
+    /// `target` is an offset from the position at the start of the animation.
+    pub(crate) relative: bool,
     pub(crate) duration: Time,
     pub(crate) ease: Ease,
 }
@@ -102,6 +104,7 @@ impl PositionBuilder {
             uuid,
             target: None,
             object: None,
+            relative: false,
             duration: 1.0,
             ease: Ease::Linear,
         }
@@ -118,6 +121,17 @@ impl PositionBuilder {
     /// Set the target position to move to
     pub const fn to(mut self, target: Vec2) -> Self {
         self.target = Some(target);
+        self.relative = false;
+        self
+    }
+
+    #[must_use]
+    /// Move by `delta` from wherever the object is when the animation starts, instead of to a
+    /// fixed position.
+    pub const fn by(mut self, delta: Vec2) -> Self {
+        self.target = Some(delta);
+        self.object = None;
+        self.relative = true;
         self
     }
 
@@ -139,6 +153,9 @@ impl PositionBuilder {
 impl From<PositionBuilder> for AnimOP {
     fn from(b: PositionBuilder) -> Self {
         let target = b.target.unwrap_or(Vec2::ZERO);
+        if b.relative {
+            return Self::TransformMoveBy(b.uuid, target, b.duration, b.ease, None);
+        }
         b.object.map_or(
             Self::TransformMovePos(b.uuid, target, b.duration, b.ease, None),
             |obj| Self::TransformMoveToObj(b.uuid, obj, target, b.duration, b.ease, None),
@@ -157,6 +174,8 @@ pub struct ScaleBuilder {
     pub(crate) uuid: Uuid,
     pub(crate) target: Option<Vec2>,
     pub(crate) object: Option<Uuid>,
+    /// `target` is a factor applied to the scale at the start of the animation.
+    pub(crate) relative: bool,
     pub(crate) duration: Time,
     pub(crate) ease: Ease,
 }
@@ -168,6 +187,7 @@ impl ScaleBuilder {
             uuid,
             target: None,
             object: None,
+            relative: false,
             duration: 1.0,
             ease: Ease::Linear,
         }
@@ -184,6 +204,17 @@ impl ScaleBuilder {
     /// Set the target scale
     pub const fn to(mut self, target: Vec2) -> Self {
         self.target = Some(target);
+        self.relative = false;
+        self
+    }
+
+    #[must_use]
+    /// Multiply the scale the object has when the animation starts by `factor`
+    /// (`Vec2::splat(2.0)` doubles the size).
+    pub const fn by(mut self, factor: Vec2) -> Self {
+        self.target = Some(factor);
+        self.object = None;
+        self.relative = true;
         self
     }
 
@@ -204,6 +235,15 @@ impl ScaleBuilder {
 
 impl From<ScaleBuilder> for AnimOP {
     fn from(b: ScaleBuilder) -> Self {
+        if b.relative {
+            return Self::TransformScaleBy(
+                b.uuid,
+                b.target.unwrap_or(Vec2::ONE),
+                b.duration,
+                b.ease,
+                None,
+            );
+        }
         Self::TransformScale(
             b.uuid,
             b.target.unwrap_or(Vec2::ONE),
@@ -224,6 +264,8 @@ impl IntoAnimOp for ScaleBuilder {
 pub struct RotateBuilder {
     pub(crate) uuid: Uuid,
     pub(crate) target: Option<f32>,
+    /// `target` is an angle added to the rotation at the start of the animation.
+    pub(crate) relative: bool,
     pub(crate) duration: Time,
     pub(crate) ease: Ease,
 }
@@ -234,6 +276,7 @@ impl RotateBuilder {
         Self {
             uuid,
             target: None,
+            relative: false,
             duration: 1.0,
             ease: Ease::Linear,
         }
@@ -243,6 +286,15 @@ impl RotateBuilder {
     /// Set the target rotation in degrees
     pub const fn to(mut self, target: f32) -> Self {
         self.target = Some(target);
+        self.relative = false;
+        self
+    }
+
+    #[must_use]
+    /// Rotate by `degrees` from the rotation the object has when the animation starts.
+    pub const fn by(mut self, degrees: f32) -> Self {
+        self.target = Some(degrees);
+        self.relative = true;
         self
     }
 
@@ -263,6 +315,15 @@ impl RotateBuilder {
 
 impl From<RotateBuilder> for AnimOP {
     fn from(b: RotateBuilder) -> Self {
+        if b.relative {
+            return Self::TransformRotateBy(
+                b.uuid,
+                b.target.unwrap_or(0.0),
+                b.duration,
+                b.ease,
+                None,
+            );
+        }
         Self::TransformRotate(b.uuid, b.target.unwrap_or(0.0), b.duration, b.ease, None)
     }
 }

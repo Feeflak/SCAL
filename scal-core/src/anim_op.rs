@@ -42,6 +42,12 @@ pub enum AnimOP {
     TransformMoveToObj(Uuid, Uuid, Vec2, Time, Ease, Option<SourceLoc>),
     TransformRotate(Uuid, f32, Time, Ease, Option<SourceLoc>),
     TransformScale(Uuid, Vec2, Time, Ease, Option<SourceLoc>),
+    /// Move relative to the position the object has when the animation starts: uuid, offset, dur, ease, loc.
+    TransformMoveBy(Uuid, Vec2, Time, Ease, Option<SourceLoc>),
+    /// Rotate relative to the rotation (degrees) the object has when the animation starts.
+    TransformRotateBy(Uuid, f32, Time, Ease, Option<SourceLoc>),
+    /// Multiply the scale the object has when the animation starts by a per axis factor.
+    TransformScaleBy(Uuid, Vec2, Time, Ease, Option<SourceLoc>),
     CodeAddLines(
         Uuid,
         String,
@@ -121,6 +127,9 @@ impl AnimOP {
             | Self::TransformMoveToObj(_, _, _, _, _, l)
             | Self::TransformRotate(_, _, _, _, l)
             | Self::TransformScale(_, _, _, _, l)
+            | Self::TransformMoveBy(_, _, _, _, l)
+            | Self::TransformRotateBy(_, _, _, _, l)
+            | Self::TransformScaleBy(_, _, _, _, l)
             | Self::CodeAddLines(_, _, _, _, _, _, l)
             | Self::CodeModifyLine(_, _, _, _, _, _, l)
             | Self::CodeRemoveLines(_, _, _, _, _, l)
@@ -234,6 +243,9 @@ impl AnimOP {
             | Self::TransformMoveToObj(_, _, _, _, _, l)
             | Self::TransformRotate(_, _, _, _, l)
             | Self::TransformScale(_, _, _, _, l)
+            | Self::TransformMoveBy(_, _, _, _, l)
+            | Self::TransformRotateBy(_, _, _, _, l)
+            | Self::TransformScaleBy(_, _, _, _, l)
             | Self::CodeAddLines(_, _, _, _, _, _, l)
             | Self::CodeModifyLine(_, _, _, _, _, _, l)
             | Self::CodeRemoveLines(_, _, _, _, _, l)

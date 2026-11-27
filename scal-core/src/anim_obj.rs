@@ -62,6 +62,16 @@ impl AnimObj {
         self.transform.position().to(target.into())
     }
 
+    /// Shortcut for `transform.position().by(delta)`: move this object by an offset from wherever
+    /// it is when the animation starts.
+    /// ```ignore
+    /// title.move_by(vec2(0.0, -50.0)).with(SLIDE)
+    /// ```
+    #[must_use]
+    pub fn move_by(&self, delta: impl Into<Vec2>) -> crate::transform::PositionBuilder {
+        self.transform.position().by(delta.into())
+    }
+
     /// Shortcut for `transform.scale().to(..)`: animate this object to a scale. Takes an `f32`
     /// for uniform scale (`0.5` = half size) or a `Vec2`.
     /// ```ignore
@@ -79,6 +89,26 @@ impl AnimObj {
     #[must_use]
     pub fn rotate_to(&self, degrees: f32) -> crate::transform::RotateBuilder {
         self.transform.rotation().to(degrees)
+    }
+
+    /// Shortcut for `transform.scale().by(..)`: multiply this object's current scale by a factor.
+    /// Takes an `f32` for uniform scale (`2.0` = twice as big) or a `Vec2`.
+    /// ```ignore
+    /// title.scale_by(2.0).with(SLIDE)
+    /// ```
+    #[must_use]
+    pub fn scale_by(&self, factor: impl IntoScale) -> crate::transform::ScaleBuilder {
+        self.transform.scale().by(factor.into_scale())
+    }
+
+    /// Shortcut for `transform.rotation().by(degrees)`: rotate this object by an angle on top of
+    /// its current rotation.
+    /// ```ignore
+    /// wing.rotate_by(15.0).with(SWEEP)
+    /// ```
+    #[must_use]
+    pub fn rotate_by(&self, degrees: f32) -> crate::transform::RotateBuilder {
+        self.transform.rotation().by(degrees)
     }
 
     /// Scale this object up to full size with [`Motion::POP_IN`]. Pair with `.hidden()` on the
@@ -914,13 +944,7 @@ macro_rules! impl_handle {
             /// ```
             #[must_use]
             pub const fn position(&self) -> crate::transform::PositionBuilder {
-                crate::transform::PositionBuilder {
-                    uuid: self.0,
-                    target: None,
-                    object: None,
-                    duration: 1.0,
-                    ease: Ease::Linear,
-                }
+                crate::transform::PositionBuilder::new(self.0)
             }
             /// Returns a builder for an animation that scales this object.
             /// ```ignore
@@ -931,13 +955,7 @@ macro_rules! impl_handle {
             /// ```
             #[must_use]
             pub const fn scale(&self) -> crate::transform::ScaleBuilder {
-                crate::transform::ScaleBuilder {
-                    uuid: self.0,
-                    target: None,
-                    object: None,
-                    duration: 1.0,
-                    ease: Ease::Linear,
-                }
+                crate::transform::ScaleBuilder::new(self.0)
             }
             /// Returns a builder for an animation that rotates this object.
             /// ```ignore
@@ -948,12 +966,7 @@ macro_rules! impl_handle {
             /// ```
             #[must_use]
             pub const fn rotation(&self) -> crate::transform::RotateBuilder {
-                crate::transform::RotateBuilder {
-                    uuid: self.0,
-                    target: None,
-                    duration: 1.0,
-                    ease: Ease::Linear,
-                }
+                crate::transform::RotateBuilder::new(self.0)
             }
             /// Shortcut for `.position().to(target)`.
             #[must_use]
@@ -969,6 +982,21 @@ macro_rules! impl_handle {
             #[must_use]
             pub fn rotate_to(&self, degrees: f32) -> crate::transform::RotateBuilder {
                 self.rotation().to(degrees)
+            }
+            /// Shortcut for `.position().by(delta)`.
+            #[must_use]
+            pub fn move_by(&self, delta: impl Into<Vec2>) -> crate::transform::PositionBuilder {
+                self.position().by(delta.into())
+            }
+            /// Shortcut for `.scale().by(..)`, takes an `f32` or a `Vec2`.
+            #[must_use]
+            pub fn scale_by(&self, factor: impl IntoScale) -> crate::transform::ScaleBuilder {
+                self.scale().by(factor.into_scale())
+            }
+            /// Shortcut for `.rotation().by(degrees)`.
+            #[must_use]
+            pub fn rotate_by(&self, degrees: f32) -> crate::transform::RotateBuilder {
+                self.rotation().by(degrees)
             }
             /// Returns a builder for an animation that changes this object's color.
             /// ```ignore

@@ -66,3 +66,66 @@ pub fn scale_to(uuid: Uuid, target: Vec2, duration: Seconds, curve: Ease) -> Ani
         })),
     )
 }
+
+pub fn move_by(uuid: Uuid, delta: Vec2, duration: Seconds, curve: Ease) -> Animation {
+    Animation::new(
+        duration,
+        curve,
+        Box::new(move |animator, storage| {
+            let pos = animator.get_object(&uuid)?.transform().position;
+            storage.push(pos.x);
+            storage.push(pos.y);
+            Ok(())
+        }),
+        Some(Box::new(move |animator, t, storage| {
+            let obj = animator.get_object_mut(&uuid)?;
+            let transform = obj.anim_data.transform_mut();
+            transform.position = vec3(
+                storage[0] + t * delta.x,
+                storage[1] + t * delta.y,
+                transform.position.z,
+            );
+            Ok(())
+        })),
+    )
+}
+
+pub fn rotate_by(uuid: Uuid, delta: f32, duration: Seconds, curve: Ease) -> Animation {
+    Animation::new(
+        duration,
+        curve,
+        Box::new(move |animator, storage| {
+            storage.push(animator.get_object(&uuid)?.transform().rotation);
+            Ok(())
+        }),
+        Some(Box::new(move |animator, t, storage| {
+            let initial = storage[0];
+            let obj = animator.get_object_mut(&uuid)?;
+            obj.anim_data.transform_mut().rotation = initial + t * delta;
+            Ok(())
+        })),
+    )
+}
+
+/// Multiply the scale at the start of the animation by `factor`.
+pub fn scale_by(uuid: Uuid, factor: Vec2, duration: Seconds, curve: Ease) -> Animation {
+    Animation::new(
+        duration,
+        curve,
+        Box::new(move |animator, storage| {
+            let s = animator.get_object(&uuid)?.transform().scale;
+            storage.push(s.x);
+            storage.push(s.y);
+            Ok(())
+        }),
+        Some(Box::new(move |animator, t, storage| {
+            let obj = animator.get_object_mut(&uuid)?;
+            let transform = obj.anim_data.transform_mut();
+            transform.scale = Vec2::new(
+                storage[0] + t * (storage[0] * factor.x - storage[0]),
+                storage[1] + t * (storage[1] * factor.y - storage[1]),
+            );
+            Ok(())
+        })),
+    )
+}

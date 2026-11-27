@@ -86,6 +86,15 @@ fn convert_anim_op(
         scal_core::AnimOP::TransformScale(u, v, d, e, loc) => {
             AnimOperation::TransformScale(u, v, d, e, loc)
         }
+        scal_core::AnimOP::TransformMoveBy(u, v, d, e, loc) => {
+            AnimOperation::TransformMoveBy(u, v, d, e, loc)
+        }
+        scal_core::AnimOP::TransformRotateBy(u, r, d, e, loc) => {
+            AnimOperation::TransformRotateBy(u, r, d, e, loc)
+        }
+        scal_core::AnimOP::TransformScaleBy(u, v, d, e, loc) => {
+            AnimOperation::TransformScaleBy(u, v, d, e, loc)
+        }
         scal_core::AnimOP::CodeAddLines(u, t, f, d, e, s, loc) => {
             AnimOperation::CodeAddLines(u, t, f, d, e, s, loc)
         }

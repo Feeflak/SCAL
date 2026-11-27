@@ -171,6 +171,41 @@ impl Group {
         )
     }
 
+    /// Move every object of the group by `delta` from where it currently is.
+    #[must_use]
+    pub fn move_by(&self, delta: impl Into<Vec2>) -> GroupOp<PositionBuilder> {
+        let delta = delta.into();
+        GroupOp(
+            self.ids
+                .iter()
+                .map(|id| PositionBuilder::new(*id).by(delta))
+                .collect(),
+        )
+    }
+
+    /// Multiply the current scale of every object of the group by `factor` (an `f32` or a `Vec2`).
+    #[must_use]
+    pub fn scale_by(&self, factor: impl IntoScale) -> GroupOp<ScaleBuilder> {
+        let factor = factor.into_scale();
+        GroupOp(
+            self.ids
+                .iter()
+                .map(|id| ScaleBuilder::new(*id).by(factor))
+                .collect(),
+        )
+    }
+
+    /// Rotate every object of the group by `degrees` on top of its current rotation.
+    #[must_use]
+    pub fn rotate_by(&self, degrees: f32) -> GroupOp<RotateBuilder> {
+        GroupOp(
+            self.ids
+                .iter()
+                .map(|id| RotateBuilder::new(*id).by(degrees))
+                .collect(),
+        )
+    }
+
     /// Scale the group up to full size with [`Motion::POP_IN`].
     #[must_use]
     pub fn pop_in(&self) -> GroupOp<ScaleBuilder> {

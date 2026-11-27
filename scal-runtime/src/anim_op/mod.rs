@@ -32,6 +32,9 @@ pub enum AnimOperation {
     TransformMoveToObj(Uuid, Uuid, Vec2, Time, Ease, Option<SourceLoc>),
     TransformRotate(Uuid, f32, Time, Ease, Option<SourceLoc>),
     TransformScale(Uuid, Vec2, Time, Ease, Option<SourceLoc>),
+    TransformMoveBy(Uuid, Vec2, Time, Ease, Option<SourceLoc>),
+    TransformRotateBy(Uuid, f32, Time, Ease, Option<SourceLoc>),
+    TransformScaleBy(Uuid, Vec2, Time, Ease, Option<SourceLoc>),
     CodeAddLines(
         Uuid,
         String,
@@ -100,6 +103,9 @@ impl AnimOperation {
             | AnimOperation::TransformMoveToObj(_, _, _, _, _, l)
             | AnimOperation::TransformRotate(_, _, _, _, l)
             | AnimOperation::TransformScale(_, _, _, _, l)
+            | AnimOperation::TransformMoveBy(_, _, _, _, l)
+            | AnimOperation::TransformRotateBy(_, _, _, _, l)
+            | AnimOperation::TransformScaleBy(_, _, _, _, l)
             | AnimOperation::CodeAddLines(_, _, _, _, _, _, l)
             | AnimOperation::CodeModifyLine(_, _, _, _, _, _, l)
             | AnimOperation::CodeRemoveLines(_, _, _, _, _, l)
@@ -190,6 +196,21 @@ pub fn resolve_op(op: AnimOperation) -> Result<Animation> {
             debug!("TransformScale uuid={uuid}");
             ensure_duration(duration, "TransformScale")?;
             transform::scale_to(uuid, target, duration, curve)
+        }
+        AnimOperation::TransformMoveBy(uuid, delta, duration, curve, _loc) => {
+            debug!("TransformMoveBy uuid={uuid}");
+            ensure_duration(duration, "TransformMoveBy")?;
+            transform::move_by(uuid, delta, duration, curve)
+        }
+        AnimOperation::TransformRotateBy(uuid, delta, duration, curve, _loc) => {
+            debug!("TransformRotateBy uuid={uuid}");
+            ensure_duration(duration, "TransformRotateBy")?;
+            transform::rotate_by(uuid, delta, duration, curve)
+        }
+        AnimOperation::TransformScaleBy(uuid, factor, duration, curve, _loc) => {
+            debug!("TransformScaleBy uuid={uuid}");
+            ensure_duration(duration, "TransformScaleBy")?;
+            transform::scale_by(uuid, factor, duration, curve)
         }
         AnimOperation::ObjectColor(uuid, target, duration, curve, _loc) => {
             debug!("ObjectColor uuid={uuid}");

@@ -169,3 +169,44 @@ fn default_highlight_is_unchanged() {
         other => panic!("{other:?}"),
     }
 }
+
+#[test]
+fn by_shortcuts_are_relative() {
+    let (a, b) = (rectangle().build(), circle().build());
+    match a.move_by(vec2(5.0, -5.0)).into_anim_op() {
+        AnimOP::TransformMoveBy(id, d, ..) => is_op((id, d), (a.transform.uuid, vec2(5.0, -5.0))),
+        other => panic!("{other:?}"),
+    }
+    match a.rotate_by(30.0).into_anim_op() {
+        AnimOP::TransformRotateBy(_, deg, ..) => is_op(deg, 30.0),
+        other => panic!("{other:?}"),
+    }
+    match a.scale_by(2.0).with(POP).into_anim_op() {
+        AnimOP::TransformScaleBy(_, s, d, e, _) => {
+            is_op((s, d, e), (Vec2::splat(2.0), 0.5, Ease::OutBack));
+        }
+        other => panic!("{other:?}"),
+    }
+    // `.to()` after `.by()` goes back to absolute.
+    assert!(matches!(
+        a.move_by(vec2(1.0, 1.0)).to(vec2(2.0, 2.0)).into_anim_op(),
+        AnimOP::TransformMovePos(..)
+    ));
+    let g = group![a, b];
+    for op in [
+        g.move_by(vec2(1.0, 0.0)).into_anim_op(),
+        g.rotate_by(10.0).into_anim_op(),
+        g.scale_by(0.5).into_anim_op(),
+    ] {
+        match op {
+            AnimOP::All(ops, _) => assert_eq!(ops.len(), 2),
+            other => panic!("{other:?}"),
+        }
+    }
+    match g.move_by(vec2(1.0, 0.0)).into_anim_op() {
+        AnimOP::All(ops, _) => {
+            assert!(ops.iter().all(|o| matches!(o, AnimOP::TransformMoveBy(..))))
+        }
+        other => panic!("{other:?}"),
+    }
+}
