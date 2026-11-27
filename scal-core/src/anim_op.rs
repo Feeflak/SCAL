@@ -36,6 +36,8 @@ impl Display for SourceLoc {
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub enum AnimOP {
     Instantiate(Box<AnimObj>, Option<SourceLoc>),
+    /// Remove an object, and everything attached to it, from the scene for good. See [`drop!`](crate::drop).
+    Drop(Uuid, Option<SourceLoc>),
     TransformMovePos(Uuid, Vec2, Time, Ease, Option<SourceLoc>),
     TransformMoveToObj(Uuid, Uuid, Vec2, Time, Ease, Option<SourceLoc>),
     TransformRotate(Uuid, f32, Time, Ease, Option<SourceLoc>),
@@ -112,6 +114,7 @@ impl AnimOP {
     pub const fn location(&self) -> Option<&SourceLoc> {
         match self {
             Self::Instantiate(_, l)
+            | Self::Drop(_, l)
             | Self::TransformMovePos(_, _, _, _, l)
             | Self::TransformMoveToObj(_, _, _, _, _, l)
             | Self::TransformRotate(_, _, _, _, l)
@@ -223,6 +226,7 @@ impl AnimOP {
     pub fn with_location(mut self, loc: SourceLoc) -> Self {
         match &mut self {
             Self::Instantiate(_, l)
+            | Self::Drop(_, l)
             | Self::TransformMovePos(_, _, _, _, l)
             | Self::TransformMoveToObj(_, _, _, _, _, l)
             | Self::TransformRotate(_, _, _, _, l)

@@ -8,7 +8,7 @@ pub struct TextRenderer {
 }
 impl TextRenderer {
     pub fn new(device: &wgpu::Device, scale: f32) -> Self {
-        let atlas_size = (1024.0 * scale).ceil() as u32;
+        let atlas_size = crate::anim_object::text::atlas::atlas_size(scale);
         let texture_bind_group_layout =
             device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
                 label: Some("text_texture_bind_group_layout"),

@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 
 use anyhow::{Context, Result};
 use glam::{Mat4, Vec2, Vec3, vec2, vec3};
@@ -360,29 +360,87 @@ impl Animator {
         Ok(())
     }
 
-    pub fn remove_anim_object(&mut self, obj: DynAnimObj) {
-        let id = obj.uuid();
+    /// Removes an object and everything attached to it: objects parented to it, the layout
+    /// container it is the background of, the children of such a container or of a scroll layout.
+    /// The glyph atlas is cleared when text goes away, so its space can be used again.
+    pub fn drop_object(&mut self, uuid: &Uuid) -> Result<()> {
+        self.get_object(uuid)
+            .with_context(|| format!("cannot drop object {uuid}, it is not in the scene"))?;
 
-        let Some(object_index) = self.objects_lookup.remove(&id) else {
-            return;
-        };
-
-        let obj = self.objects.remove(object_index);
-        {
-            let data = obj.render_data;
-            self.vertices
-                .drain(data.vertices_base_index..data.vertices_base_index + data.vertices.len());
-
-            self.indices
-                .drain(data.indices_base_index..data.indices_base_index + data.indices_count);
+        let mut doomed: HashSet<Uuid> = HashSet::from([*uuid]);
+        loop {
+            let before = doomed.len();
+            for obj in &self.objects {
+                if obj.transform().parent.is_some_and(|p| doomed.contains(&p)) {
+                    doomed.insert(*obj.uuid());
+                }
+                if doomed.contains(obj.uuid())
+                    && let Some(scroll) = obj
+                        .anim_data
+                        .as_any()
+                        .downcast_ref::<crate::anim_object::scroll::ScrollLayout>()
+                {
+                    doomed.extend(scroll.child_uuids.iter().copied());
+                }
+            }
+            for container in self.layout_containers.values() {
+                if doomed.contains(&container.background_uuid) || doomed.contains(&container.id) {
+                    doomed.insert(container.id);
+                    doomed.insert(container.background_uuid);
+                    doomed.extend(container.child_uuids.iter().copied());
+                }
+            }
+            if doomed.len() == before {
+                break;
+            }
         }
+        debug!("drop_object uuid={uuid} removes {} objects", doomed.len());
 
-        // rebuild lookup because offsets shifted
-        self.objects_lookup.clear();
+        let had_text = self
+            .objects
+            .iter()
+            .any(|o| doomed.contains(o.uuid()) && o.render_data.pipeline == PipelineKind::Text);
 
-        for (i, obj) in self.objects.iter().enumerate() {
-            self.objects_lookup.insert(*obj.uuid(), i);
+        // Keep the meshes of the survivors in the order they have in the buffers.
+        let mut survivors: Vec<Object> = Vec::with_capacity(self.objects.len());
+        for obj in std::mem::take(&mut self.objects) {
+            if !doomed.contains(obj.uuid()) {
+                survivors.push(obj);
+            }
         }
+        survivors.sort_by_key(|o| o.render_data.indices_base_index);
+
+        let old_vertices = std::mem::take(&mut self.vertices);
+        let old_indices = std::mem::take(&mut self.indices);
+        for obj in &mut survivors {
+            let data = &mut obj.render_data;
+            let vertices = data.vertices_base_index..data.vertices_base_index + data.vertices.len();
+            let indices = data.indices_base_index..data.indices_base_index + data.indices_count;
+            data.vertices_base_index = self.vertices.len();
+            data.indices_base_index = self.indices.len();
+            self.vertices.extend_from_slice(&old_vertices[vertices]);
+            self.indices.extend_from_slice(&old_indices[indices]);
+        }
+        self.objects = survivors;
+
+        self.layout_containers.retain(|id, _| !doomed.contains(id));
+        self.text_manager.layouts.retain(|id, _| !doomed.contains(id));
+        self.sort_objects_by_z();
+
+        if had_text {
+            self.text_manager.atlas.reset();
+            let text_objects: Vec<Uuid> = self
+                .objects
+                .iter()
+                .filter(|o| o.render_data.pipeline == PipelineKind::Text)
+                .map(|o| *o.uuid())
+                .collect();
+            for id in text_objects {
+                self.regenerate_object_mesh(&id)
+                    .context("redrawing text after the glyph atlas was cleared")?;
+            }
+        }
+        Ok(())
     }
 }
 #[derive(Debug, Clone)]

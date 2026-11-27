@@ -26,6 +26,7 @@ use crate::animator::Animator;
 #[derive(Clone, Debug)]
 pub enum AnimOperation {
     Instantiate(DynAnimObj, Option<SourceLoc>),
+    Drop(Uuid, Option<SourceLoc>),
     TransformMovePos(Uuid, Vec2, Time, Ease, Option<SourceLoc>),
     TransformMoveToObj(Uuid, Uuid, Vec2, Time, Ease, Option<SourceLoc>),
     TransformRotate(Uuid, f32, Time, Ease, Option<SourceLoc>),
@@ -92,6 +93,7 @@ impl AnimOperation {
     pub fn location(&self) -> Option<&SourceLoc> {
         match self {
             AnimOperation::Instantiate(_, l)
+            | AnimOperation::Drop(_, l)
             | AnimOperation::TransformMovePos(_, _, _, _, l)
             | AnimOperation::TransformMoveToObj(_, _, _, _, _, l)
             | AnimOperation::TransformRotate(_, _, _, _, l)
@@ -128,6 +130,12 @@ pub fn resolve_op(op: AnimOperation) -> Result<Animation> {
                 debug!("Instantiate uuid={}", anim_obj.uuid());
                 animator.add_anim_object(anim_obj.clone())?;
                 Ok(())
+            }))
+        }
+        AnimOperation::Drop(uuid, _loc) => {
+            Animation::instant(Box::new(move |animator, _| {
+                debug!("Drop uuid={uuid}");
+                animator.drop_object(&uuid)
             }))
         }
         AnimOperation::TransformMovePos(uuid, pos, duration, curve, _loc) => {
@@ -310,6 +318,18 @@ pub fn sequence(ops: Vec<AnimOperation>) -> AnimOperation {
 pub fn all(ops: Vec<AnimOperation>) -> AnimOperation {
     AnimOperation::All(ops, None)
 }
+/// Whether `op` only removes objects. Inside a sequence these must run when the sequence reaches
+/// them, not when it starts like every other child, or the objects would vanish immediately.
+fn is_drop_only(op: &AnimOperation) -> bool {
+    match op {
+        AnimOperation::Drop(..) => true,
+        AnimOperation::All(children, _) | AnimOperation::Sequence(children, _) => {
+            !children.is_empty() && children.iter().all(is_drop_only)
+        }
+        _ => false,
+    }
+}
+
 pub fn get_sequence_animation(ops: Vec<AnimOperation>) -> Result<Animation> {
     let mut child_durations: Vec<f32> = Vec::with_capacity(ops.len());
     let mut total_dur = 0_f32;
@@ -324,11 +344,24 @@ pub fn get_sequence_animation(ops: Vec<AnimOperation>) -> Result<Animation> {
         total_dur += d;
     }
 
+    // Without any duration there is no update to run them from, so they just run at the start.
+    let deferred: Vec<bool> = ops
+        .iter()
+        .map(|op| total_dur > 0. && is_drop_only(op))
+        .collect();
+
     let start = Box::new({
         let loc_ops = ops.to_owned();
+        let deferred = deferred.clone();
         move |animator: &mut Animator, store: &mut Vec<f32>| {
             store.clear();
             for (child_idx, op) in loc_ops.to_owned().into_iter().enumerate() {
+                if deferred[child_idx] {
+                    // One flag: has this child run yet.
+                    store.push(1.0);
+                    store.push(0.0);
+                    continue;
+                }
                 let op_debug = format!("{op:?}");
 
                 let anim: Animation = resolve_op(op.to_owned())?;
@@ -346,6 +379,7 @@ pub fn get_sequence_animation(ops: Vec<AnimOperation>) -> Result<Animation> {
     let update: Option<UpdateAnimationFunction> = if total_dur > 0. {
         let ops_clone = ops.to_owned();
         let durations = child_durations;
+        let deferred = deferred;
         Some(Box::new(
             move |animator: &mut Animator, t: f32, store: &mut Vec<f32>| {
                 let abs_time = t * total_dur;
@@ -360,7 +394,14 @@ pub fn get_sequence_animation(ops: Vec<AnimOperation>) -> Result<Animation> {
                     let to_read = store[store_index] as usize;
                     let child_duration = durations[i];
 
-                    if child_duration > 0.
+                    if deferred[i] {
+                        if abs_time >= cumulative && store[store_index + 1] == 0.0 {
+                            store[store_index + 1] = 1.0;
+                            (*anim.start)(animator, &mut Vec::new()).with_context(|| {
+                                format!("child[{i}] start failed for op {op_debug}")
+                            })?;
+                        }
+                    } else if child_duration > 0.
                         && abs_time >= cumulative
                         && abs_time < cumulative + child_duration
                     {
@@ -573,6 +614,58 @@ mod tests {
             "expected x={expected}, got {}",
             pos.x
         );
+    }
+
+    fn add_rect(animator: &mut Animator, uuid: Uuid, parent: Option<Uuid>) {
+        animator
+            .add_anim_object(make_rect_obj(uuid, parent).anim_data)
+            .unwrap();
+    }
+
+    #[test]
+    fn drop_removes_children_and_keeps_buffers_consistent() {
+        let camera = Camera::new(Vec2::new(100.0, 100.0), Vec2::ZERO, 1.0);
+        let mut animator =
+            Animator::new(vec![AnimOperation::Wait(0.001, None)], 60, camera, 1.0).unwrap();
+        let (a, child, b) = (Uuid::new_v4(), Uuid::new_v4(), Uuid::new_v4());
+        add_rect(&mut animator, a, None);
+        add_rect(&mut animator, child, Some(a));
+        add_rect(&mut animator, b, None);
+        let (verts, idxs) = (animator.vertices.len(), animator.indices.len());
+
+        animator.drop_object(&a).unwrap();
+
+        assert!(animator.get_object(&a).is_err());
+        assert!(animator.get_object(&child).is_err());
+        assert_eq!(animator.objects.len(), 1);
+        assert_eq!(animator.vertices.len(), verts / 3);
+        assert_eq!(animator.indices.len(), idxs / 3);
+        let kept = animator.get_object(&b).unwrap();
+        assert_eq!(kept.render_data.vertices_base_index, 0);
+        assert_eq!(kept.render_data.indices_base_index, 0);
+        assert!(animator.drop_object(&a).is_err());
+    }
+
+    #[test]
+    fn drop_in_a_sequence_runs_when_reached() {
+        let uuid = Uuid::new_v4();
+        let mut animator = make_animator_with_rect(uuid);
+        let op = AnimOperation::Sequence(
+            vec![
+                AnimOperation::Wait(1.0, None),
+                AnimOperation::All(vec![AnimOperation::Drop(uuid, None)], None),
+            ],
+            None,
+        );
+        let anim = resolve_op(op).unwrap();
+        let mut store = vec![];
+        (anim.start)(&mut animator, &mut store).unwrap();
+        assert!(animator.get_object(&uuid).is_ok(), "dropped at the start");
+        let update = anim.update.unwrap();
+        update(&mut animator, 0.5, &mut store).unwrap();
+        assert!(animator.get_object(&uuid).is_ok(), "dropped too early");
+        update(&mut animator, 1.0, &mut store).unwrap();
+        assert!(animator.get_object(&uuid).is_err(), "never dropped");
     }
 }
 

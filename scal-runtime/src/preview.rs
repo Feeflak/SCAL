@@ -865,6 +865,7 @@ struct UIUniforms {
 fn op_label(op: &AnimOperation) -> &'static str {
     match op {
         AnimOperation::Instantiate(..) => "Instantiate",
+        AnimOperation::Drop(..) => "Drop",
         AnimOperation::TransformMovePos(..) | AnimOperation::TransformMoveToObj(..) => "Move",
         AnimOperation::TransformRotate(..) => "Rotate",
         AnimOperation::TransformScale(..) => "Scale",
@@ -888,7 +889,7 @@ fn op_label(op: &AnimOperation) -> &'static str {
 
 fn op_kind(op: &AnimOperation) -> OpKind {
     match op {
-        AnimOperation::Instantiate(..) => OpKind::Instantiate,
+        AnimOperation::Instantiate(..) | AnimOperation::Drop(..) => OpKind::Instantiate,
         AnimOperation::TransformMovePos(..)
         | AnimOperation::TransformMoveToObj(..)
         | AnimOperation::TransformRotate(..)
@@ -928,6 +929,7 @@ fn op_color(kind: OpKind) -> [f32; 4] {
 fn op_source_loc(op: &AnimOperation) -> Option<scal_core::SourceLoc> {
     match op {
         AnimOperation::Instantiate(_, loc)
+        | AnimOperation::Drop(_, loc)
         | AnimOperation::TransformMovePos(_, _, _, _, loc)
         | AnimOperation::TransformMoveToObj(_, _, _, _, _, loc)
         | AnimOperation::TransformRotate(_, _, _, _, loc)
@@ -990,7 +992,7 @@ pub fn flatten_ops(ops: &[AnimOperation]) -> (Vec<TimelineOp>, f32) {
                 AnimOperation::ScrollOffset(_, _, d, _, _) => time += d,
                 AnimOperation::NumberTo(_, _, _, d, _, _) => time += d,
                 AnimOperation::PlaySound(_, _, _) => {}
-                AnimOperation::Instantiate(..) => {}
+                AnimOperation::Instantiate(..) | AnimOperation::Drop(..) => {}
             }
             if time > op_start {
                 result.push(TimelineOp {

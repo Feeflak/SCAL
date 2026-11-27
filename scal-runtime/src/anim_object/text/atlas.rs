@@ -39,6 +39,11 @@ pub struct GlyphUpdateData<'a> {
     pub height: u32,
     pub pixels: &'a [u8],
 }
+/// Edge length in pixels of the (square) glyph atlas for a text resolution multiplier.
+pub fn atlas_size(scale: f32) -> u32 {
+    (2048.0 * scale).ceil().clamp(1.0, 8192.0) as u32
+}
+
 impl GlyphAtlas {
     pub fn get_glyph_update_data(&mut self) -> Option<GlyphUpdateData<'_>> {
         if self.dirty {
@@ -52,8 +57,20 @@ impl GlyphAtlas {
             None
         }
     }
+    /// Forgets every glyph. Meshes built before still point at the old glyph positions, so all
+    /// text has to be regenerated afterwards.
+    pub fn reset(&mut self) {
+        self.glyphs.clear();
+        self.pixels.fill(0);
+        self.cursor_x = 0;
+        self.cursor_y = 0;
+        self.row_height = 0;
+        self.cache = SwashCache::new();
+        self.dirty = true;
+    }
+
     pub fn new(scale: f32) -> Self {
-        let size = (1024.0 * scale).ceil() as usize;
+        let size = atlas_size(scale) as usize;
         Self {
             glyphs: HashMap::new(),
             dirty: true,
@@ -111,6 +128,24 @@ impl GlyphAtlas {
 
         let x = self.cursor_x;
         let y = self.cursor_y;
+
+        if width > self.width || y + height > self.height {
+            // The atlas is full. Skip the glyph instead of writing out of bounds.
+            eprintln!(
+                "glyph atlas ({}x{}) is full, a glyph will not be drawn. \
+                 Lower the font size or text_resolution_multiplier",
+                self.width, self.height
+            );
+            return GlyphInfo {
+                uv_min: Vec2::ZERO,
+                uv_max: Vec2::ZERO,
+                width: 0.0,
+                height: 0.0,
+                bearing: Vec2::ZERO,
+                advance: 0.0,
+                is_color: false,
+            };
+        }
 
         for row in 0..height {
             for col in 0..width {

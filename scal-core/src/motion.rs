@@ -223,3 +223,40 @@ macro_rules! spawn {
         $crate::AnimOP::All(vec![ $( ($obj).instantiate() ),* ], None)
     };
 }
+
+/// Remove objects from the scene for good, in zero time. Anything attached to an object (the
+/// parts of a code window, the children of a layout) goes with it, and the memory they used
+/// (glyph atlas space, mesh data) is freed.
+///
+/// Objects are never removed automatically. After `pop_out` an object is only scaled to nothing
+/// and still costs memory, so drop what a later part of the video does not need anymore.
+/// Works with every object that has a `.transform`, like [`group!`](crate::group).
+/// ```ignore
+/// sequence![
+///     parallel![cw.pop_out().with(POP), formula.pop_out().with(POP)],
+///     drop![cw, formula],
+/// ]
+/// ```
+#[macro_export]
+macro_rules! drop {
+    ( $( $obj:expr ),* $(,)? ) => {
+        $crate::AnimOP::All(vec![ $( $crate::AnimOP::Drop(($obj).transform.uuid, None) ),* ], None)
+    };
+}
+
+#[cfg(test)]
+mod drop_tests {
+    use crate::{AnimOP, prelude::*};
+
+    #[test]
+    fn drop_macro_drops_every_object() {
+        let a = rectangle().build();
+        let b = text().build();
+        let AnimOP::All(ops, _) = drop![a, b,] else {
+            panic!("drop! should be a parallel group");
+        };
+        assert!(matches!(ops[0], AnimOP::Drop(id, _) if id == a.transform.uuid));
+        assert!(matches!(ops[1], AnimOP::Drop(id, _) if id == b.transform.uuid));
+        assert_eq!(ops.len(), 2);
+    }
+}

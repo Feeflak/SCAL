@@ -585,5 +585,5 @@ pub mod prelude {
     pub use crate::sfx::{Sfx, sfx};
     pub use crate::theme::{Base16, Theme};
     pub use crate::transform::Transform;
-    pub use crate::{group, parallel, sequence, spawn, timeline};
+    pub use crate::{drop, group, parallel, sequence, spawn, timeline};
 }

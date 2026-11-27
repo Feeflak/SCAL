@@ -252,7 +252,7 @@ async fn run_loop(
             AnimOperation::CodeHighlight(_, action, _) => {
                 start_time + action.duration_and_curve().0
             }
-            AnimOperation::Instantiate(..) => start_time,
+            AnimOperation::Instantiate(..) | AnimOperation::Drop(..) => start_time,
         }
     }
 

@@ -73,6 +73,7 @@ fn convert_anim_op(
                 AnimOperation::Instantiate(render_obj, loc)
             }
         }
+        scal_core::AnimOP::Drop(u, loc) => AnimOperation::Drop(u, loc),
         scal_core::AnimOP::TransformMovePos(u, v, d, e, loc) => {
             AnimOperation::TransformMovePos(u, v, d, e, loc)
         }

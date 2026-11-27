@@ -206,6 +206,16 @@ impl Renderer {
             }
         }
 
+        // Dropped objects never come back, release what was built for them.
+        if self.object_transform_data_lookup.len() > scene.objects_sorted_by_z.len() {
+            let live: std::collections::HashSet<Uuid> =
+                scene.objects_sorted_by_z.iter().map(|o| *o.uuid()).collect();
+            self.object_transform_data_lookup
+                .retain(|uuid, _| live.contains(uuid));
+            self.per_object_bind_groups
+                .retain(|uuid, _| live.contains(uuid));
+        }
+
         for obj in scene.objects_sorted_by_z {
             let transf = obj.anim_data.transform();
             let transform_data = self
